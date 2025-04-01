@@ -10,6 +10,22 @@ export const AI_MODELS = [
     avatarColor: '#10a37f', // OpenAI green
   },
   {
+    id: 'gpt-4o-mini',
+    name: 'GPT-4o Mini',
+    provider: 'openai',
+    description: 'Smaller, faster, and more cost-effective version of GPT-4o',
+    capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
+    avatarColor: '#10a37f', // OpenAI green
+  },
+  {
+    id: 'gpt-3.5-turbo',
+    name: 'GPT-3.5 Turbo',
+    provider: 'openai',
+    description: 'Fast and efficient text generation model',
+    capabilities: ['text', 'code'] as Array<'text' | 'code'>,
+    avatarColor: '#10a37f', // OpenAI green
+  },
+  {
     id: 'claude-3-haiku-20240307',
     name: 'Claude 3 Haiku',
     provider: 'anthropic',
