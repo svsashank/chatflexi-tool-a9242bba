@@ -6,7 +6,7 @@ export const AI_MODELS = [
     name: 'GPT-4o',
     provider: 'openai',
     description: 'OpenAI\'s most advanced model, with vision capabilities',
-    capabilities: ['text', 'images', 'code'] as const,
+    capabilities: ['text', 'images', 'code'] as ReadonlyArray<'text' | 'images' | 'code'>,
     avatarColor: '#10a37f', // OpenAI green
   },
   {
@@ -14,7 +14,7 @@ export const AI_MODELS = [
     name: 'Claude 3 Haiku',
     provider: 'anthropic',
     description: 'Fast, compact, and balanced intelligence',
-    capabilities: ['text', 'code'] as const,
+    capabilities: ['text', 'code'] as ReadonlyArray<'text' | 'code'>,
     avatarColor: '#d33b9a', // Anthropic pink
   },
   {
@@ -22,7 +22,7 @@ export const AI_MODELS = [
     name: 'Claude 3 Sonnet',
     provider: 'anthropic',
     description: 'Reliable intelligence across complex tasks',
-    capabilities: ['text', 'images', 'code'] as const,
+    capabilities: ['text', 'images', 'code'] as ReadonlyArray<'text' | 'images' | 'code'>,
     avatarColor: '#c33693', // Anthropic darker pink
   },
   {
@@ -30,7 +30,7 @@ export const AI_MODELS = [
     name: 'Claude 3 Opus',
     provider: 'anthropic',
     description: 'Anthropic\'s most powerful model for complex tasks',
-    capabilities: ['text', 'images', 'code'] as const,
+    capabilities: ['text', 'images', 'code'] as ReadonlyArray<'text' | 'images' | 'code'>,
     avatarColor: '#b03397', // Anthropic even darker pink
   },
   {
@@ -38,7 +38,7 @@ export const AI_MODELS = [
     name: 'Gemini 1.5 Pro',
     provider: 'google',
     description: 'Google\'s multimodal model with extended context window',
-    capabilities: ['text', 'images', 'code'] as const,
+    capabilities: ['text', 'images', 'code'] as ReadonlyArray<'text' | 'images' | 'code'>,
     avatarColor: '#4285f4', // Google blue
   },
   {
@@ -46,7 +46,7 @@ export const AI_MODELS = [
     name: 'Grok-1',
     provider: 'xai',
     description: 'xAI\'s conversational model with latest knowledge',
-    capabilities: ['text', 'code'] as const,
+    capabilities: ['text', 'code'] as ReadonlyArray<'text' | 'code'>,
     avatarColor: '#1d9bf0', // Twitter blue
   },
 ];
