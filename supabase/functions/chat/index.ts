@@ -20,6 +20,8 @@ serve(async (req) => {
     // Prepare conversation history in the format the APIs expect
     const messageHistory = messages || [];
     
+    console.log(`Request received for provider: ${model.provider}, model: ${model.id}`);
+    
     // Format varies by provider
     switch(model.provider.toLowerCase()) {
       case 'openai':
@@ -104,11 +106,23 @@ async function handleAnthropic(messageHistory, content, modelId) {
   
   console.log(`Processing request for Anthropic model ${modelId} with content: ${content.substring(0, 50)}...`);
   
-  // The correct API format for Claude API v1
-  // Reference: https://docs.anthropic.com/claude/reference/messages_post
-  console.log(`Formatting messages for Anthropic API...`);
+  // Valid Claude model names as of April 2024
+  const validClaudeModels = [
+    'claude-3-opus-20240229',
+    'claude-3-sonnet-20240229',
+    'claude-3-haiku-20240307',
+    'claude-2.1',
+    'claude-2.0',
+    'claude-instant-1.2'
+  ];
   
-  // Convert from chat format to messages format
+  // Check if the model ID is valid
+  if (!validClaudeModels.includes(modelId)) {
+    console.warn(`Warning: Potentially invalid Claude model ID: ${modelId}`);
+    console.log(`Available Claude models: ${validClaudeModels.join(', ')}`);
+  }
+  
+  // Convert from chat format to messages format for Anthropic API
   const messages = [
     ...messageHistory.map(msg => ({
       role: msg.role === 'assistant' ? 'assistant' : 'user',
@@ -149,7 +163,7 @@ async function handleAnthropic(messageHistory, content, modelId) {
     console.log(`Successfully received response from Anthropic`);
     const data = await response.json();
     
-    // Log the first part of the response for debugging
+    // Log the response structure for debugging
     console.log(`Anthropic response type: ${typeof data}`);
     console.log(`Anthropic response content type: ${typeof data.content}`);
     console.log(`Anthropic response structure: ${JSON.stringify(Object.keys(data))}`);

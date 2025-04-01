@@ -30,7 +30,7 @@ const SettingsModal = () => {
           model: {
             provider,
             id: provider === 'openai' ? 'gpt-4o-mini' : 
-                 provider === 'anthropic' ? 'claude-3-haiku' :
+                 provider === 'anthropic' ? 'claude-3-haiku-20240307' :
                  provider === 'google' ? 'gemini-1.5-flash' : 'grok-1'
           },
           messages: []
