@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 
@@ -42,7 +41,27 @@ serve(async (req) => {
     console.log(`Calling Replicate API for ${modelId}...`);
     console.log(`Using model: ${replicateModel}`);
     
-    // Call the Replicate API with the correct format
+    // Prepare the input based on the model
+    let inputData = {};
+    
+    if (modelId === 'deepseek-r1') {
+      // DeepSeek R1 expects just a "prompt" parameter
+      inputData = {
+        prompt: formattedPrompt
+      };
+    } else {
+      // Other models might expect more parameters
+      inputData = {
+        prompt: formattedPrompt,
+        temperature: 0.7,
+        max_tokens: 1000,
+        top_p: 0.9,
+      };
+    }
+    
+    console.log(`Input data for ${modelId}:`, JSON.stringify(inputData));
+    
+    // Call the Replicate API
     const response = await fetch("https://api.replicate.com/v1/predictions", {
       method: "POST",
       headers: {
@@ -52,12 +71,7 @@ serve(async (req) => {
       body: JSON.stringify({
         // Use the model parameter with the full identifier
         model: replicateModel,
-        input: {
-          prompt: formattedPrompt,
-          temperature: 0.7,
-          max_tokens: 1000,
-          top_p: 0.9,
-        }
+        input: inputData
       })
     });
 
@@ -92,10 +106,20 @@ serve(async (req) => {
       throw new Error(`Prediction failed: ${result.error || "Unknown error"}`);
     }
 
-    // Return the result
+    // Return the result - handle the output format correctly
+    // For DeepSeek R1, the output is typically a string
+    let content = "";
+    if (Array.isArray(result.output)) {
+      content = result.output.join("");
+    } else {
+      content = result.output || "";
+    }
+    
+    console.log(`Successfully processed ${modelId} response. Output format:`, typeof content);
+
     return new Response(
       JSON.stringify({ 
-        content: result.output || "",
+        content: content,
         model: modelId,
         provider: 'Replicate'
       }),
