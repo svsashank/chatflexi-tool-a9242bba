@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 
@@ -476,7 +477,7 @@ async function handleKrutrim(messageHistory, content, modelId, systemPrompt) {
       })
     });
     
-    // Capture the full response as text first for better debugging
+    // Capture the full response as text for better debugging
     const responseText = await response.text();
     console.log(`Krutrim API response status: ${response.status}`);
     console.log(`Krutrim API response first 100 chars: ${responseText.substring(0, 100)}...`);
@@ -491,6 +492,7 @@ async function handleKrutrim(messageHistory, content, modelId, systemPrompt) {
       }
     }
     
+    // Parse response text to JSON only once
     let parsedResponse;
     try {
       parsedResponse = JSON.parse(responseText);
