@@ -3,7 +3,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
-import useChatStore from '@/store/chatStore';
+import { useChatStore } from '@/store';
 
 type AuthContextType = {
   user: User | null;
