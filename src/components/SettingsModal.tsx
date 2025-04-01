@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSettingsStore } from "@/store/settingsStore";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, ExternalLink } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,7 +27,7 @@ const SettingsModal = () => {
       // Use the exact model IDs that match the provider's API requirements
       const modelId = provider === 'openai' ? 'gpt-4o-mini' : 
                       provider === 'anthropic' ? 'claude-3-haiku-20240307' :
-                      provider === 'google' ? 'gemini-1.5-flash' : 'grok-1';
+                      provider === 'google' ? 'gemini-1.5-flash' : 'grok-2-latest';
       
       console.log(`Testing ${provider} with model ID: ${modelId}`);
       
@@ -89,7 +89,7 @@ const SettingsModal = () => {
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Server-side API Keys</AlertTitle>
               <AlertDescription>
-                API keys are now securely stored on the server. Click the button below to add or update your API keys in Supabase Functions settings.
+                API keys are securely stored on the server. Click the button below to add or update your API keys in Supabase Functions settings.
               </AlertDescription>
             </Alert>
             
@@ -124,14 +124,23 @@ const SettingsModal = () => {
                   variant="outline"
                   disabled={isTestingKey !== null}
                 >
-                  {isTestingKey === 'xai' ? 'Testing...' : 'Test xAI'}
+                  {isTestingKey === 'xai' ? 'Testing...' : 'Test xAI (Grok-2)'}
                 </Button>
               </div>
             </div>
             
+            <Alert variant={isTestingKey === 'xai' ? "default" : "info"} className="bg-blue-50 dark:bg-blue-950">
+              <ExternalLink className="h-4 w-4" />
+              <AlertTitle>xAI API Key Format</AlertTitle>
+              <AlertDescription className="text-sm">
+                For xAI (Grok), ensure your API key starts with "xai-" and update it in Supabase Functions settings.
+              </AlertDescription>
+            </Alert>
+            
             <div className="flex justify-center mt-4">
-              <Button onClick={openFunctionsSecrets}>
+              <Button onClick={openFunctionsSecrets} className="flex items-center gap-2">
                 Manage API Keys in Supabase
+                <ExternalLink size={16} />
               </Button>
             </div>
           </TabsContent>

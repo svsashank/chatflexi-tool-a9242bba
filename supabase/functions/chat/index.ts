@@ -244,7 +244,9 @@ async function handleXAI(messageHistory, content, modelId) {
     throw new Error("xAI API key not configured. Please add your xAI API key in the Supabase settings.");
   }
   
-  console.log(`Processing request for xAI model ${modelId} with content: ${content.substring(0, 50)}...`);
+  // Override model ID to use grok-2-latest as per user's curl example
+  const grokModelId = "grok-2-latest";
+  console.log(`Processing request for xAI model ${grokModelId} with content: ${content.substring(0, 50)}...`);
   
   // Format messages for xAI
   const formattedMessages = [
@@ -255,16 +257,16 @@ async function handleXAI(messageHistory, content, modelId) {
     { role: 'user', content }
   ];
 
-  console.log(`Calling xAI API...`);
+  console.log(`Calling xAI API with model ${grokModelId}...`);
   try {
-    const response = await fetch('https://api.xai.com/v1/chat/completions', {
+    const response = await fetch('https://api.x.ai/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${XAI_API_KEY}`
       },
       body: JSON.stringify({
-        model: modelId,
+        model: grokModelId,
         messages: formattedMessages,
         temperature: 0.7,
         max_tokens: 1000,
@@ -311,7 +313,7 @@ async function handleXAI(messageHistory, content, modelId) {
       return new Response(
         JSON.stringify({ 
           content: parsedResponse.choices[0].message.content,
-          model: modelId,
+          model: grokModelId,
           provider: 'xAI'
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

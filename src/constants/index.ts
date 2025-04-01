@@ -50,10 +50,10 @@ export const AI_MODELS = [
     avatarColor: '#4285f4', // Google blue
   },
   {
-    id: 'grok-1',
-    name: 'Grok-1',
+    id: 'grok-2-latest',
+    name: 'Grok-2',
     provider: 'xai',
-    description: 'xAI\'s conversational model with latest knowledge',
+    description: 'xAI\'s latest conversational model with real-time knowledge',
     capabilities: ['text', 'code'] as Array<'text' | 'code'>,
     avatarColor: '#1d9bf0', // Twitter blue
   },
