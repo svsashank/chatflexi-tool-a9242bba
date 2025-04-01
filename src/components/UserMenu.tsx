@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -12,12 +11,10 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { User, LogOut, Settings } from 'lucide-react';
-import { useSettingsStore } from '@/store/settingsStore';
+import { User, LogOut } from 'lucide-react';
 
 export function UserMenu() {
   const { user, signOut } = useAuth();
-  const { openSettings } = useSettingsStore();
   
   // Get user initials for avatar fallback
   const getUserInitials = () => {
