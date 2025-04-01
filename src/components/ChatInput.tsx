@@ -1,11 +1,18 @@
 
 import React, { useState, useRef, useEffect } from "react";
-import { Send } from "lucide-react";
+import { Send, ChevronDown } from "lucide-react";
 import useChatStore from "@/store/chatStore";
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { AI_MODELS } from "@/constants";
 
 const ChatInput = () => {
   const [inputValue, setInputValue] = useState("");
-  const { addMessage, isLoading } = useChatStore();
+  const { addMessage, isLoading, selectedModel, selectModel } = useChatStore();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Auto-resize textarea as content grows
@@ -55,6 +62,42 @@ const ChatInput = () => {
             rows={1}
           />
         </div>
+        
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className="flex items-center justify-center h-10 px-3 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+              aria-label="Select AI model"
+            >
+              <div 
+                className="w-2.5 h-2.5 rounded-full mr-2" 
+                style={{ backgroundColor: selectedModel.avatarColor }}
+              />
+              <span className="text-xs font-medium mr-1 hidden sm:inline">{selectedModel.name}</span>
+              <ChevronDown size={14} />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            {AI_MODELS.map((model) => (
+              <DropdownMenuItem 
+                key={model.id}
+                onClick={() => selectModel(model)}
+                className="flex items-center cursor-pointer"
+              >
+                <div 
+                  className="w-2.5 h-2.5 rounded-full mr-2" 
+                  style={{ backgroundColor: model.avatarColor }}
+                />
+                <span className="flex-1">{model.name}</span>
+                {selectedModel.id === model.id && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary ml-2" />
+                )}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
         <button
           type="submit"
           disabled={inputValue.trim() === "" || isLoading}

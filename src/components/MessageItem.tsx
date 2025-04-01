@@ -4,7 +4,6 @@ import { Message } from "../types";
 import { Bot, Check, Copy, User } from "lucide-react";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import rehypeRaw from 'rehype-raw';
 import rehypeHighlight from 'rehype-highlight';
 import { toast } from "sonner";
 
@@ -64,7 +63,7 @@ const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
         <div className="chat-message">
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
-            rehypePlugins={[rehypeRaw, rehypeHighlight]}
+            rehypePlugins={[rehypeHighlight]}
             components={{
               code({ node, className, children, ...props }) {
                 const match = /language-(\w+)/.exec(className || '');

@@ -58,7 +58,7 @@ const ChatMessages = () => {
                   {[...Array(3)].map((_, i) => (
                     <div 
                       key={i}
-                      className="w-2 h-2 rounded-full bg-muted-foreground animate-pulse-slow"
+                      className="w-2 h-2 rounded-full bg-muted-foreground animate-pulse"
                       style={{ animationDelay: `${i * 0.2}s` }}
                     />
                   ))}
