@@ -22,6 +22,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const chatStore = useChatStore();
 
   useEffect(() => {
     // Set up auth state listener FIRST
@@ -35,6 +36,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             title: "Signed in successfully",
             description: `Welcome${session.user?.user_metadata?.name ? `, ${session.user.user_metadata.name}` : ''}!`,
           });
+          
+          // Load user conversations after successful sign in
+          setTimeout(() => {
+            chatStore.loadUserConversations();
+          }, 0);
         }
         
         if (event === 'SIGNED_OUT') {
@@ -45,7 +51,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           
           // Create a new conversation when signing out
           setTimeout(() => {
-            const chatStore = useChatStore.getState();
             chatStore.createConversation();
           }, 0);
         }
@@ -60,7 +65,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     });
 
     return () => subscription.unsubscribe();
-  }, [toast]);
+  }, [toast, chatStore]);
 
   const signIn = async (email: string, password: string) => {
     try {
