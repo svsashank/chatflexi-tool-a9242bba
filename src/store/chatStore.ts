@@ -1,3 +1,4 @@
+
 import { create } from 'zustand';
 import { v4 as uuidv4 } from 'uuid';
 import { Message, Conversation, ChatState, AIModel } from '../types';
@@ -29,6 +30,7 @@ This recursive implementation of the Fibonacci sequence demonstrates a classic a
 const useChatStore = create<ChatState & {
   createConversation: () => void;
   setCurrentConversation: (id: string) => void;
+  deleteConversation: (id: string) => void;
   addMessage: (content: string) => void;
   selectModel: (model: AIModel) => void;
   generateResponse: () => void;
@@ -65,6 +67,25 @@ const useChatStore = create<ChatState & {
 
     setCurrentConversation: (id: string) => {
       set({ currentConversationId: id });
+    },
+
+    deleteConversation: (id: string) => {
+      const { conversations, currentConversationId } = get();
+      
+      // Don't delete if it's the only conversation
+      if (conversations.length <= 1) return;
+      
+      const updatedConversations = conversations.filter(conv => conv.id !== id);
+      
+      // If the deleted conversation was the current one, set a new current
+      const newCurrentId = id === currentConversationId 
+        ? updatedConversations[0].id 
+        : currentConversationId;
+      
+      set({
+        conversations: updatedConversations,
+        currentConversationId: newCurrentId,
+      });
     },
 
     addMessage: (content: string) => {

@@ -7,8 +7,11 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { AI_MODELS } from "@/constants";
+import { Button } from "@/components/ui/button";
 
 const ChatInput = () => {
   const [inputValue, setInputValue] = useState("");
@@ -65,31 +68,36 @@ const ChatInput = () => {
         
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              className="flex items-center justify-center h-10 px-3 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+            <Button
+              variant="outline"
+              className="flex items-center justify-center h-10 gap-2 px-3 rounded-lg"
               aria-label="Select AI model"
             >
               <div 
-                className="w-2.5 h-2.5 rounded-full mr-2" 
+                className="w-2.5 h-2.5 rounded-full" 
                 style={{ backgroundColor: selectedModel.avatarColor }}
               />
-              <span className="text-xs font-medium mr-1 hidden sm:inline">{selectedModel.name}</span>
+              <span className="text-xs font-medium max-w-24 truncate hidden sm:block">{selectedModel.name}</span>
               <ChevronDown size={14} />
-            </button>
+            </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuLabel>AI Models</DropdownMenuLabel>
+            <DropdownMenuSeparator />
             {AI_MODELS.map((model) => (
               <DropdownMenuItem 
                 key={model.id}
                 onClick={() => selectModel(model)}
-                className="flex items-center cursor-pointer"
+                className="flex items-center gap-2 cursor-pointer"
               >
                 <div 
-                  className="w-2.5 h-2.5 rounded-full mr-2" 
+                  className="w-2.5 h-2.5 rounded-full" 
                   style={{ backgroundColor: model.avatarColor }}
                 />
                 <span className="flex-1">{model.name}</span>
+                {model.provider && (
+                  <span className="text-xs text-muted-foreground">{model.provider}</span>
+                )}
                 {selectedModel.id === model.id && (
                   <span className="w-1.5 h-1.5 rounded-full bg-primary ml-2" />
                 )}
@@ -98,17 +106,15 @@ const ChatInput = () => {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <button
+        <Button
           type="submit"
           disabled={inputValue.trim() === "" || isLoading}
-          className={`flex items-center justify-center w-10 h-10 rounded-lg ${
-            inputValue.trim() === "" || isLoading
-              ? "bg-muted/50 text-muted-foreground cursor-not-allowed"
-              : "bg-primary text-primary-foreground hover:bg-primary/90"
-          } transition-colors`}
+          variant={inputValue.trim() === "" || isLoading ? "secondary" : "default"}
+          size="icon"
+          className="h-10 w-10"
         >
           <Send size={18} />
-        </button>
+        </Button>
       </form>
     </div>
   );
