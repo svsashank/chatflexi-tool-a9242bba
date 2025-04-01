@@ -1,4 +1,3 @@
-
 // AI Models
 export const AI_MODELS = [
   {
@@ -8,6 +7,14 @@ export const AI_MODELS = [
     description: 'OpenAI\'s most advanced model, with vision capabilities',
     capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
     avatarColor: '#10a37f', // OpenAI green
+  },
+  {
+    id: 'deepseek-r1',
+    name: 'DeepSeek-R1',
+    provider: 'krutrim',
+    description: 'Krutrim\'s DeepSeek-R1 model with strong reasoning capabilities',
+    capabilities: ['text', 'code'] as Array<'text' | 'code'>,
+    avatarColor: '#6366f1', // Indigo color for Krutrim
   },
   {
     id: 'gpt-4o-mini',
