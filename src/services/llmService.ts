@@ -7,12 +7,28 @@ const formatMessageHistory = (messages: Message[]) => {
   // Only include the last 10 messages to avoid token limits
   const recentMessages = messages.slice(-10);
   
-  return recentMessages.map(msg => ({
-    role: msg.role,
-    content: msg.content,
-    // Include model info for better context
-    model: msg.model.name
-  }));
+  // Clean the messages to remove any internal notes or system prompts
+  return recentMessages.map(msg => {
+    let cleanContent = msg.content;
+    
+    // Remove any content between <think> and </think> tags
+    cleanContent = cleanContent.replace(/<think>[\s\S]*?<\/think>/g, '');
+    
+    // Remove any system prompt text that might have been captured
+    if (cleanContent.includes("You are Krix, a helpful AI assistant")) {
+      cleanContent = cleanContent.replace(/You are Krix, a helpful AI assistant[^"]*/g, '');
+    }
+    
+    // Trim any whitespace
+    cleanContent = cleanContent.trim();
+    
+    return {
+      role: msg.role,
+      content: cleanContent,
+      // Include model info for better context
+      model: msg.model.name
+    };
+  });
 };
 
 // Sends a message to the specified model via Supabase Edge Function

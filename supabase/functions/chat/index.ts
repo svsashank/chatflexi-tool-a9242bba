@@ -129,6 +129,7 @@ async function handleOpenAI(messageHistory, content, modelId, systemPrompt) {
     { role: 'system', content: systemPrompt },
     ...messageHistory.map(msg => ({
       role: msg.role,
+      // Only include the actual content, not any internal notes or system info
       content: msg.content
     })),
     { role: 'user', content }
@@ -182,6 +183,7 @@ async function handleAnthropic(messageHistory, content, modelId, systemPrompt) {
     { role: 'user', content: `<instructions>${systemPrompt}</instructions>` },
     ...messageHistory.map(msg => ({
       role: msg.role === 'assistant' ? 'assistant' : 'user',
+      // Only include the actual content, not any internal notes or system info
       content: msg.content
     })),
     { role: 'user', content }
@@ -222,6 +224,8 @@ async function handleAnthropic(messageHistory, content, modelId, systemPrompt) {
       }
     }
     
+    // Parse JSON response
+    const data = JSON.parse(responseText);
     console.log(`Successfully received response from Anthropic`);
     console.log(`Response structure: ${JSON.stringify(Object.keys(data))}`);
     
@@ -260,10 +264,13 @@ async function handleGoogle(messageHistory, content, modelId, systemPrompt) {
       role: 'user',
       parts: [{ text: `System: ${systemPrompt}` }]
     },
-    // Add regular message history
+    // Add regular message history - filter out any internal thinking
     ...messageHistory.map(msg => ({
       role: msg.role,
-      parts: [{ text: msg.content }]
+      parts: [{ 
+        // Only include the actual content, not any internal notes
+        text: msg.content 
+      }]
     })),
     // Add the current message
     {
@@ -342,6 +349,7 @@ async function handleXAI(messageHistory, content, modelId, systemPrompt) {
     { role: 'system', content: systemPrompt },
     ...messageHistory.map(msg => ({
       role: msg.role,
+      // Only include the actual message content
       content: msg.content
     })),
     { role: 'user', content }
@@ -428,13 +436,34 @@ async function handleKrutrim(messageHistory, content, modelId, systemPrompt) {
   
   console.log(`Processing request for Krutrim model ${modelId} with content: ${content.substring(0, 50)}...`);
   
+  // Clean message history to remove any <think> blocks or other internal notes
+  const cleanedHistory = messageHistory.map(msg => {
+    let cleanContent = msg.content;
+    
+    // Remove any content between <think> and </think> tags
+    cleanContent = cleanContent.replace(/<think>[\s\S]*?<\/think>/g, '');
+    
+    // Remove any system prompt text that might have been captured
+    if (cleanContent.includes("You are Krix, a helpful AI assistant")) {
+      cleanContent = cleanContent.replace(/You are Krix, a helpful AI assistant[^"]*/g, '');
+    }
+    
+    // Trim any whitespace
+    cleanContent = cleanContent.trim();
+    
+    return {
+      role: msg.role,
+      content: cleanContent
+    };
+  });
+  
+  // Filter out any empty messages after cleaning
+  const filteredHistory = cleanedHistory.filter(msg => msg.content.length > 0);
+  
   // Format messages for Krutrim API
   const formattedMessages = [
     { role: 'system', content: systemPrompt },
-    ...messageHistory.map(msg => ({
-      role: msg.role,
-      content: msg.content
-    })),
+    ...filteredHistory,
     { role: 'user', content }
   ];
 
