@@ -26,23 +26,14 @@ const ChatHeader = () => {
             </h1>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2 mr-2">
-            <div 
-              className="w-2.5 h-2.5 rounded-full" 
-              style={{ backgroundColor: selectedModel.avatarColor }}
-            />
-            <span className="text-sm hidden md:block">{selectedModel.name}</span>
-          </div>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={openSettings}
-            className="h-8 w-8"
-          >
-            <Settings size={18} />
-          </Button>
-        </div>
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={openSettings}
+          className="h-8 w-8"
+        >
+          <Settings size={18} />
+        </Button>
       </div>
     </header>
   );
