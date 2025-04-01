@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 
@@ -451,7 +452,7 @@ async function handleKrutrim(messageHistory, content, modelId, systemPrompt) {
         model: "DeepSeek-R1", // Hardcoded as per requirement
         messages: formattedMessages,
         temperature: 0.7,
-        max_tokens: 1000,
+        max_tokens: 25000, // Increased from 1000 to 25000 as requested
       })
     });
     
