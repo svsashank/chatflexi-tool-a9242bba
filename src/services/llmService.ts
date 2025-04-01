@@ -2,6 +2,19 @@
 import { supabase } from "@/integrations/supabase/client";
 import { Message, AIModel } from "@/types";
 
+// Formats the chat history for better context preservation
+const formatMessageHistory = (messages: Message[]) => {
+  // Only include the last 10 messages to avoid token limits
+  const recentMessages = messages.slice(-10);
+  
+  return recentMessages.map(msg => ({
+    role: msg.role,
+    content: msg.content,
+    // Include model info for better context
+    model: msg.model.name
+  }));
+};
+
 // Sends a message to the specified model via Supabase Edge Function
 export const sendMessageToLLM = async (
   content: string,
@@ -9,11 +22,8 @@ export const sendMessageToLLM = async (
   conversationHistory: Message[]
 ): Promise<string> => {
   try {
-    // Format conversation history in a simplified format for the edge function
-    const messageHistory = conversationHistory.map(msg => ({
-      role: msg.role,
-      content: msg.content
-    }));
+    // Format conversation history with better context preservation
+    const messageHistory = formatMessageHistory(conversationHistory);
     
     // Call the Supabase Edge Function
     const { data, error } = await supabase.functions.invoke('chat', {

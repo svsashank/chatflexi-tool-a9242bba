@@ -22,16 +22,19 @@ serve(async (req) => {
     
     console.log(`Request received for provider: ${model.provider}, model: ${model.id}`);
     
+    // Add a system prompt based on the conversation context
+    const systemPrompt = generateSystemPrompt(messageHistory);
+    
     // Format varies by provider
     switch(model.provider.toLowerCase()) {
       case 'openai':
-        return await handleOpenAI(messageHistory, content, model.id);
+        return await handleOpenAI(messageHistory, content, model.id, systemPrompt);
       case 'anthropic':
-        return await handleAnthropic(messageHistory, content, model.id);
+        return await handleAnthropic(messageHistory, content, model.id, systemPrompt);
       case 'google':
-        return await handleGoogle(messageHistory, content, model.id);
+        return await handleGoogle(messageHistory, content, model.id, systemPrompt);
       case 'xai':
-        return await handleXAI(messageHistory, content, model.id);
+        return await handleXAI(messageHistory, content, model.id, systemPrompt);
       default:
         throw new Error(`Provider ${model.provider} not supported`);
     }
@@ -47,8 +50,71 @@ serve(async (req) => {
   }
 });
 
+// Generate a system prompt based on conversation context
+function generateSystemPrompt(messageHistory) {
+  // Default system prompt
+  let systemPrompt = "You are Krix, a helpful AI assistant. Be concise, clear, and maintain context from previous messages.";
+  
+  // Enhance the system prompt based on the conversation history
+  if (messageHistory.length > 0) {
+    // Extract topics from recent messages
+    const recentTopics = extractTopics(messageHistory);
+    if (recentTopics.length > 0) {
+      systemPrompt += ` The conversation has been about: ${recentTopics.join(', ')}.`;
+    }
+    
+    // Add memory of user preferences based on interaction
+    const userPreferences = extractUserPreferences(messageHistory);
+    if (userPreferences.length > 0) {
+      systemPrompt += ` The user seems to prefer: ${userPreferences.join(', ')}.`;
+    }
+  }
+  
+  return systemPrompt;
+}
+
+// Extract main topics from conversation
+function extractTopics(messageHistory) {
+  // Simple implementation - in a real system, you might use an LLM to analyze this
+  const allText = messageHistory.map(msg => msg.content).join(' ').toLowerCase();
+  const topics = [];
+  
+  // Check for common topics - this is a simplified example
+  if (allText.includes('code') || allText.includes('programming') || allText.includes('javascript')) {
+    topics.push('programming');
+  }
+  if (allText.includes('explain') || allText.includes('how to')) {
+    topics.push('explanations');
+  }
+  if (allText.includes('data') || allText.includes('analysis')) {
+    topics.push('data analysis');
+  }
+  
+  return topics;
+}
+
+// Extract user preferences from conversation
+function extractUserPreferences(messageHistory) {
+  // Simple implementation - in a real system, you might use an LLM to analyze this
+  const userMessages = messageHistory.filter(msg => msg.role === 'user').map(msg => msg.content.toLowerCase());
+  const preferences = [];
+  
+  // Very simple preference detection
+  const conciseResponses = userMessages.some(msg => msg.includes('short') || msg.includes('brief') || msg.includes('concise'));
+  if (conciseResponses) {
+    preferences.push('concise responses');
+  }
+  
+  const detailedResponses = userMessages.some(msg => msg.includes('detail') || msg.includes('explain more'));
+  if (detailedResponses) {
+    preferences.push('detailed explanations');
+  }
+  
+  return preferences;
+}
+
 // OpenAI (GPT) handler
-async function handleOpenAI(messageHistory, content, modelId) {
+async function handleOpenAI(messageHistory, content, modelId, systemPrompt) {
   const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
   if (!OPENAI_API_KEY) {
     throw new Error("OpenAI API key not configured");
@@ -58,6 +124,7 @@ async function handleOpenAI(messageHistory, content, modelId) {
   
   // Format messages for OpenAI
   const formattedMessages = [
+    { role: 'system', content: systemPrompt },
     ...messageHistory.map(msg => ({
       role: msg.role,
       content: msg.content
@@ -97,8 +164,8 @@ async function handleOpenAI(messageHistory, content, modelId) {
   );
 }
 
-// Anthropic (Claude) handler
-async function handleAnthropic(messageHistory, content, modelId) {
+// Anthropic (Claude) handler - similar modifications for the remaining handlers...
+async function handleAnthropic(messageHistory, content, modelId, systemPrompt) {
   const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
   if (!ANTHROPIC_API_KEY) {
     throw new Error("Anthropic API key not configured");
@@ -109,6 +176,8 @@ async function handleAnthropic(messageHistory, content, modelId) {
   
   // Convert from chat format to messages format for Anthropic API
   const messages = [
+    // System prompt for Anthropic
+    { role: 'user', content: `<instructions>${systemPrompt}</instructions>` },
     ...messageHistory.map(msg => ({
       role: msg.role === 'assistant' ? 'assistant' : 'user',
       content: msg.content
@@ -120,11 +189,7 @@ async function handleAnthropic(messageHistory, content, modelId) {
   console.log(`Messages count: ${messages.length}`);
   
   try {
-    // Using the correct Claude model IDs as provided:
-    // - claude-3-haiku-20240307
-    // - claude-3-5-sonnet-20241022
-    // - claude-3-7-sonnet-20250219
-    // - claude-3-opus-20240229
+    // Using the correct Claude model IDs
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -179,7 +244,7 @@ async function handleAnthropic(messageHistory, content, modelId) {
 }
 
 // Google (Gemini) handler
-async function handleGoogle(messageHistory, content, modelId) {
+async function handleGoogle(messageHistory, content, modelId, systemPrompt) {
   const GOOGLE_API_KEY = Deno.env.get('GOOGLE_API_KEY');
   if (!GOOGLE_API_KEY) {
     throw new Error("Google API key not configured");
@@ -187,17 +252,24 @@ async function handleGoogle(messageHistory, content, modelId) {
   
   console.log(`Processing request for Google model ${modelId} with content: ${content.substring(0, 50)}...`);
   
-  // Format messages for Gemini
-  const formattedContents = messageHistory.map(msg => ({
-    role: msg.role,
-    parts: [{ text: msg.content }]
-  }));
-  
-  // Add the current message
-  formattedContents.push({
-    role: 'user',
-    parts: [{ text: content }]
-  });
+  // Format messages for Gemini, including system prompt
+  const formattedContents = [
+    // Add system prompt as a first user message
+    {
+      role: 'user',
+      parts: [{ text: `System: ${systemPrompt}` }]
+    },
+    // Add regular message history
+    ...messageHistory.map(msg => ({
+      role: msg.role,
+      parts: [{ text: msg.content }]
+    })),
+    // Add the current message
+    {
+      role: 'user',
+      parts: [{ text: content }]
+    }
+  ];
 
   console.log(`Calling Google API...`);
   const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${GOOGLE_API_KEY}`, {
@@ -238,7 +310,7 @@ async function handleGoogle(messageHistory, content, modelId) {
 }
 
 // xAI (Grok) handler
-async function handleXAI(messageHistory, content, modelId) {
+async function handleXAI(messageHistory, content, modelId, systemPrompt) {
   const XAI_API_KEY = Deno.env.get('XAI_API_KEY');
   if (!XAI_API_KEY) {
     throw new Error("xAI API key not configured. Please add your xAI API key in the Supabase settings.");
@@ -248,8 +320,9 @@ async function handleXAI(messageHistory, content, modelId) {
   const grokModelId = "grok-2-latest";
   console.log(`Processing request for xAI model ${grokModelId} with content: ${content.substring(0, 50)}...`);
   
-  // Format messages for xAI
+  // Format messages for xAI, including system prompt
   const formattedMessages = [
+    { role: 'system', content: systemPrompt },
     ...messageHistory.map(msg => ({
       role: msg.role,
       content: msg.content

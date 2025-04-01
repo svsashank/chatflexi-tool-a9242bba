@@ -13,6 +13,7 @@ export interface Conversation {
   messages: Message[];
   createdAt: Date;
   updatedAt: Date;
+  contextSummary: string; // Added for improved context tracking
 }
 
 export type AIModel = {

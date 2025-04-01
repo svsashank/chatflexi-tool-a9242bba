@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 import { v4 as uuidv4 } from 'uuid';
 import { Message, Conversation, ChatState, AIModel } from '../types';
@@ -20,6 +19,7 @@ const useChatStore = create<ChatState & {
     messages: [],
     createdAt: new Date(),
     updatedAt: new Date(),
+    contextSummary: '',
   };
 
   return {
@@ -35,6 +35,7 @@ const useChatStore = create<ChatState & {
         messages: [],
         createdAt: new Date(),
         updatedAt: new Date(),
+        contextSummary: '',
       };
 
       set((state) => ({
@@ -84,12 +85,17 @@ const useChatStore = create<ChatState & {
           // Update conversation title if it's the first message
           const title = conv.messages.length === 0 ? content.slice(0, 30) + (content.length > 30 ? '...' : '') : conv.title;
           
-          return {
+          // Add message and update context summary
+          const updatedConv = {
             ...conv,
             title,
             messages: [...conv.messages, message],
             updatedAt: new Date(),
+            // Update context summary with the new message
+            contextSummary: updateContextSummary(conv.contextSummary, message),
           };
+          
+          return updatedConv;
         }
         return conv;
       });
@@ -145,10 +151,13 @@ const useChatStore = create<ChatState & {
 
         const updatedConversations = conversations.map((conv) => {
           if (conv.id === currentConversationId) {
+            // Update conversation with assistant's response and context
             return {
               ...conv,
               messages: [...conv.messages, assistantMessage],
               updatedAt: new Date(),
+              // Update context summary with assistant's response
+              contextSummary: updateContextSummary(conv.contextSummary, assistantMessage),
             };
           }
           return conv;
@@ -189,5 +198,19 @@ const useChatStore = create<ChatState & {
     },
   };
 });
+
+// Helper function to update context summary
+const updateContextSummary = (currentSummary: string, message: Message): string => {
+  // For simplicity, we'll just keep a running list of the last few interactions
+  // In a more advanced system, you could use an LLM to generate a proper summary
+  const role = message.role === 'user' ? 'User' : 'Krix';
+  const newEntry = `${role}: ${message.content.substring(0, 100)}${message.content.length > 100 ? '...' : ''}`;
+  
+  // Split by lines, add new entry, and keep only the last 5 entries
+  const summaryLines = currentSummary ? currentSummary.split('\n') : [];
+  summaryLines.push(newEntry);
+  
+  return summaryLines.slice(-5).join('\n');
+};
 
 export default useChatStore;
