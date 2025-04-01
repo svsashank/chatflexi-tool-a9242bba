@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 
@@ -270,8 +271,22 @@ async function handleGoogle(messageHistory, content, modelId, systemPrompt) {
     }
   ];
 
-  console.log(`Calling Google API...`);
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${GOOGLE_API_KEY}`, {
+  // Process model ID to ensure compatibility with Google AI API
+  // For newer models (2.5), the modelId already includes 'models/' prefix
+  // For older models, we need to handle appropriately
+  let apiModelId = modelId;
+  let apiEndpoint = "";
+  
+  if (modelId.startsWith('models/')) {
+    // For newer models that include the 'models/' prefix
+    apiEndpoint = `https://generativelanguage.googleapis.com/v1/${modelId}:generateContent`;
+  } else {
+    // For older models like gemini-1.5-pro and gemini-1.5-flash
+    apiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent`;
+  }
+
+  console.log(`Calling Google API with endpoint: ${apiEndpoint}...`);
+  const response = await fetch(`${apiEndpoint}?key=${GOOGLE_API_KEY}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

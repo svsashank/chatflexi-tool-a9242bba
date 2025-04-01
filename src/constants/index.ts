@@ -1,4 +1,3 @@
-
 // AI Models
 export const AI_MODELS = [
   {
@@ -114,7 +113,7 @@ export const AI_MODELS = [
     avatarColor: '#4285f4', // Google blue
   },
   {
-    id: 'gemini-2.0-pro',
+    id: 'gemini-pro-latest',
     name: 'Gemini 2.0 Pro',
     provider: 'google',
     description: 'Google\'s advanced model with strong reasoning capabilities',
@@ -122,7 +121,7 @@ export const AI_MODELS = [
     avatarColor: '#4285f4', // Google blue
   },
   {
-    id: 'gemini-2.0-flash',
+    id: 'gemini-flash-latest',
     name: 'Gemini 2.0 Flash',
     provider: 'google',
     description: 'Faster version of Gemini 2.0 with balanced performance',
@@ -130,7 +129,7 @@ export const AI_MODELS = [
     avatarColor: '#4285f4', // Google blue
   },
   {
-    id: 'gemini-2.5-pro',
+    id: 'models/gemini-1.5-pro-latest',
     name: 'Gemini 2.5 Pro',
     provider: 'google',
     description: 'Google\'s latest flagship model with enhanced capabilities',
@@ -138,7 +137,7 @@ export const AI_MODELS = [
     avatarColor: '#4285f4', // Google blue
   },
   {
-    id: 'gemini-2.5-flash',
+    id: 'models/gemini-1.5-flash-latest',
     name: 'Gemini 2.5 Flash',
     provider: 'google',
     description: 'Efficient version of Google\'s latest model with fast response times',
