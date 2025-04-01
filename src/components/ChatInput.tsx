@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { Send, ChevronDown } from "lucide-react";
-import useChatStore from "@/store/chatStore";
+import { useChatStore } from "@/store";
 import { 
   DropdownMenu,
   DropdownMenuContent,

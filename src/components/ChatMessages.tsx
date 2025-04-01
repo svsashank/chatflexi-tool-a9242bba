@@ -1,6 +1,6 @@
 
 import React, { useEffect, useRef } from "react";
-import useChatStore from "@/store/chatStore";
+import { useChatStore } from "@/store";
 import MessageItem from "./MessageItem";
 import { User, Hexagon } from "lucide-react";
 

@@ -2,7 +2,7 @@
 import React, { useEffect } from "react";
 import { History, MessageSquare, Search, Plus, Trash2 } from "lucide-react";
 import { format } from "date-fns";
-import useChatStore from "@/store/chatStore";
+import { useChatStore } from "@/store";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   Sheet,

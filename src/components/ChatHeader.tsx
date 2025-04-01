@@ -1,7 +1,7 @@
 
 import React from "react";
 import ConversationHistory from "./ConversationHistory";
-import useChatStore from "@/store/chatStore";
+import { useChatStore } from "@/store";
 import { Hexagon, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";

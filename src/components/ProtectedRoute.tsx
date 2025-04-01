@@ -2,7 +2,7 @@
 import { useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import useChatStore from '@/store/chatStore';
+import { useChatStore } from '@/store';
 import { toast } from '@/components/ui/use-toast';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -25,7 +25,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
               console.log("No conversations found, creating a new one");
               await createConversation();
             } else {
-              console.log(`Loaded ${conversations.length} conversations, not creating a new one`);
+              console.log(`Loaded ${conversations.length} conversations, not reloading`);
             }
           } else {
             console.log(`Already have ${conversations.length} conversations in state, not reloading`);

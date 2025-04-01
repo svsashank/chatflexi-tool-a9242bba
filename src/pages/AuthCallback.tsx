@@ -2,7 +2,7 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import useChatStore from '@/store/chatStore';
+import { useChatStore } from '@/store';
 import { toast } from '@/components/ui/use-toast';
 
 const AuthCallback = () => {

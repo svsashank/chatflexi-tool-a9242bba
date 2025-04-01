@@ -3,7 +3,7 @@ import React from "react";
 import ChatHeader from "./ChatHeader";
 import ChatMessages from "./ChatMessages";
 import ChatInput from "./ChatInput";
-import useChatStore from "@/store/chatStore";
+import { useChatStore } from "@/store";
 
 const ChatContainer = () => {
   const { conversations, currentConversationId } = useChatStore();
