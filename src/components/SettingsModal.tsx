@@ -1,32 +1,58 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSettingsStore } from "@/store/settingsStore";
+import { AlertCircle } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const SettingsModal = () => {
-  const { isOpen, closeSettings, apiKeys, updateApiKey } = useSettingsStore();
-  const [localApiKeys, setLocalApiKeys] = useState(apiKeys);
+  const { isOpen, closeSettings } = useSettingsStore();
+  const { toast } = useToast();
+  const [isTestingKey, setIsTestingKey] = useState<string | null>(null);
 
-  useEffect(() => {
-    setLocalApiKeys(apiKeys);
-  }, [apiKeys, isOpen]);
-
-  const handleSave = () => {
-    Object.entries(localApiKeys).forEach(([provider, key]) => {
-      updateApiKey(provider, key);
-    });
-    closeSettings();
+  // Function to open Supabase Functions Secrets page
+  const openFunctionsSecrets = () => {
+    window.open("https://supabase.com/dashboard/project/dftrmjnlbmnadggavtxs/settings/functions", "_blank");
   };
 
-  const handleChange = (provider: string, value: string) => {
-    setLocalApiKeys((prev) => ({
-      ...prev,
-      [provider]: value,
-    }));
+  // Test connection to verify if the API key is working
+  const testConnection = async (provider: string) => {
+    setIsTestingKey(provider);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('chat', {
+        body: { 
+          content: "Hi there, just testing the connection!",
+          model: {
+            provider,
+            id: provider === 'openai' ? 'gpt-4o-mini' : 
+                 provider === 'anthropic' ? 'claude-3-haiku' :
+                 provider === 'google' ? 'gemini-1.5-flash' : 'grok-1'
+          },
+          messages: []
+        }
+      });
+      
+      if (error) throw new Error(error.message);
+      
+      toast({
+        title: "Connection successful!",
+        description: `Successfully connected to ${provider.charAt(0).toUpperCase() + provider.slice(1)}`,
+        variant: "default",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Connection failed",
+        description: error.message || `Failed to connect to ${provider}`,
+        variant: "destructive",
+      });
+    } finally {
+      setIsTestingKey(null);
+    }
   };
 
   return (
@@ -45,54 +71,54 @@ const SettingsModal = () => {
           </TabsList>
           
           <TabsContent value="api-keys" className="space-y-4 mt-4">
+            <Alert variant="info">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Server-side API Keys</AlertTitle>
+              <AlertDescription>
+                API keys are now securely stored on the server. Click the button below to add or update your API keys in Supabase Functions settings.
+              </AlertDescription>
+            </Alert>
+            
             <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="openai-key">OpenAI API Key</Label>
-                <Input 
-                  id="openai-key" 
-                  type="password" 
-                  placeholder="sk-..." 
-                  value={localApiKeys.openai || ""} 
-                  onChange={(e) => handleChange("openai", e.target.value)}
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="anthropic-key">Anthropic (Claude) API Key</Label>
-                <Input 
-                  id="anthropic-key" 
-                  type="password" 
-                  placeholder="sk-ant-..." 
-                  value={localApiKeys.anthropic || ""}
-                  onChange={(e) => handleChange("anthropic", e.target.value)}
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="gemini-key">Google (Gemini) API Key</Label>
-                <Input 
-                  id="gemini-key" 
-                  type="password" 
-                  placeholder="..." 
-                  value={localApiKeys.google || ""}
-                  onChange={(e) => handleChange("google", e.target.value)}
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="grok-key">xAI (Grok) API Key</Label>
-                <Input 
-                  id="grok-key" 
-                  type="password" 
-                  placeholder="..." 
-                  value={localApiKeys.xai || ""}
-                  onChange={(e) => handleChange("xai", e.target.value)}
-                />
+              <div className="grid grid-cols-2 gap-2">
+                <Button 
+                  onClick={() => testConnection('openai')} 
+                  variant="outline"
+                  disabled={isTestingKey !== null}
+                >
+                  {isTestingKey === 'openai' ? 'Testing...' : 'Test OpenAI'}
+                </Button>
+                
+                <Button 
+                  onClick={() => testConnection('anthropic')} 
+                  variant="outline"
+                  disabled={isTestingKey !== null}
+                >
+                  {isTestingKey === 'anthropic' ? 'Testing...' : 'Test Anthropic'}
+                </Button>
+                
+                <Button 
+                  onClick={() => testConnection('google')} 
+                  variant="outline"
+                  disabled={isTestingKey !== null}
+                >
+                  {isTestingKey === 'google' ? 'Testing...' : 'Test Google'}
+                </Button>
+                
+                <Button 
+                  onClick={() => testConnection('xai')} 
+                  variant="outline"
+                  disabled={isTestingKey !== null}
+                >
+                  {isTestingKey === 'xai' ? 'Testing...' : 'Test xAI'}
+                </Button>
               </div>
             </div>
             
-            <div className="flex justify-end">
-              <Button onClick={handleSave}>Save Settings</Button>
+            <div className="flex justify-center mt-4">
+              <Button onClick={openFunctionsSecrets}>
+                Manage API Keys in Supabase
+              </Button>
             </div>
           </TabsContent>
         </Tabs>
