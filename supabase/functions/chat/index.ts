@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 
@@ -419,7 +418,7 @@ async function handleXAI(messageHistory, content, modelId, systemPrompt) {
   }
 }
 
-// Krutrim API handler for DeepSeek-R1
+// Krutrim API handler for DeepSeek-R1 models
 async function handleKrutrim(messageHistory, content, modelId, systemPrompt) {
   const KRUTRIM_API_KEY = Deno.env.get('KRUTRIM_API_KEY');
   if (!KRUTRIM_API_KEY) {
@@ -441,6 +440,27 @@ async function handleKrutrim(messageHistory, content, modelId, systemPrompt) {
   console.log(`Calling Krutrim API with model ${modelId}...`);
   console.log(`Number of messages: ${formattedMessages.length}`);
   
+  // Map the model ID to the actual Krutrim model ID based on the specific model
+  let krutrimModelId;
+  
+  switch(modelId) {
+    case 'deepseek-r1':
+      krutrimModelId = "DeepSeek-R1";
+      break;
+    case 'deepseek-r1-llama-70b':
+      krutrimModelId = "DeepSeek-R1-Llama-70B";
+      break;
+    case 'deepseek-r1-llama-8b':
+      krutrimModelId = "DeepSeek-R1-Llama-8B";
+      break;
+    case 'deepseek-r1-qwen-14b':
+      krutrimModelId = "DeepSeek-R1-Qwen-14B";
+      break;
+    default:
+      krutrimModelId = "DeepSeek-R1"; // Default to DeepSeek-R1 if no match
+      console.log(`Unknown model ID ${modelId}, defaulting to DeepSeek-R1`);
+  }
+  
   try {
     const response = await fetch('https://cloud.olakrutrim.com/v1/chat/completions', {
       method: 'POST',
@@ -449,10 +469,10 @@ async function handleKrutrim(messageHistory, content, modelId, systemPrompt) {
         'Authorization': `Bearer ${KRUTRIM_API_KEY}`
       },
       body: JSON.stringify({
-        model: "DeepSeek-R1", // Hardcoded as per requirement
+        model: krutrimModelId, // Use the mapped model ID
         messages: formattedMessages,
         temperature: 0.7,
-        max_tokens: 25000, // Increased from 1000 to 25000 as requested
+        max_tokens: 25000, // High token limit as requested
       })
     });
     
