@@ -26,6 +26,46 @@ export const AI_MODELS = [
     avatarColor: '#10a37f', // OpenAI green
   },
   {
+    id: 'gpt-4.5-preview',
+    name: 'GPT-4.5 Preview',
+    provider: 'openai',
+    description: 'Preview of OpenAI\'s 4.5 generation model with enhanced capabilities',
+    capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
+    avatarColor: '#10a37f', // OpenAI green
+  },
+  {
+    id: 'o1',
+    name: 'o1',
+    provider: 'openai',
+    description: 'OpenAI\'s advanced reasoning model with specialized capabilities',
+    capabilities: ['text', 'code'] as Array<'text' | 'code'>,
+    avatarColor: '#10a37f', // OpenAI green
+  },
+  {
+    id: 'o1-mini',
+    name: 'o1 Mini',
+    provider: 'openai',
+    description: 'Compact version of o1 with efficient performance',
+    capabilities: ['text', 'code'] as Array<'text' | 'code'>,
+    avatarColor: '#10a37f', // OpenAI green
+  },
+  {
+    id: 'o1-pro',
+    name: 'o1 Pro',
+    provider: 'openai',
+    description: 'Enhanced version of o1 with premium capabilities',
+    capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
+    avatarColor: '#10a37f', // OpenAI green
+  },
+  {
+    id: 'o3-mini',
+    name: 'o3 Mini',
+    provider: 'openai',
+    description: 'Compact third-generation model optimized for efficiency',
+    capabilities: ['text', 'code'] as Array<'text' | 'code'>,
+    avatarColor: '#10a37f', // OpenAI green
+  },
+  {
     id: 'claude-3-haiku-20240307',
     name: 'Claude 3 Haiku',
     provider: 'anthropic',
