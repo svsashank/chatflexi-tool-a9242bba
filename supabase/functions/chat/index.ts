@@ -35,7 +35,7 @@ serve(async (req) => {
       case 'xai':
         return await handleXAI(messageHistory, content, model.id, systemPrompt);
       case 'replicate':
-        return await handleReplicate(messageHistory, content, model.id, systemPrompt);
+        return await handleReplicate(req, messageHistory, content, model.id, systemPrompt);
       default:
         throw new Error(`Provider ${model.provider} not supported`);
     }
@@ -418,8 +418,8 @@ async function handleXAI(messageHistory, content, modelId, systemPrompt) {
   }
 }
 
-// Replicate handler
-async function handleReplicate(messageHistory, content, modelId, systemPrompt) {
+// Replicate handler - Updated to accept req parameter
+async function handleReplicate(req, messageHistory, content, modelId, systemPrompt) {
   const REPLICATE_FUNCTION_URL = Deno.env.get('SUPABASE_URL') 
     ? `${Deno.env.get('SUPABASE_URL')}/functions/v1/replicate`
     : 'http://localhost:54321/functions/v1/replicate';
