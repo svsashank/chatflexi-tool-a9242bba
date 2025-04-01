@@ -27,6 +27,22 @@ const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
 
   const isUserMessage = message.role === "user";
   
+  // Parse thinking and response for DeepSeek models
+  const processDeepSeekContent = (content: string) => {
+    const thinkMatch = content.match(/<think>([\s\S]*?)<\/think>/);
+    const thinking = thinkMatch ? thinkMatch[1].trim() : null;
+    const mainResponse = content.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+    
+    return { thinking, mainResponse: mainResponse || content };
+  };
+  
+  const isDeepSeekModel = message.model.provider === "Krutrim" && 
+                          message.model.id.toLowerCase().includes("deepseek");
+                          
+  const { thinking, mainResponse } = isDeepSeekModel && !isUserMessage 
+    ? processDeepSeekContent(message.content) 
+    : { thinking: null, mainResponse: message.content };
+  
   return (
     <div className={`flex items-start gap-4 animate-fade-in ${isUserMessage ? "" : "group"}`}>
       <div 
@@ -61,6 +77,22 @@ const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
         )}
         
         <div className="chat-message">
+          {/* Render thinking section for DeepSeek models */}
+          {thinking && (
+            <div className="thinking-section mb-3 border-l-2 pl-3 border-muted-foreground/40">
+              <div className="text-xs text-muted-foreground mb-1 font-medium">Thinking:</div>
+              <div className="text-xs text-muted-foreground/80 italic">
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  rehypePlugins={[rehypeHighlight]}
+                >
+                  {thinking}
+                </ReactMarkdown>
+              </div>
+            </div>
+          )}
+          
+          {/* Render main response */}
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
             rehypePlugins={[rehypeHighlight]}
@@ -94,7 +126,7 @@ const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
               }
             }}
           >
-            {message.content}
+            {mainResponse}
           </ReactMarkdown>
         </div>
       </div>

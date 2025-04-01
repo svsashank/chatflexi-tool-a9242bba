@@ -55,6 +55,8 @@ export const sendMessageToLLM = async (
       return `Error: ${error.message || 'Failed to get response from model'}`;
     }
     
+    // For DeepSeek models, preserve the thinking tags in the response
+    // For other models, return the response as-is
     return data.content;
   } catch (error: any) {
     console.error(`Error with ${model.provider} API:`, error);
@@ -70,7 +72,7 @@ const getMockResponse = (modelId: string): string => {
     'gemini-pro': "Hi there, I'm Google's Gemini Pro. I'm designed to handle a wide range of tasks including text, code, and images. How can I help you?",
     'llama-3': "Greetings! I'm Llama 3 from Meta. I'm an open model focused on helpful, harmless, and honest AI assistance. What questions do you have?",
     'mixtral-8x7b': "Hello! I'm Mixtral 8x7B developed by Mistral AI. I'm a mixture-of-experts model with strong capabilities across multiple languages and domains. How may I assist you?",
-    'deepseek-r1': "Hello! I'm DeepSeek-R1 accessed through Krutrim. I'm designed to provide thoughtful, accurate responses. What would you like to know?"
+    'deepseek-r1': "<think>The user is asking me to introduce myself. I should provide a helpful and informative response that explains my capabilities.</think>\nHello! I'm DeepSeek-R1 accessed through Krutrim. I'm designed to provide thoughtful, accurate responses. What would you like to know?"
   };
   
   return mockResponses[modelId] || "I'll help you with that request.";
