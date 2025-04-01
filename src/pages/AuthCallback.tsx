@@ -6,7 +6,7 @@ import useChatStore from '@/store/chatStore';
 
 const AuthCallback = () => {
   const navigate = useNavigate();
-  const { loadUserConversations } = useChatStore();
+  const { loadUserConversations, createConversation } = useChatStore();
 
   useEffect(() => {
     // Handle the OAuth callback
@@ -22,6 +22,8 @@ const AuthCallback = () => {
       if (data.session) {
         // Load user's conversations after successful authentication
         await loadUserConversations();
+        // Create a new conversation after loading existing ones
+        await createConversation();
         navigate('/', { replace: true });
       } else {
         navigate('/auth', { replace: true });
@@ -29,7 +31,7 @@ const AuthCallback = () => {
     };
 
     handleAuthCallback();
-  }, [navigate, loadUserConversations]);
+  }, [navigate, loadUserConversations, createConversation]);
 
   return (
     <div className="flex h-screen w-full items-center justify-center">

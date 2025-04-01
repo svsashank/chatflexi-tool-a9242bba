@@ -40,6 +40,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           // Load user conversations after successful sign in
           setTimeout(() => {
             chatStore.loadUserConversations();
+            // Create a new conversation after loading existing ones
+            chatStore.createConversation();
           }, 0);
         }
         
