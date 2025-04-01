@@ -72,7 +72,7 @@ const getMockResponse = (modelId: string): string => {
     'gemini-pro': "Hi there, I'm Google's Gemini Pro. I'm designed to handle a wide range of tasks including text, code, and images. How can I help you?",
     'llama-3': "Greetings! I'm Llama 3 from Meta. I'm an open model focused on helpful, harmless, and honest AI assistance. What questions do you have?",
     'mixtral-8x7b': "Hello! I'm Mixtral 8x7B developed by Mistral AI. I'm a mixture-of-experts model with strong capabilities across multiple languages and domains. How may I assist you?",
-    'deepseek-r1': "<think>The user is asking me to introduce myself. I should provide a helpful and informative response that explains my capabilities.</think>\nHello! I'm DeepSeek-R1 accessed through Krutrim. I'm designed to provide thoughtful, accurate responses. What would you like to know?"
+    'deepseek-r1': "<think>The user is asking me to introduce myself. I should provide a helpful and informative response that explains my capabilities while being conversational but not overly verbose.\n\nFirst, I'll mention that I'm DeepSeek-R1 and that I'm accessed through Krutrim.\n\nThen, I'll highlight some of my key capabilities:\n- Designed for thoughtful responses\n- Strong at reasoning and language understanding\n- Capable of helping with various tasks\n\nI should keep my response friendly and approachable.</think>\n\nHello! I'm DeepSeek-R1 accessed through Krutrim. I'm designed to provide thoughtful, accurate responses with strong reasoning capabilities. I can help with questions, creative tasks, information retrieval, and more. What would you like to know today?"
   };
   
   return mockResponses[modelId] || "I'll help you with that request.";

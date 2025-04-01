@@ -77,14 +77,20 @@ const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
         )}
         
         <div className="chat-message">
-          {/* Render thinking section for DeepSeek models */}
+          {/* Render thinking section for DeepSeek models with enhanced styling */}
           {thinking && (
-            <div className="thinking-section mb-3 border-l-2 pl-3 border-muted-foreground/40">
-              <div className="text-xs text-muted-foreground mb-1 font-medium">Thinking:</div>
-              <div className="text-xs text-muted-foreground/80 italic">
+            <div className="thinking-section mb-4 mt-1 border-l-4 pl-3 border-muted-foreground/40 bg-muted/30 rounded-r-md p-3">
+              <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2 font-semibold flex items-center">
+                <span className="mr-2">💭</span>Thinking Process
+              </div>
+              <div className="text-xs leading-relaxed text-muted-foreground/90 italic font-light">
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
                   rehypePlugins={[rehypeHighlight]}
+                  components={{
+                    p: ({node, ...props}) => <p className="mb-2 last:mb-0" {...props} />,
+                    code: ({node, ...props}) => <code className="bg-muted/50 px-1 py-0.5 rounded text-[11px]" {...props} />
+                  }}
                 >
                   {thinking}
                 </ReactMarkdown>
@@ -92,42 +98,46 @@ const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
             </div>
           )}
           
-          {/* Render main response */}
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
-            rehypePlugins={[rehypeHighlight]}
-            components={{
-              code({ node, className, children, ...props }) {
-                const match = /language-(\w+)/.exec(className || '');
-                const inline = !match && !className;
-                
-                if (inline) {
-                  return (
-                    <code className={className} {...props}>
-                      {children}
-                    </code>
-                  );
-                }
-                return (
-                  <div className="code-block relative group">
-                    <button
-                      onClick={copyToClipboard}
-                      className="absolute top-2 right-2 p-1 rounded-md bg-muted/80 hover:bg-muted text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      {copied ? <Check size={14} /> : <Copy size={14} />}
-                    </button>
-                    <pre className="overflow-auto">
-                      <code className={className}>
+          {/* Render main response with better separation */}
+          {thinking && <div className="main-response-divider h-px bg-gradient-to-r from-transparent via-muted/50 to-transparent my-3"></div>}
+          
+          <div className={thinking ? "pt-1" : ""}>
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              rehypePlugins={[rehypeHighlight]}
+              components={{
+                code({ node, className, children, ...props }) {
+                  const match = /language-(\w+)/.exec(className || '');
+                  const inline = !match && !className;
+                  
+                  if (inline) {
+                    return (
+                      <code className={className} {...props}>
                         {children}
                       </code>
-                    </pre>
-                  </div>
-                );
-              }
-            }}
-          >
-            {mainResponse}
-          </ReactMarkdown>
+                    );
+                  }
+                  return (
+                    <div className="code-block relative group">
+                      <button
+                        onClick={copyToClipboard}
+                        className="absolute top-2 right-2 p-1 rounded-md bg-muted/80 hover:bg-muted text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        {copied ? <Check size={14} /> : <Copy size={14} />}
+                      </button>
+                      <pre className="overflow-auto">
+                        <code className={className}>
+                          {children}
+                        </code>
+                      </pre>
+                    </div>
+                  );
+                }
+              }}
+            >
+              {mainResponse}
+            </ReactMarkdown>
+          </div>
         </div>
       </div>
       
