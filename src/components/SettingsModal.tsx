@@ -24,14 +24,19 @@ const SettingsModal = () => {
     setIsTestingKey(provider);
     
     try {
+      // Use the exact model IDs that match the provider's API requirements
+      const modelId = provider === 'openai' ? 'gpt-4o-mini' : 
+                      provider === 'anthropic' ? 'claude-3-haiku-20240307' :
+                      provider === 'google' ? 'gemini-1.5-flash' : 'grok-1';
+      
+      console.log(`Testing ${provider} with model ID: ${modelId}`);
+      
       const { data, error } = await supabase.functions.invoke('chat', {
         body: { 
           content: "Hi there, just testing the connection!",
           model: {
             provider,
-            id: provider === 'openai' ? 'gpt-4o-mini' : 
-                 provider === 'anthropic' ? 'claude-3-haiku-20240307' :
-                 provider === 'google' ? 'gemini-1.5-flash' : 'grok-1'
+            id: modelId
           },
           messages: []
         }

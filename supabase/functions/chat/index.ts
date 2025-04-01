@@ -106,7 +106,7 @@ async function handleAnthropic(messageHistory, content, modelId) {
   
   console.log(`Processing request for Anthropic model ${modelId} with content: ${content.substring(0, 50)}...`);
   
-  // Valid Claude model names as of April 2024
+  // Valid Claude model names according to Anthropic documentation (April 2024)
   const validClaudeModels = [
     'claude-3-opus-20240229',
     'claude-3-sonnet-20240229',
@@ -116,10 +116,10 @@ async function handleAnthropic(messageHistory, content, modelId) {
     'claude-instant-1.2'
   ];
   
-  // Check if the model ID is valid
   if (!validClaudeModels.includes(modelId)) {
-    console.warn(`Warning: Potentially invalid Claude model ID: ${modelId}`);
-    console.log(`Available Claude models: ${validClaudeModels.join(', ')}`);
+    console.error(`Invalid Claude model ID: ${modelId}`);
+    console.error(`Available Claude models: ${validClaudeModels.join(', ')}`);
+    throw new Error(`Invalid Claude model ID: ${modelId}. Please use one of: ${validClaudeModels.join(', ')}`);
   }
   
   // Convert from chat format to messages format for Anthropic API
@@ -135,11 +135,12 @@ async function handleAnthropic(messageHistory, content, modelId) {
   console.log(`Messages count: ${messages.length}`);
   
   try {
+    // API call according to latest Anthropic API docs (April 2024)
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-API-Key': ANTHROPIC_API_KEY,
+        'x-api-key': ANTHROPIC_API_KEY, // Modern header format
         'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
@@ -149,24 +150,25 @@ async function handleAnthropic(messageHistory, content, modelId) {
       })
     });
     
+    const responseText = await response.text();
+    console.log(`Anthropic API response status: ${response.status}`);
+    console.log(`Anthropic API response first 100 chars: ${responseText.substring(0, 100)}...`);
+    
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`Anthropic API error: ${response.status}`, errorText);
+      console.error(`Anthropic API error: ${response.status} - ${responseText}`);
       try {
-        const error = JSON.parse(errorText);
-        throw new Error(error.error?.message || `Anthropic API error: ${response.status}`);
+        const error = JSON.parse(responseText);
+        throw new Error(
+          `Anthropic API error: ${response.status} - ${error.error?.message || error.type || 'Unknown error'}`
+        );
       } catch (e) {
-        throw new Error(`Anthropic API error: ${response.status} - ${errorText}`);
+        throw new Error(`Anthropic API error: ${response.status} - ${responseText}`);
       }
     }
     
+    const data = JSON.parse(responseText);
     console.log(`Successfully received response from Anthropic`);
-    const data = await response.json();
-    
-    // Log the response structure for debugging
-    console.log(`Anthropic response type: ${typeof data}`);
-    console.log(`Anthropic response content type: ${typeof data.content}`);
-    console.log(`Anthropic response structure: ${JSON.stringify(Object.keys(data))}`);
+    console.log(`Response structure: ${JSON.stringify(Object.keys(data))}`);
     
     if (data.content && Array.isArray(data.content) && data.content.length > 0) {
       return new Response(
