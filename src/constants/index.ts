@@ -18,12 +18,20 @@ export const AI_MODELS = [
     avatarColor: '#d33b9a', // Anthropic pink
   },
   {
-    id: 'claude-3-sonnet-20240229',
-    name: 'Claude 3 Sonnet',
+    id: 'claude-3-5-sonnet-20241022',
+    name: 'Claude 3.5 Sonnet',
     provider: 'anthropic',
-    description: 'Reliable intelligence across complex tasks',
+    description: 'Balanced intelligence with advanced reasoning',
     capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
     avatarColor: '#c33693', // Anthropic darker pink
+  },
+  {
+    id: 'claude-3-7-sonnet-20250219',
+    name: 'Claude 3.7 Sonnet',
+    provider: 'anthropic',
+    description: 'Latest Sonnet model with enhanced capabilities',
+    capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
+    avatarColor: '#b83995', // Anthropic medium pink
   },
   {
     id: 'claude-3-opus-20240229',

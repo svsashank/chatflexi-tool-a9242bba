@@ -120,8 +120,11 @@ async function handleAnthropic(messageHistory, content, modelId) {
   console.log(`Messages count: ${messages.length}`);
   
   try {
-    // For claude-3-haiku-20240307, use the correct formatting according to Anthropic docs
-    // API call according to latest Anthropic API docs
+    // Using the correct Claude model IDs as provided:
+    // - claude-3-haiku-20240307
+    // - claude-3-5-sonnet-20241022
+    // - claude-3-7-sonnet-20250219
+    // - claude-3-opus-20240229
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
