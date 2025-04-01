@@ -10,6 +10,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { AI_MODELS } from "@/constants";
 import { Button } from "@/components/ui/button";
 
@@ -77,25 +78,29 @@ const ChatInput = () => {
           <DropdownMenuContent align="center" className="w-64 mt-1 border-primary/20">
             <DropdownMenuLabel className="text-center">Choose an AI Model</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            {AI_MODELS.map((model) => (
-              <DropdownMenuItem 
-                key={model.id}
-                onClick={() => selectModel(model)}
-                className="flex items-center gap-2 cursor-pointer py-2"
-              >
-                <div 
-                  className="w-3 h-3 rounded-full" 
-                  style={{ backgroundColor: model.avatarColor }}
-                />
-                <div className="flex flex-col">
-                  <span className="font-medium">{model.name}</span>
-                  <span className="text-xs text-muted-foreground">{model.provider}</span>
-                </div>
-                {selectedModel.id === model.id && (
-                  <span className="w-2 h-2 rounded-full bg-primary ml-auto" />
-                )}
-              </DropdownMenuItem>
-            ))}
+            <ScrollArea className="h-80"> {/* Set a fixed height for scrolling */}
+              <div className="p-1">
+                {AI_MODELS.map((model) => (
+                  <DropdownMenuItem 
+                    key={model.id}
+                    onClick={() => selectModel(model)}
+                    className="flex items-center gap-2 cursor-pointer py-2"
+                  >
+                    <div 
+                      className="w-3 h-3 rounded-full" 
+                      style={{ backgroundColor: model.avatarColor }}
+                    />
+                    <div className="flex flex-col">
+                      <span className="font-medium">{model.name}</span>
+                      <span className="text-xs text-muted-foreground">{model.provider}</span>
+                    </div>
+                    {selectedModel.id === model.id && (
+                      <span className="w-2 h-2 rounded-full bg-primary ml-auto" />
+                    )}
+                  </DropdownMenuItem>
+                ))}
+              </div>
+            </ScrollArea>
           </DropdownMenuContent>
         </DropdownMenu>
 
