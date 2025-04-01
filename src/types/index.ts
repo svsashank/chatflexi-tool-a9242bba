@@ -20,7 +20,7 @@ export type AIModel = {
   name: string;
   provider: string;
   description: string;
-  capabilities: ReadonlyArray<'text' | 'images' | 'code' | 'audio'> | Array<'text' | 'images' | 'code' | 'audio'>;
+  capabilities: Array<'text' | 'images' | 'code' | 'audio'>;
   avatarColor: string;
 }
 
