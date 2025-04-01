@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 
@@ -26,20 +27,21 @@ serve(async (req) => {
     // Format the conversation history for Replicate
     const formattedPrompt = formatConversationForReplicate(messages, system_prompt, modelId);
     
-    // Map model IDs to their Replicate model identifiers
-    const modelMap = {
-      'llama-3-8b': "meta/llama-3-8b",
-      'llama-3-70b': "meta/llama-3-70b-instruct", 
-      'deepseek-r1': "deepseek-ai/deepseek-r1"
+    // Map model IDs to their Replicate model version IDs
+    // These are the specific version IDs that Replicate requires
+    const versionMap = {
+      'llama-3-8b': "8e6975e5ed6174911a6ff3d60540dfd4844201974602551e10e9e87ab143d81e", // meta/llama-3-8b
+      'llama-3-70b': "2c1608e18606fad2812020dc541930f2d0495ce32eee50074220b87300bc16e1", // meta/llama-3-70b-instruct
+      'deepseek-r1': "52fbdca5a244796b2422e7fddb75868fa3bc73b0ceeaa7018b99ea4a7187fa57" // deepseek-ai/deepseek-r1
     };
     
-    const replicateModel = modelMap[modelId];
-    if (!replicateModel) {
+    const versionId = versionMap[modelId];
+    if (!versionId) {
       throw new Error(`Unknown model ID: ${modelId}`);
     }
     
     console.log(`Calling Replicate API for ${modelId}...`);
-    console.log(`Using model: ${replicateModel}`);
+    console.log(`Using version ID: ${versionId}`);
     
     // Prepare the input based on the model
     let inputData = {};
@@ -61,7 +63,7 @@ serve(async (req) => {
     
     console.log(`Input data for ${modelId}:`, JSON.stringify(inputData));
     
-    // Call the Replicate API
+    // Call the Replicate API with version instead of model
     const response = await fetch("https://api.replicate.com/v1/predictions", {
       method: "POST",
       headers: {
@@ -69,8 +71,8 @@ serve(async (req) => {
         "Authorization": `Token ${REPLICATE_API_KEY}`
       },
       body: JSON.stringify({
-        // Use the model parameter with the full identifier
-        model: replicateModel,
+        // Use version parameter instead of model
+        version: versionId,
         input: inputData
       })
     });
