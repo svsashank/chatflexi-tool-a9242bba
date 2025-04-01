@@ -22,12 +22,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
-  const chatStore = useChatStore();
+  const { createConversation, loadUserConversations } = useChatStore();
 
   useEffect(() => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        console.log("Auth state change event:", event);
         setSession(session);
         setUser(session?.user ?? null);
         
@@ -38,10 +39,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           });
           
           // Load user conversations after successful sign in
-          setTimeout(() => {
-            chatStore.loadUserConversations();
-            // Create a new conversation after loading existing ones
-            chatStore.createConversation();
+          // Using setTimeout to avoid potential deadlocks with Supabase auth
+          setTimeout(async () => {
+            try {
+              console.log("Auth context: Loading conversations after sign in");
+              await loadUserConversations();
+              
+              // Create a new conversation if none were loaded
+              const { conversations } = useChatStore.getState();
+              if (conversations.length === 0) {
+                console.log("No conversations found after login, creating a new one");
+                await createConversation();
+              }
+            } catch (error) {
+              console.error("Error loading conversations after sign in:", error);
+            }
           }, 0);
         }
         
@@ -53,7 +65,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           
           // Create a new conversation when signing out
           setTimeout(() => {
-            chatStore.createConversation();
+            createConversation();
           }, 0);
         }
       }
@@ -67,7 +79,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     });
 
     return () => subscription.unsubscribe();
-  }, [toast, chatStore]);
+  }, [toast]);
 
   const signIn = async (email: string, password: string) => {
     try {

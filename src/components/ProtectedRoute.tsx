@@ -34,7 +34,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
       
       initConversations();
     }
-  }, [user, loading, loadUserConversations, createConversation, conversations.length]);
+  }, [user, loading]);
 
   if (loading) {
     return (

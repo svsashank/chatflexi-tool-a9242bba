@@ -28,11 +28,22 @@ const AuthCallback = () => {
         
         if (data.session) {
           console.log("Auth callback successful, loading conversations");
-          // Load user's conversations after successful authentication
-          await loadUserConversations();
-          // Create a new conversation after loading existing ones
-          await createConversation();
-          navigate('/', { replace: true });
+          try {
+            // Load user's conversations after successful authentication
+            await loadUserConversations();
+            
+            // Create a new conversation if none were loaded
+            if (useChatStore.getState().conversations.length === 0) {
+              await createConversation();
+            }
+            
+            navigate('/', { replace: true });
+          } catch (err) {
+            console.error('Error loading conversations:', err);
+            // Still navigate to home even if conversation loading fails
+            // The ProtectedRoute will try again
+            navigate('/', { replace: true });
+          }
         } else {
           navigate('/auth', { replace: true });
         }

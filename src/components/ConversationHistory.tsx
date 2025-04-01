@@ -15,6 +15,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { toast } from "@/components/ui/use-toast";
 
 const ConversationHistory = () => {
   const [searchQuery, setSearchQuery] = React.useState("");
@@ -32,6 +33,7 @@ const ConversationHistory = () => {
   // If user is logged in but no conversations are loaded, load them
   useEffect(() => {
     if (user && conversations.length === 0) {
+      console.log("ConversationHistory: No conversations found, loading from database");
       loadUserConversations();
     }
   }, [user, conversations.length, loadUserConversations]);
@@ -44,20 +46,59 @@ const ConversationHistory = () => {
     );
   }, [conversations, searchQuery]);
 
-  const handleConversationSelect = (id: string) => {
+  const handleConversationSelect = async (id: string) => {
     console.log("Selecting conversation:", id);
-    setCurrentConversation(id);
-    setIsOpen(false); // Close the sheet on mobile after selection
+    try {
+      // Verify the conversation exists before setting it
+      const conversationExists = conversations.some(conv => conv.id === id);
+      if (!conversationExists) {
+        console.error("Conversation not found:", id);
+        toast({
+          title: "Error",
+          description: "The selected conversation could not be found",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      setCurrentConversation(id);
+      setIsOpen(false); // Close the sheet on mobile after selection
+    } catch (error) {
+      console.error("Error selecting conversation:", error);
+      toast({
+        title: "Error",
+        description: "Could not load the selected conversation",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleCreateConversation = async () => {
-    await createConversation();
-    setIsOpen(false);
+    try {
+      await createConversation();
+      setIsOpen(false);
+    } catch (error) {
+      console.error("Error creating conversation:", error);
+      toast({
+        title: "Error",
+        description: "Could not create a new conversation",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleDeleteConversation = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    await deleteConversation(id);
+    try {
+      await deleteConversation(id);
+    } catch (error) {
+      console.error("Error deleting conversation:", error);
+      toast({
+        title: "Error",
+        description: "Could not delete the conversation",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
