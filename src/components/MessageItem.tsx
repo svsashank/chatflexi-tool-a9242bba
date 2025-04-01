@@ -82,7 +82,7 @@ const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
                     >
                       {copied ? <Check size={14} /> : <Copy size={14} />}
                     </button>
-                    <pre {...props}>
+                    <pre className="overflow-auto">
                       <code className={className}>{children}</code>
                     </pre>
                   </div>
