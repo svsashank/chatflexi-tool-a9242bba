@@ -42,7 +42,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
       
       initConversations();
     }
-  }, [user, loading]);
+  }, [user, loading, loadUserConversations, createConversation, conversations]);
 
   if (loading) {
     return (
