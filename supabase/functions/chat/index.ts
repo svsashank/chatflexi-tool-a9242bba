@@ -52,6 +52,8 @@ async function handleOpenAI(messageHistory, content, modelId) {
     throw new Error("OpenAI API key not configured");
   }
   
+  console.log(`Processing request for model ${modelId} with content: ${content.substring(0, 50)}...`);
+  
   // Format messages for OpenAI
   const formattedMessages = [
     ...messageHistory.map(msg => ({
@@ -61,6 +63,7 @@ async function handleOpenAI(messageHistory, content, modelId) {
     { role: 'user', content }
   ];
 
+  console.log(`Calling OpenAI API...`);
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -80,6 +83,7 @@ async function handleOpenAI(messageHistory, content, modelId) {
     throw new Error(error.error?.message || `OpenAI API error: ${response.status}`);
   }
   
+  console.log(`Successfully received response from OpenAI`);
   const data = await response.json();
   return new Response(
     JSON.stringify({ 
@@ -98,7 +102,9 @@ async function handleAnthropic(messageHistory, content, modelId) {
     throw new Error("Anthropic API key not configured");
   }
   
-  // Format messages for Anthropic
+  console.log(`Processing request for Anthropic model ${modelId} with content: ${content.substring(0, 50)}...`);
+  
+  // Format messages for Anthropic's Claude API
   const formattedMessages = [
     ...messageHistory.map(msg => ({
       role: msg.role === 'assistant' ? 'assistant' : 'user',
@@ -107,6 +113,7 @@ async function handleAnthropic(messageHistory, content, modelId) {
     { role: 'user', content }
   ];
 
+  console.log(`Calling Anthropic API...`);
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -122,10 +129,17 @@ async function handleAnthropic(messageHistory, content, modelId) {
   });
   
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error?.message || `Anthropic API error: ${response.status}`);
+    const errorText = await response.text();
+    console.error(`Anthropic API error: ${response.status}`, errorText);
+    try {
+      const error = JSON.parse(errorText);
+      throw new Error(error.error?.message || `Anthropic API error: ${response.status}`);
+    } catch (e) {
+      throw new Error(`Anthropic API error: ${response.status} - ${errorText}`);
+    }
   }
   
+  console.log(`Successfully received response from Anthropic`);
   const data = await response.json();
   return new Response(
     JSON.stringify({ 
@@ -144,6 +158,8 @@ async function handleGoogle(messageHistory, content, modelId) {
     throw new Error("Google API key not configured");
   }
   
+  console.log(`Processing request for Google model ${modelId} with content: ${content.substring(0, 50)}...`);
+  
   // Format messages for Gemini
   const formattedContents = messageHistory.map(msg => ({
     role: msg.role,
@@ -156,6 +172,7 @@ async function handleGoogle(messageHistory, content, modelId) {
     parts: [{ text: content }]
   });
 
+  console.log(`Calling Google API...`);
   const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${GOOGLE_API_KEY}`, {
     method: 'POST',
     headers: {
@@ -171,10 +188,17 @@ async function handleGoogle(messageHistory, content, modelId) {
   });
   
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error?.message || `Google API error: ${response.status}`);
+    const errorText = await response.text();
+    console.error(`Google API error: ${response.status}`, errorText);
+    try {
+      const error = JSON.parse(errorText);
+      throw new Error(error.error?.message || `Google API error: ${response.status}`);
+    } catch (e) {
+      throw new Error(`Google API error: ${response.status} - ${errorText}`);
+    }
   }
   
+  console.log(`Successfully received response from Google`);
   const data = await response.json();
   return new Response(
     JSON.stringify({ 
@@ -193,6 +217,8 @@ async function handleXAI(messageHistory, content, modelId) {
     throw new Error("xAI API key not configured");
   }
   
+  console.log(`Processing request for xAI model ${modelId} with content: ${content.substring(0, 50)}...`);
+  
   // Format messages for xAI
   const formattedMessages = [
     ...messageHistory.map(msg => ({
@@ -202,6 +228,7 @@ async function handleXAI(messageHistory, content, modelId) {
     { role: 'user', content }
   ];
 
+  console.log(`Calling xAI API...`);
   const response = await fetch('https://api.xai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -217,10 +244,17 @@ async function handleXAI(messageHistory, content, modelId) {
   });
   
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error?.message || `xAI API error: ${response.status}`);
+    const errorText = await response.text();
+    console.error(`xAI API error: ${response.status}`, errorText);
+    try {
+      const error = JSON.parse(errorText);
+      throw new Error(error.error?.message || `xAI API error: ${response.status}`);
+    } catch (e) {
+      throw new Error(`xAI API error: ${response.status} - ${errorText}`);
+    }
   }
   
+  console.log(`Successfully received response from xAI`);
   const data = await response.json();
   return new Response(
     JSON.stringify({ 
