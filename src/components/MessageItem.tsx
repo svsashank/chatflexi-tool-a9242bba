@@ -66,7 +66,10 @@ const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
             remarkPlugins={[remarkGfm]}
             rehypePlugins={[rehypeRaw, rehypeHighlight]}
             components={{
-              code({ node, inline, className, children, ...props }) {
+              code({ node, className, children, ...props }) {
+                const match = /language-(\w+)/.exec(className || '');
+                const inline = !match && !className;
+                
                 if (inline) {
                   return (
                     <code className={className} {...props}>
@@ -83,7 +86,9 @@ const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
                       {copied ? <Check size={14} /> : <Copy size={14} />}
                     </button>
                     <pre className="overflow-auto">
-                      <code className={className}>{children}</code>
+                      <code className={className}>
+                        {children}
+                      </code>
                     </pre>
                   </div>
                 );
