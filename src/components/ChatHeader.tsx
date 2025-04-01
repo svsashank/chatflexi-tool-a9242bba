@@ -2,10 +2,13 @@
 import React from "react";
 import ConversationHistory from "./ConversationHistory";
 import useChatStore from "@/store/chatStore";
-import { MessageSquare } from "lucide-react";
+import { MessageSquare, Settings } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useSettingsStore } from "@/store/settingsStore";
 
 const ChatHeader = () => {
   const { selectedModel, conversations, currentConversationId } = useChatStore();
+  const { openSettings } = useSettingsStore();
   
   const currentConversation = conversations.find(
     (conv) => conv.id === currentConversationId
@@ -24,13 +27,21 @@ const ChatHeader = () => {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 mr-2">
             <div 
               className="w-2.5 h-2.5 rounded-full" 
               style={{ backgroundColor: selectedModel.avatarColor }}
             />
             <span className="text-sm hidden md:block">{selectedModel.name}</span>
           </div>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={openSettings}
+            className="h-8 w-8"
+          >
+            <Settings size={18} />
+          </Button>
         </div>
       </div>
     </header>
