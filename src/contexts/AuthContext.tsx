@@ -22,12 +22,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
-  const { createConversation, loadUserConversations } = useChatStore();
+  const { createConversation, loadUserConversations, conversations } = useChatStore();
 
   useEffect(() => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
         console.log("Auth state change event:", event);
         setSession(session);
         setUser(session?.user ?? null);
@@ -63,8 +63,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             description: "Come back soon!",
           });
           
-          // Create a new conversation when signing out
+          // Reset the conversations state and create a new local conversation when signing out
           setTimeout(() => {
+            const store = useChatStore.getState();
+            // Clear existing conversations and create a fresh one for non-authenticated use
+            store.resetConversations();
             createConversation();
           }, 0);
         }

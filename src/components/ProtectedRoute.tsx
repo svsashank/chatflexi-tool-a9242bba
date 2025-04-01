@@ -15,14 +15,20 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
       const initConversations = async () => {
         console.log("ProtectedRoute: Initializing conversations for authenticated user");
         try {
-          await loadUserConversations();
-          
-          // Only create a new conversation if none were loaded AND we don't already have conversations in state
+          // Only load conversations if we don't already have them
           if (conversations.length === 0) {
-            console.log("No conversations found, creating a new one");
-            await createConversation();
+            console.log("No conversations in state, loading from database");
+            await loadUserConversations();
+            
+            // Only create a new conversation if none were loaded
+            if (conversations.length === 0) {
+              console.log("No conversations found, creating a new one");
+              await createConversation();
+            } else {
+              console.log(`Loaded ${conversations.length} conversations, not creating a new one`);
+            }
           } else {
-            console.log(`Loaded ${conversations.length} conversations, not creating a new one`);
+            console.log(`Already have ${conversations.length} conversations in state, not reloading`);
           }
         } catch (error) {
           console.error("Error initializing conversations:", error);

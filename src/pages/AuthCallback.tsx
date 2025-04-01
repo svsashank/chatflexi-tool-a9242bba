@@ -29,7 +29,10 @@ const AuthCallback = () => {
         if (data.session) {
           console.log("Auth callback successful, loading conversations");
           try {
-            // Load user's conversations after successful authentication
+            // First, reset the conversation state to clear any existing unauthenticated conversations
+            useChatStore.getState().resetConversations();
+            
+            // Then load user's conversations after successful authentication
             await loadUserConversations();
             
             // Create a new conversation if none were loaded

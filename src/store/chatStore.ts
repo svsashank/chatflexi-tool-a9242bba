@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 import { v4 as uuidv4 } from 'uuid';
 import { Message, Conversation, ChatState, AIModel } from '../types';
@@ -15,6 +14,7 @@ const useChatStore = create<ChatState & {
   selectModel: (model: AIModel) => void;
   generateResponse: () => Promise<void>;
   loadUserConversations: () => Promise<void>;
+  resetConversations: () => void;
 }>((set, get) => {
   // Create an initial conversation
   const initialConversation: Conversation = {
@@ -86,6 +86,25 @@ const useChatStore = create<ChatState & {
           variant: 'destructive',
         });
       }
+    },
+
+    resetConversations: () => {
+      // Create a single empty conversation when resetting
+      const newConversation: Conversation = {
+        id: uuidv4(),
+        title: 'New Conversation',
+        messages: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        contextSummary: '',
+      };
+      
+      set({
+        conversations: [newConversation],
+        currentConversationId: newConversation.id,
+      });
+      
+      console.log("Reset conversations state with a new conversation:", newConversation.id);
     },
 
     setCurrentConversation: (id: string) => {
@@ -438,7 +457,6 @@ const useChatStore = create<ChatState & {
         
         if (!conversations || conversations.length === 0) {
           console.log("No conversations found in database");
-          // We'll create a new conversation in the component that called this
           return;
         }
         
