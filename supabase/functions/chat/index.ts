@@ -104,6 +104,7 @@ async function handleAnthropic(messageHistory, content, modelId) {
     throw new Error("Anthropic API key not configured");
   }
   
+  // Log model ID to help with debugging
   console.log(`Processing request for Anthropic model ${modelId} with content: ${content.substring(0, 50)}...`);
   
   // Convert from chat format to messages format for Anthropic API
@@ -119,6 +120,7 @@ async function handleAnthropic(messageHistory, content, modelId) {
   console.log(`Messages count: ${messages.length}`);
   
   try {
+    // For claude-3-haiku-20240307, use the correct formatting according to Anthropic docs
     // API call according to latest Anthropic API docs
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -266,22 +268,27 @@ async function handleXAI(messageHistory, content, modelId) {
       })
     });
     
+    // Capture the full response as text first for better debugging
+    const responseText = await response.text();
+    console.log(`xAI API response status: ${response.status}`);
+    console.log(`xAI API response first 100 chars: ${responseText.substring(0, 100)}...`);
+    
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`xAI API error: ${response.status}`, errorText);
+      console.error(`xAI API error: ${response.status}`, responseText);
       try {
-        const error = JSON.parse(errorText);
+        const error = JSON.parse(responseText);
         throw new Error(error.error?.message || `xAI API error: ${response.status}`);
       } catch (e) {
-        throw new Error(`xAI API error: ${response.status} - ${errorText}`);
+        throw new Error(`xAI API error: ${response.status} - ${responseText}`);
       }
     }
     
     console.log(`Successfully received response from xAI`);
-    const data = await response.json();
+    const data = JSON.parse(responseText);
+    console.log(`xAI response structure: ${JSON.stringify(Object.keys(data))}`);
     
-    // Check if the expected response structure exists
-    if (data && data.choices && data.choices[0] && data.choices[0].message) {
+    // Validate the response structure more carefully
+    if (data && data.choices && data.choices.length > 0 && data.choices[0].message) {
       return new Response(
         JSON.stringify({ 
           content: data.choices[0].message.content,
