@@ -50,11 +50,20 @@ const SettingsModal = () => {
         variant: "default",
       });
     } catch (error: any) {
-      toast({
-        title: "Connection failed",
-        description: error.message || `Failed to connect to ${provider}`,
-        variant: "destructive",
-      });
+      // Check for specific authentication errors for xAI
+      if (provider === 'xai' && error.message && error.message.includes('authentication failed')) {
+        toast({
+          title: "xAI Authentication Failed",
+          description: "Your xAI API key appears to be invalid or doesn't have the right permissions. Please update it in the Supabase Functions settings.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Connection failed",
+          description: error.message || `Failed to connect to ${provider}`,
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsTestingKey(null);
     }

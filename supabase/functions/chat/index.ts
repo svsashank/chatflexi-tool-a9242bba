@@ -241,7 +241,7 @@ async function handleGoogle(messageHistory, content, modelId) {
 async function handleXAI(messageHistory, content, modelId) {
   const XAI_API_KEY = Deno.env.get('XAI_API_KEY');
   if (!XAI_API_KEY) {
-    throw new Error("xAI API key not configured");
+    throw new Error("xAI API key not configured. Please add your xAI API key in the Supabase settings.");
   }
   
   console.log(`Processing request for xAI model ${modelId} with content: ${content.substring(0, 50)}...`);
@@ -276,33 +276,50 @@ async function handleXAI(messageHistory, content, modelId) {
     console.log(`xAI API response status: ${response.status}`);
     console.log(`xAI API response first 100 chars: ${responseText.substring(0, 100)}...`);
     
-    if (!response.ok) {
-      console.error(`xAI API error: ${response.status}`, responseText);
-      try {
-        const error = JSON.parse(responseText);
-        throw new Error(error.error?.message || `xAI API error: ${response.status}`);
-      } catch (e) {
-        throw new Error(`xAI API error: ${response.status} - ${responseText}`);
+    // Try to parse the response as JSON to better handle errors
+    let parsedResponse;
+    try {
+      parsedResponse = JSON.parse(responseText);
+      console.log(`Successfully received response from xAI`);
+      console.log(`xAI response structure: ${JSON.stringify(Object.keys(parsedResponse))}`);
+    } catch (parseError) {
+      console.error(`Failed to parse xAI response as JSON: ${responseText}`);
+      throw new Error(`Invalid JSON response from xAI API: ${responseText.substring(0, 100)}...`);
+    }
+    
+    // Check for authentication errors
+    if (parsedResponse.code === 401 || !response.ok) {
+      if (parsedResponse.msg) {
+        // This captures the Chinese error message we saw in the logs
+        console.error(`xAI authentication error: ${parsedResponse.msg}`);
+        throw new Error(`xAI API authentication failed. Please check your API key and permissions. Error code: ${parsedResponse.code || response.status}`);
+      } else if (parsedResponse.error) {
+        console.error(`xAI API error: ${JSON.stringify(parsedResponse.error)}`);
+        throw new Error(`xAI API error: ${parsedResponse.error.message || 'Unknown error'}`);
+      } else {
+        throw new Error(`xAI API returned status ${response.status}: ${responseText.substring(0, 100)}`);
       }
     }
     
-    console.log(`Successfully received response from xAI`);
-    const data = JSON.parse(responseText);
-    console.log(`xAI response structure: ${JSON.stringify(Object.keys(data))}`);
-    
-    // Validate the response structure more carefully
-    if (data && data.choices && data.choices.length > 0 && data.choices[0].message) {
+    // Validate the expected response structure before trying to use it
+    if (parsedResponse.choices && 
+        Array.isArray(parsedResponse.choices) && 
+        parsedResponse.choices.length > 0 && 
+        parsedResponse.choices[0].message && 
+        parsedResponse.choices[0].message.content) {
+      
       return new Response(
         JSON.stringify({ 
-          content: data.choices[0].message.content,
+          content: parsedResponse.choices[0].message.content,
           model: modelId,
           provider: 'xAI'
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     } else {
-      console.error("Unexpected xAI response format:", data);
-      throw new Error("Unexpected response format from xAI API");
+      // If the response doesn't match what we expect, log it and throw a descriptive error
+      console.error("Unexpected xAI response format:", parsedResponse);
+      throw new Error(`Unexpected response format from xAI API. The API returned a successful status but the response doesn't match the expected structure.`);
     }
   } catch (error) {
     console.error("Error in xAI API call:", error);
