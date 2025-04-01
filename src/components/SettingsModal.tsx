@@ -71,7 +71,7 @@ const SettingsModal = () => {
           </TabsList>
           
           <TabsContent value="api-keys" className="space-y-4 mt-4">
-            <Alert variant="info">
+            <Alert variant="default">
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Server-side API Keys</AlertTitle>
               <AlertDescription>
