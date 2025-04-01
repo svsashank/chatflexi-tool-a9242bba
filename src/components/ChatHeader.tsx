@@ -2,7 +2,7 @@
 import React from "react";
 import ConversationHistory from "./ConversationHistory";
 import useChatStore from "@/store/chatStore";
-import { MessageSquare, Settings } from "lucide-react";
+import { Hexagon, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSettingsStore } from "@/store/settingsStore";
 
@@ -20,9 +20,14 @@ const ChatHeader = () => {
         <div className="flex items-center gap-2">
           <ConversationHistory />
           <div className="flex items-center gap-2">
-            <MessageSquare size={16} className="text-primary hidden sm:block" />
+            <div className="relative hidden sm:block">
+              <Hexagon size={16} className="text-primary" fill="#9b87f5" stroke="#7E69AB" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="text-[8px] font-bold text-white">K</div>
+              </div>
+            </div>
             <h1 className="text-lg font-semibold truncate max-w-[150px] sm:max-w-[250px]">
-              {currentConversation?.title || "ChatFlexi"}
+              {currentConversation?.title || "Krix"}
             </h1>
           </div>
         </div>

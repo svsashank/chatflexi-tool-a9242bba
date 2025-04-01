@@ -129,7 +129,7 @@ const SettingsModal = () => {
               </div>
             </div>
             
-            <Alert variant={isTestingKey === 'xai' ? "default" : "info"} className="bg-blue-50 dark:bg-blue-950">
+            <Alert variant="default" className="bg-blue-50 dark:bg-blue-950">
               <ExternalLink className="h-4 w-4" />
               <AlertTitle>xAI API Key Format</AlertTitle>
               <AlertDescription className="text-sm">

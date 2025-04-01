@@ -2,7 +2,7 @@
 import React, { useEffect, useRef } from "react";
 import useChatStore from "@/store/chatStore";
 import MessageItem from "./MessageItem";
-import { Bot, User } from "lucide-react";
+import { User, Hexagon } from "lucide-react";
 
 const ChatMessages = () => {
   const { conversations, currentConversationId, isLoading } = useChatStore();
@@ -28,7 +28,17 @@ const ChatMessages = () => {
           <div className="flex gap-2 mb-4">
             {[
               { icon: <User size={24} />, color: 'bg-muted' },
-              { icon: <Bot size={24} />, color: 'bg-primary/20' }
+              { 
+                icon: (
+                  <div className="relative">
+                    <Hexagon size={24} className="text-primary" fill="#9b87f5" stroke="#7E69AB" />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="text-xs font-bold text-white">K</div>
+                    </div>
+                  </div>
+                ), 
+                color: 'bg-primary/20' 
+              }
             ].map((item, i) => (
               <div key={i} className={`w-10 h-10 rounded-full ${item.color} flex items-center justify-center`}>
                 {item.icon}
@@ -51,7 +61,12 @@ const ChatMessages = () => {
           {isLoading && (
             <div className="flex items-start gap-4 animate-fade-in">
               <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                <Bot size={18} />
+                <div className="relative">
+                  <Hexagon size={18} className="text-primary" fill="#9b87f5" stroke="#7E69AB" />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="text-xs font-bold text-white">K</div>
+                  </div>
+                </div>
               </div>
               <div className="flex-1 p-4 rounded-lg glass-morphism">
                 <div className="flex space-x-2">
