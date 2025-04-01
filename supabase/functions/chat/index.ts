@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 
@@ -271,56 +270,58 @@ async function handleGoogle(messageHistory, content, modelId, systemPrompt) {
     }
   ];
 
-  // Process model ID to ensure compatibility with Google AI API
-  // For newer models (2.5), the modelId already includes 'models/' prefix
-  // For older models, we need to handle appropriately
-  let apiModelId = modelId;
-  let apiEndpoint = "";
+  // Determine the correct API version and endpoint based on the model ID
+  let apiEndpoint;
   
-  if (modelId.startsWith('models/')) {
-    // For newer models that include the 'models/' prefix
-    apiEndpoint = `https://generativelanguage.googleapis.com/v1/${modelId}:generateContent`;
-  } else {
-    // For older models like gemini-1.5-pro and gemini-1.5-flash
+  // New experimental models like gemini-2.5-pro-exp use v1beta
+  if (modelId.includes('2.5') || modelId.includes('2.0')) {
     apiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent`;
+  } else {
+    // Older models like gemini-1.5-pro and gemini-1.5-flash use v1
+    apiEndpoint = `https://generativelanguage.googleapis.com/v1/models/${modelId}:generateContent`;
   }
 
   console.log(`Calling Google API with endpoint: ${apiEndpoint}...`);
-  const response = await fetch(`${apiEndpoint}?key=${GOOGLE_API_KEY}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      contents: formattedContents,
-      generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 1000,
+  try {
+    const response = await fetch(`${apiEndpoint}?key=${GOOGLE_API_KEY}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contents: formattedContents,
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 1000,
+        }
+      })
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Google API error: ${response.status}`, errorText);
+      try {
+        const error = JSON.parse(errorText);
+        throw new Error(error.error?.message || `Google API error: ${response.status}`);
+      } catch (e) {
+        throw new Error(`Google API error: ${response.status} - ${errorText}`);
       }
-    })
-  });
-  
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error(`Google API error: ${response.status}`, errorText);
-    try {
-      const error = JSON.parse(errorText);
-      throw new Error(error.error?.message || `Google API error: ${response.status}`);
-    } catch (e) {
-      throw new Error(`Google API error: ${response.status} - ${errorText}`);
     }
+    
+    console.log(`Successfully received response from Google`);
+    const data = await response.json();
+    return new Response(
+      JSON.stringify({ 
+        content: data.candidates[0].content.parts[0].text,
+        model: modelId,
+        provider: 'Google'
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  } catch (error) {
+    console.error("Error in Google API call:", error);
+    throw error;
   }
-  
-  console.log(`Successfully received response from Google`);
-  const data = await response.json();
-  return new Response(
-    JSON.stringify({ 
-      content: data.candidates[0].content.parts[0].text,
-      model: modelId,
-      provider: 'Google'
-    }),
-    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-  );
 }
 
 // xAI (Grok) handler

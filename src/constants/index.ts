@@ -1,3 +1,4 @@
+
 // AI Models
 export const AI_MODELS = [
   {
@@ -113,34 +114,34 @@ export const AI_MODELS = [
     avatarColor: '#4285f4', // Google blue
   },
   {
-    id: 'gemini-pro-latest',
-    name: 'Gemini 2.0 Pro',
+    id: 'gemini-1.5-flash-8b',
+    name: 'Gemini 1.5 Flash 8B',
     provider: 'google',
-    description: 'Google\'s advanced model with strong reasoning capabilities',
+    description: 'Compact version of Gemini 1.5 Flash optimized for efficiency',
     capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
     avatarColor: '#4285f4', // Google blue
   },
   {
-    id: 'gemini-flash-latest',
+    id: 'gemini-2.0-flash',
     name: 'Gemini 2.0 Flash',
     provider: 'google',
-    description: 'Faster version of Gemini 2.0 with balanced performance',
+    description: 'Fast version of Gemini 2.0 with balanced performance',
     capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
     avatarColor: '#4285f4', // Google blue
   },
   {
-    id: 'models/gemini-1.5-pro-latest',
+    id: 'gemini-2.0-flash-lite',
+    name: 'Gemini 2.0 Flash Lite',
+    provider: 'google',
+    description: 'Lightweight version of Gemini 2.0 Flash for efficient processing',
+    capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
+    avatarColor: '#4285f4', // Google blue
+  },
+  {
+    id: 'gemini-2.5-pro-exp-03-25',
     name: 'Gemini 2.5 Pro',
     provider: 'google',
-    description: 'Google\'s latest flagship model with enhanced capabilities',
-    capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
-    avatarColor: '#4285f4', // Google blue
-  },
-  {
-    id: 'models/gemini-1.5-flash-latest',
-    name: 'Gemini 2.5 Flash',
-    provider: 'google',
-    description: 'Efficient version of Google\'s latest model with fast response times',
+    description: 'Google\'s latest experimental flagship model with enhanced capabilities',
     capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
     avatarColor: '#4285f4', // Google blue
   },
