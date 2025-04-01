@@ -34,8 +34,6 @@ serve(async (req) => {
         return await handleGoogle(messageHistory, content, model.id, systemPrompt);
       case 'xai':
         return await handleXAI(messageHistory, content, model.id, systemPrompt);
-      case 'replicate':
-        return await handleReplicate(req, messageHistory, content, model.id, systemPrompt);
       default:
         throw new Error(`Provider ${model.provider} not supported`);
     }
@@ -165,13 +163,14 @@ async function handleOpenAI(messageHistory, content, modelId, systemPrompt) {
   );
 }
 
-// Anthropic (Claude) handler
+// Anthropic (Claude) handler - similar modifications for the remaining handlers...
 async function handleAnthropic(messageHistory, content, modelId, systemPrompt) {
   const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
   if (!ANTHROPIC_API_KEY) {
     throw new Error("Anthropic API key not configured");
   }
   
+  // Log model ID to help with debugging
   console.log(`Processing request for Anthropic model ${modelId} with content: ${content.substring(0, 50)}...`);
   
   // Convert from chat format to messages format for Anthropic API
@@ -416,43 +415,4 @@ async function handleXAI(messageHistory, content, modelId, systemPrompt) {
     console.error("Error in xAI API call:", error);
     throw error;
   }
-}
-
-// Replicate handler - Updated to accept req parameter
-async function handleReplicate(req, messageHistory, content, modelId, systemPrompt) {
-  const REPLICATE_FUNCTION_URL = Deno.env.get('SUPABASE_URL') 
-    ? `${Deno.env.get('SUPABASE_URL')}/functions/v1/replicate`
-    : 'http://localhost:54321/functions/v1/replicate';
-  
-  console.log(`Forwarding request to Replicate function...`);
-  
-  // Format messages for Replicate
-  const formattedMessages = [
-    ...messageHistory.map(msg => ({
-      role: msg.role,
-      content: msg.content
-    })),
-    { role: 'user', content }
-  ];
-
-  const response = await fetch(REPLICATE_FUNCTION_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': req.headers.get('Authorization') || '',
-    },
-    body: JSON.stringify({
-      modelId: modelId,
-      messages: formattedMessages,
-      system_prompt: systemPrompt
-    })
-  });
-  
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error(`Replicate function error: ${response.status}`, errorText);
-    throw new Error(`Error from Replicate function: ${errorText}`);
-  }
-  
-  return response;
 }
