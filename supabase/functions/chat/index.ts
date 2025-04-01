@@ -167,7 +167,7 @@ async function handleOpenAI(messageHistory, content, modelId, systemPrompt) {
   );
 }
 
-// Anthropic (Claude) handler - similar modifications for the remaining handlers...
+// Anthropic (Claude) handler
 async function handleAnthropic(messageHistory, content, modelId, systemPrompt) {
   const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
   if (!ANTHROPIC_API_KEY) {
@@ -376,7 +376,17 @@ async function handleXAI(messageHistory, content, modelId, systemPrompt) {
     console.log(`xAI API response status: ${response.status}`);
     console.log(`xAI API response first 100 chars: ${responseText.substring(0, 100)}...`);
     
-    // Try to parse the response as JSON to better handle errors
+    if (!response.ok) {
+      console.error(`xAI API error: ${response.status} - ${responseText}`);
+      try {
+        const error = JSON.parse(responseText);
+        throw new Error(`xAI API error: ${response.status} - ${error.error?.message || error.error || 'Unknown error'}`);
+      } catch (e) {
+        throw new Error(`xAI API error: ${response.status} - ${responseText}`);
+      }
+    }
+    
+    // Parse JSON response
     let parsedResponse;
     try {
       parsedResponse = JSON.parse(responseText);
@@ -385,20 +395,6 @@ async function handleXAI(messageHistory, content, modelId, systemPrompt) {
     } catch (parseError) {
       console.error(`Failed to parse xAI response as JSON: ${responseText}`);
       throw new Error(`Invalid JSON response from xAI API: ${responseText.substring(0, 100)}...`);
-    }
-    
-    // Check for authentication errors
-    if (parsedResponse.code === 401 || !response.ok) {
-      if (parsedResponse.msg) {
-        // This captures the Chinese error message we saw in the logs
-        console.error(`xAI authentication error: ${parsedResponse.msg}`);
-        throw new Error(`xAI API authentication failed. Please check your API key and permissions. Error code: ${parsedResponse.code || response.status}`);
-      } else if (parsedResponse.error) {
-        console.error(`xAI API error: ${JSON.stringify(parsedResponse.error)}`);
-        throw new Error(`xAI API error: ${parsedResponse.error.message || 'Unknown error'}`);
-      } else {
-        throw new Error(`xAI API returned status ${response.status}: ${responseText.substring(0, 100)}`);
-      }
     }
     
     // Validate the expected response structure before trying to use it
@@ -557,3 +553,4 @@ async function handleKrutrim(messageHistory, content, modelId, systemPrompt) {
     throw error;
   }
 }
+
