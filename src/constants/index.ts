@@ -90,10 +90,10 @@ export const AI_MODELS = [
     avatarColor: '#0668e1',
   },
   {
-    id: 'deepseek-coder',
-    name: 'DeepSeek Coder',
+    id: 'deepseek-r1',
+    name: 'DeepSeek R1',
     provider: 'Replicate',
-    description: 'Specialized for code generation with 33B parameters.',
+    description: 'DeepSeek R1 is a foundation model specializing in natural language understanding.',
     capabilities: ['text', 'code'] as ('text' | 'images' | 'code' | 'audio')[],
     avatarColor: '#4ea5f5',
   }

@@ -28,7 +28,7 @@ serve(async (req) => {
     const modelVersionMap = {
       'llama-3-8b': 'meta/llama-3-8b:dd2c4223f0436eb80d5602e52d9b3f1725522b3d09e9d1bd642d3b7d758bd1c6',
       'llama-3-70b': 'meta/llama-3-70b-instruct:2d19859030ff705a87c746f7e96eea03aefb71f166725aee39692f1476566c7e',
-      'deepseek-coder': 'deepseek-ai/deepseek-coder-33b-instruct:0b1c1d7a059bb09f0dbfd23677e8ca892f3d53d062be9e9b7a22435433f21c95',
+      'deepseek-r1': 'deepseek-ai/deepseek-r1:c819f63eb4bab0e44ab0beb69196da3ef1975a53991d45deada3019680e42c1d'
     };
     
     const modelVersionId = modelVersionMap[modelId];
@@ -40,6 +40,8 @@ serve(async (req) => {
     const formattedPrompt = formatConversationForReplicate(messages, system_prompt, modelId);
     
     console.log(`Calling Replicate API for ${modelId}...`);
+    console.log(`Using model version: ${modelVersionId}`);
+    
     const response = await fetch("https://api.replicate.com/v1/predictions", {
       method: "POST",
       headers: {
@@ -60,7 +62,7 @@ serve(async (req) => {
     if (!response.ok) {
       const errorData = await response.text();
       console.error(`Replicate API error: ${response.status}`, errorData);
-      throw new Error(`Replicate API error: ${response.status}`);
+      throw new Error(`Replicate API error: ${response.status} - ${errorData}`);
     }
 
     const prediction = await response.json();
@@ -139,20 +141,25 @@ function formatForLlama(messages, systemPrompt) {
   return prompt;
 }
 
-// Format for DeepSeek Coder
+// Format for DeepSeek models
 function formatForDeepSeek(messages, systemPrompt) {
-  let prompt = systemPrompt ? `### System:\n${systemPrompt}\n\n` : "";
+  // For DeepSeek R1, we'll use a different format
+  let prompt = "";
+  
+  if (systemPrompt) {
+    prompt += `<|im_start|>system\n${systemPrompt}<|im_end|>\n`;
+  }
   
   for (const message of messages) {
     if (message.role === "user") {
-      prompt += `### User:\n${message.content}\n\n`;
+      prompt += `<|im_start|>user\n${message.content}<|im_end|>\n`;
     } else if (message.role === "assistant") {
-      prompt += `### Assistant:\n${message.content}\n\n`;
+      prompt += `<|im_start|>assistant\n${message.content}<|im_end|>\n`;
     }
   }
   
   // Add the final assistant prefix to indicate we want a response
-  prompt += `### Assistant:\n`;
+  prompt += `<|im_start|>assistant\n`;
   
   return prompt;
 }
