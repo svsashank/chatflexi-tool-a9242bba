@@ -34,7 +34,9 @@ const ConversationHistory = () => {
   useEffect(() => {
     if (user && conversations.length === 0) {
       console.log("ConversationHistory: No conversations found, loading from database");
-      loadUserConversations();
+      loadUserConversations().catch(err => {
+        console.error("Failed to load conversations:", err);
+      });
     }
   }, [user, conversations.length, loadUserConversations]);
 

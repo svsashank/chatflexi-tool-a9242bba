@@ -17,10 +17,12 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
         try {
           await loadUserConversations();
           
-          // Only create a new conversation if none were loaded
+          // Only create a new conversation if none were loaded AND we don't already have conversations in state
           if (conversations.length === 0) {
             console.log("No conversations found, creating a new one");
             await createConversation();
+          } else {
+            console.log(`Loaded ${conversations.length} conversations, not creating a new one`);
           }
         } catch (error) {
           console.error("Error initializing conversations:", error);

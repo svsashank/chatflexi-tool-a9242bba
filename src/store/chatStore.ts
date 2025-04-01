@@ -1,3 +1,4 @@
+
 import { create } from 'zustand';
 import { v4 as uuidv4 } from 'uuid';
 import { Message, Conversation, ChatState, AIModel } from '../types';
@@ -66,6 +67,8 @@ const useChatStore = create<ChatState & {
               description: 'Could not create a new conversation',
               variant: 'destructive',
             });
+          } else {
+            console.log("Successfully saved new conversation to database");
           }
         }
 
@@ -125,6 +128,8 @@ const useChatStore = create<ChatState & {
               variant: 'destructive',
             });
             return;
+          } else {
+            console.log("Successfully deleted conversation from database");
           }
         }
         
@@ -209,7 +214,7 @@ const useChatStore = create<ChatState & {
         if (session?.user) {
           // Update conversation title if needed
           if (currentConversation.messages.length === 0) {
-            await supabase
+            const { error: titleError } = await supabase
               .from('conversations')
               .update({ 
                 title,
@@ -217,17 +222,27 @@ const useChatStore = create<ChatState & {
               })
               .eq('id', currentConversationId)
               .eq('user_id', session.user.id);
+              
+            if (titleError) {
+              console.error('Error updating conversation title:', titleError);
+            } else {
+              console.log("Successfully updated conversation title in database");
+            }
           } else {
             // Just update the timestamp
-            await supabase
+            const { error: updateError } = await supabase
               .from('conversations')
               .update({ updated_at: new Date().toISOString() })
               .eq('id', currentConversationId)
               .eq('user_id', session.user.id);
+              
+            if (updateError) {
+              console.error('Error updating conversation timestamp:', updateError);
+            }
           }
           
           // Store the message
-          await supabase
+          const { error: messageError } = await supabase
             .from('conversation_messages')
             .insert({
               id: message.id,
@@ -237,6 +252,12 @@ const useChatStore = create<ChatState & {
               model_id: message.model.id,
               model_provider: message.model.provider
             });
+            
+          if (messageError) {
+            console.error('Error saving user message to database:', messageError);
+          } else {
+            console.log("Successfully saved user message to database");
+          }
         }
       } catch (error) {
         console.error('Error saving message:', error);
@@ -325,14 +346,18 @@ const useChatStore = create<ChatState & {
           
           if (session?.user) {
             // Update conversation's updated_at timestamp
-            await supabase
+            const { error: updateError } = await supabase
               .from('conversations')
               .update({ updated_at: new Date().toISOString() })
               .eq('id', currentConversationId)
               .eq('user_id', session.user.id);
               
+            if (updateError) {
+              console.error('Error updating conversation timestamp:', updateError);
+            }
+              
             // Store assistant message
-            await supabase
+            const { error: messageError } = await supabase
               .from('conversation_messages')
               .insert({
                 id: assistantMessage.id,
@@ -342,6 +367,12 @@ const useChatStore = create<ChatState & {
                 model_id: assistantMessage.model.id,
                 model_provider: assistantMessage.model.provider
               });
+              
+            if (messageError) {
+              console.error('Error saving assistant message to database:', messageError);
+            } else {
+              console.log("Successfully saved assistant message to database");
+            }
           }
         } catch (error) {
           console.error('Error saving assistant message:', error);
