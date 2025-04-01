@@ -2,12 +2,13 @@
 import React from "react";
 import ConversationHistory from "./ConversationHistory";
 import useChatStore from "@/store/chatStore";
-import { Hexagon, Settings } from "lucide-react";
+import { Hexagon, Settings, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSettingsStore } from "@/store/settingsStore";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const ChatHeader = () => {
-  const { selectedModel, conversations, currentConversationId } = useChatStore();
+  const { selectedModel, conversations, currentConversationId, createConversation } = useChatStore();
   const { openSettings } = useSettingsStore();
   
   const currentConversation = conversations.find(
@@ -31,14 +32,31 @@ const ChatHeader = () => {
             </h1>
           </div>
         </div>
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          onClick={openSettings}
-          className="h-8 w-8"
-        >
-          <Settings size={18} />
-        </Button>
+        <div className="flex items-center gap-2">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={createConversation}
+                  className="h-8 w-8"
+                >
+                  <Plus size={18} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>New Chat</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={openSettings}
+            className="h-8 w-8"
+          >
+            <Settings size={18} />
+          </Button>
+        </div>
       </div>
     </header>
   );
