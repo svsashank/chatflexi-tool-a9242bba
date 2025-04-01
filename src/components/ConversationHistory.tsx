@@ -45,6 +45,7 @@ const ConversationHistory = () => {
   }, [conversations, searchQuery]);
 
   const handleConversationSelect = (id: string) => {
+    console.log("Selecting conversation:", id);
     setCurrentConversation(id);
     setIsOpen(false); // Close the sheet on mobile after selection
   };

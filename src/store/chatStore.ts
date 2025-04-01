@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 import { v4 as uuidv4 } from 'uuid';
 import { Message, Conversation, ChatState, AIModel } from '../types';
@@ -6,7 +5,6 @@ import { AI_MODELS, DEFAULT_MODEL } from '../constants';
 import { sendMessageToLLM } from '../services/llmService';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
 
 const useChatStore = create<ChatState & {
   createConversation: () => Promise<void>;
@@ -84,6 +82,13 @@ const useChatStore = create<ChatState & {
     },
 
     setCurrentConversation: (id: string) => {
+      console.log("Setting current conversation to:", id);
+      // Verify the conversation exists in our state before setting it
+      const conversation = get().conversations.find(conv => conv.id === id);
+      if (!conversation) {
+        console.error(`Conversation with id ${id} not found`);
+        return;
+      }
       set({ currentConversationId: id });
     },
 
@@ -337,10 +342,13 @@ const useChatStore = create<ChatState & {
           return;
         }
         
+        console.log("Loading conversations for user:", session.user.id);
+        
         // Fetch user's conversations
         const { data: conversations, error: conversationsError } = await supabase
           .from('conversations')
           .select('*')
+          .eq('user_id', session.user.id)
           .order('updated_at', { ascending: false });
         
         if (conversationsError) {
@@ -381,6 +389,8 @@ const useChatStore = create<ChatState & {
               };
             }
             
+            console.log(`Loaded ${messages?.length || 0} messages for conversation ${conv.id}`);
+            
             // Convert database messages to app Message type
             const formattedMessages: Message[] = messages?.map(msg => {
               // Find the model based on model_id and provider
@@ -414,11 +424,15 @@ const useChatStore = create<ChatState & {
           })
         );
         
+        console.log("Loaded conversations:", loadedConversations.length);
+        
         // Set loaded conversations in state
-        set({
-          conversations: loadedConversations,
-          currentConversationId: loadedConversations[0].id,
-        });
+        if (loadedConversations.length > 0) {
+          set({
+            conversations: loadedConversations,
+            currentConversationId: loadedConversations[0].id,
+          });
+        }
         
       } catch (error) {
         console.error('Error loading user conversations:', error);
