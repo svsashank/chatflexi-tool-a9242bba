@@ -6,6 +6,7 @@ import { Hexagon, Settings, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSettingsStore } from "@/store/settingsStore";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import UserMenu from "./UserMenu";
 
 const ChatHeader = () => {
   const { selectedModel, conversations, currentConversationId, createConversation } = useChatStore();
@@ -56,6 +57,7 @@ const ChatHeader = () => {
           >
             <Settings size={18} />
           </Button>
+          <UserMenu />
         </div>
       </div>
     </header>

@@ -14,6 +14,7 @@ export interface Conversation {
   createdAt: Date;
   updatedAt: Date;
   contextSummary: string; // Added for improved context tracking
+  userId?: string; // Added to link conversations to users
 }
 
 export type AIModel = {
@@ -31,3 +32,11 @@ export interface ChatState {
   selectedModel: AIModel;
   isLoading: boolean;
 }
+
+export interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  avatarUrl?: string;
+}
+
