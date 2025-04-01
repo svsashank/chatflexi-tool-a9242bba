@@ -52,7 +52,9 @@ const getMockResponse = (modelId: string): string => {
     'gpt-4o': "I'm GPT-4o, OpenAI's most advanced model. I can help with complex reasoning, creative tasks, and analyze images. How can I assist you today?",
     'claude-3-opus': "Hello! I'm Claude 3 Opus by Anthropic. I excel at thoughtful analysis, creative writing, and can understand images. What would you like to explore?",
     'gemini-pro': "Hi there, I'm Google's Gemini Pro. I'm designed to handle a wide range of tasks including text, code, and images. How can I help you?",
-    'llama-3': "Greetings! I'm Llama 3 from Meta. I'm an open model focused on helpful, harmless, and honest AI assistance. What questions do you have?",
+    'llama-3-8b': "Greetings! I'm Llama 3 (8B) from Meta. I'm an open model focused on helpful, harmless, and honest AI assistance. What questions do you have?",
+    'llama-3-70b': "Hello! I'm Llama 3 (70B), Meta's larger open-source language model. I'm designed to provide comprehensive assistance across many domains. How may I help you?",
+    'deepseek-coder': "Hi! I'm DeepSeek Coder, specialized in code generation and understanding. I can help with programming tasks, explaining code, and software development. What coding challenge can I assist with today?",
     'mixtral-8x7b': "Hello! I'm Mixtral 8x7B developed by Mistral AI. I'm a mixture-of-experts model with strong capabilities across multiple languages and domains. How may I assist you?"
   };
   
