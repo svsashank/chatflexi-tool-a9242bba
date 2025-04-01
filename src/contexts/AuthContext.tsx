@@ -3,6 +3,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
+import useChatStore from '@/store/chatStore';
 
 type AuthContextType = {
   user: User | null;
@@ -41,6 +42,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             title: "Signed out successfully",
             description: "Come back soon!",
           });
+          
+          // Create a new conversation when signing out
+          setTimeout(() => {
+            const chatStore = useChatStore.getState();
+            chatStore.createConversation();
+          }, 0);
         }
       }
     );

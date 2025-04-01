@@ -1,8 +1,9 @@
 
-import React from "react";
+import React, { useEffect } from "react";
 import { History, MessageSquare, Search, Plus, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import useChatStore from "@/store/chatStore";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Sheet,
   SheetContent,
@@ -18,13 +19,22 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 const ConversationHistory = () => {
   const [searchQuery, setSearchQuery] = React.useState("");
   const [isOpen, setIsOpen] = React.useState(false);
+  const { user } = useAuth();
   const { 
     conversations, 
     currentConversationId, 
     setCurrentConversation,
     createConversation,
-    deleteConversation
+    deleteConversation,
+    loadUserConversations
   } = useChatStore();
+
+  // If user is logged in but no conversations are loaded, load them
+  useEffect(() => {
+    if (user && conversations.length === 0) {
+      loadUserConversations();
+    }
+  }, [user, conversations.length, loadUserConversations]);
 
   const filteredConversations = React.useMemo(() => {
     if (!searchQuery.trim()) return conversations;
@@ -37,6 +47,16 @@ const ConversationHistory = () => {
   const handleConversationSelect = (id: string) => {
     setCurrentConversation(id);
     setIsOpen(false); // Close the sheet on mobile after selection
+  };
+
+  const handleCreateConversation = async () => {
+    await createConversation();
+    setIsOpen(false);
+  };
+
+  const handleDeleteConversation = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    await deleteConversation(id);
   };
 
   return (
@@ -71,10 +91,7 @@ const ConversationHistory = () => {
         
         <div className="flex flex-col h-[calc(100vh-180px)]">
           <Button
-            onClick={() => {
-              createConversation();
-              setIsOpen(false);
-            }}
+            onClick={handleCreateConversation}
             variant="ghost"
             className="flex items-center justify-start gap-2 py-3 px-4 text-sm font-medium text-primary hover:bg-primary/10 transition-colors"
           >
@@ -114,10 +131,7 @@ const ConversationHistory = () => {
                           variant="ghost"
                           size="icon"
                           className="opacity-0 group-hover:opacity-100 h-8 w-8 rounded-full"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            deleteConversation(conversation.id);
-                          }}
+                          onClick={(e) => handleDeleteConversation(conversation.id, e)}
                         >
                           <Trash2 size={16} className="text-muted-foreground hover:text-destructive" />
                         </Button>
