@@ -24,24 +24,25 @@ serve(async (req) => {
     
     console.log(`Processing request for Replicate model ${modelId}`);
 
-    // Determine the model version ID based on the model ID
-    const modelVersionMap = {
-      'llama-3-8b': 'meta/llama-3-8b:dd2c4223f0436eb80d5602e52d9b3f1725522b3d09e9d1bd642d3b7d758bd1c6',
-      'llama-3-70b': 'meta/llama-3-70b-instruct:2d19859030ff705a87c746f7e96eea03aefb71f166725aee39692f1476566c7e',
-      'deepseek-r1': 'deepseek-ai/deepseek-r1:c819f63eb4bab0e44ab0beb69196da3ef1975a53991d45deada3019680e42c1d'
-    };
-    
-    const modelVersionId = modelVersionMap[modelId];
-    if (!modelVersionId) {
-      throw new Error(`Unknown model ID: ${modelId}`);
-    }
-
     // Format the conversation history for Replicate
     const formattedPrompt = formatConversationForReplicate(messages, system_prompt, modelId);
     
-    console.log(`Calling Replicate API for ${modelId}...`);
-    console.log(`Using model version: ${modelVersionId}`);
+    // Map model IDs to their Replicate model identifiers
+    const modelMap = {
+      'llama-3-8b': "meta/llama-3-8b",
+      'llama-3-70b': "meta/llama-3-70b-instruct", 
+      'deepseek-r1': "deepseek-ai/deepseek-r1"
+    };
     
+    const replicateModel = modelMap[modelId];
+    if (!replicateModel) {
+      throw new Error(`Unknown model ID: ${modelId}`);
+    }
+    
+    console.log(`Calling Replicate API for ${modelId}...`);
+    console.log(`Using model: ${replicateModel}`);
+    
+    // Call the Replicate API directly using their direct run endpoint
     const response = await fetch("https://api.replicate.com/v1/predictions", {
       method: "POST",
       headers: {
@@ -49,7 +50,8 @@ serve(async (req) => {
         "Authorization": `Token ${REPLICATE_API_KEY}`
       },
       body: JSON.stringify({
-        version: modelVersionId,
+        // Use the version parameter for the model
+        version: getModelVersion(modelId),
         input: {
           prompt: formattedPrompt,
           temperature: 0.7,
@@ -111,6 +113,17 @@ serve(async (req) => {
   }
 });
 
+// Get the specific version ID for each model
+function getModelVersion(modelId) {
+  const versionMap = {
+    'llama-3-8b': 'dd2c4223f0436eb80d5602e52d9b3f1725522b3d09e9d1bd642d3b7d758bd1c6',
+    'llama-3-70b': '2d19859030ff705a87c746f7e96eea03aefb71f166725aee39692f1476566c7e',
+    'deepseek-r1': 'c819f63eb4bab0e44ab0beb69196da3ef1975a53991d45deada3019680e42c1d'
+  };
+  
+  return versionMap[modelId];
+}
+
 // Format conversations for different Replicate models
 function formatConversationForReplicate(messages, systemPrompt, modelId) {
   if (modelId.includes('llama')) {
@@ -143,7 +156,7 @@ function formatForLlama(messages, systemPrompt) {
 
 // Format for DeepSeek models
 function formatForDeepSeek(messages, systemPrompt) {
-  // For DeepSeek R1, we'll use a different format
+  // For DeepSeek R1, use the format from the Replicate documentation
   let prompt = "";
   
   if (systemPrompt) {
