@@ -3,7 +3,6 @@ import React from "react";
 import ChatHeader from "./ChatHeader";
 import ChatMessages from "./ChatMessages";
 import ChatInput from "./ChatInput";
-import SettingsModal from "./SettingsModal";
 import useChatStore from "@/store/chatStore";
 
 const ChatContainer = () => {
@@ -19,7 +18,6 @@ const ChatContainer = () => {
         <ChatMessages />
       </div>
       <ChatInput />
-      <SettingsModal />
     </div>
   );
 };
