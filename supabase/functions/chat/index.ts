@@ -221,7 +221,6 @@ async function handleAnthropic(messageHistory, content, modelId, systemPrompt) {
       }
     }
     
-    const data = JSON.parse(responseText);
     console.log(`Successfully received response from Anthropic`);
     console.log(`Response structure: ${JSON.stringify(Object.keys(data))}`);
     
