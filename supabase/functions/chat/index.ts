@@ -106,22 +106,6 @@ async function handleAnthropic(messageHistory, content, modelId) {
   
   console.log(`Processing request for Anthropic model ${modelId} with content: ${content.substring(0, 50)}...`);
   
-  // Valid Claude model names according to Anthropic documentation (April 2024)
-  const validClaudeModels = [
-    'claude-3-opus-20240229',
-    'claude-3-sonnet-20240229',
-    'claude-3-haiku-20240307',
-    'claude-2.1',
-    'claude-2.0',
-    'claude-instant-1.2'
-  ];
-  
-  if (!validClaudeModels.includes(modelId)) {
-    console.error(`Invalid Claude model ID: ${modelId}`);
-    console.error(`Available Claude models: ${validClaudeModels.join(', ')}`);
-    throw new Error(`Invalid Claude model ID: ${modelId}. Please use one of: ${validClaudeModels.join(', ')}`);
-  }
-  
   // Convert from chat format to messages format for Anthropic API
   const messages = [
     ...messageHistory.map(msg => ({
@@ -135,12 +119,12 @@ async function handleAnthropic(messageHistory, content, modelId) {
   console.log(`Messages count: ${messages.length}`);
   
   try {
-    // API call according to latest Anthropic API docs (April 2024)
+    // API call according to latest Anthropic API docs
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': ANTHROPIC_API_KEY, // Modern header format
+        'x-api-key': ANTHROPIC_API_KEY,
         'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
@@ -267,39 +251,51 @@ async function handleXAI(messageHistory, content, modelId) {
   ];
 
   console.log(`Calling xAI API...`);
-  const response = await fetch('https://api.xai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${XAI_API_KEY}`
-    },
-    body: JSON.stringify({
-      model: modelId,
-      messages: formattedMessages,
-      temperature: 0.7,
-      max_tokens: 1000,
-    })
-  });
-  
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error(`xAI API error: ${response.status}`, errorText);
-    try {
-      const error = JSON.parse(errorText);
-      throw new Error(error.error?.message || `xAI API error: ${response.status}`);
-    } catch (e) {
-      throw new Error(`xAI API error: ${response.status} - ${errorText}`);
+  try {
+    const response = await fetch('https://api.xai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${XAI_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: modelId,
+        messages: formattedMessages,
+        temperature: 0.7,
+        max_tokens: 1000,
+      })
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`xAI API error: ${response.status}`, errorText);
+      try {
+        const error = JSON.parse(errorText);
+        throw new Error(error.error?.message || `xAI API error: ${response.status}`);
+      } catch (e) {
+        throw new Error(`xAI API error: ${response.status} - ${errorText}`);
+      }
     }
+    
+    console.log(`Successfully received response from xAI`);
+    const data = await response.json();
+    
+    // Check if the expected response structure exists
+    if (data && data.choices && data.choices[0] && data.choices[0].message) {
+      return new Response(
+        JSON.stringify({ 
+          content: data.choices[0].message.content,
+          model: modelId,
+          provider: 'xAI'
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    } else {
+      console.error("Unexpected xAI response format:", data);
+      throw new Error("Unexpected response format from xAI API");
+    }
+  } catch (error) {
+    console.error("Error in xAI API call:", error);
+    throw error;
   }
-  
-  console.log(`Successfully received response from xAI`);
-  const data = await response.json();
-  return new Response(
-    JSON.stringify({ 
-      content: data.choices[0].message.content,
-      model: modelId,
-      provider: 'xAI'
-    }),
-    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-  );
 }
