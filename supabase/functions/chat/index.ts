@@ -104,51 +104,73 @@ async function handleAnthropic(messageHistory, content, modelId) {
   
   console.log(`Processing request for Anthropic model ${modelId} with content: ${content.substring(0, 50)}...`);
   
-  // Format messages for Anthropic's Claude API
-  const formattedMessages = [
+  // The correct API format for Claude API v1
+  // Reference: https://docs.anthropic.com/claude/reference/messages_post
+  console.log(`Formatting messages for Anthropic API...`);
+  
+  // Convert from chat format to messages format
+  const messages = [
     ...messageHistory.map(msg => ({
       role: msg.role === 'assistant' ? 'assistant' : 'user',
       content: msg.content
     })),
     { role: 'user', content }
   ];
-
-  console.log(`Calling Anthropic API...`);
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': ANTHROPIC_API_KEY,
-      'anthropic-version': '2023-06-01'
-    },
-    body: JSON.stringify({
-      model: modelId,
-      messages: formattedMessages,
-      max_tokens: 1000,
-    })
-  });
   
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error(`Anthropic API error: ${response.status}`, errorText);
-    try {
-      const error = JSON.parse(errorText);
-      throw new Error(error.error?.message || `Anthropic API error: ${response.status}`);
-    } catch (e) {
-      throw new Error(`Anthropic API error: ${response.status} - ${errorText}`);
+  console.log(`Calling Anthropic API with model ${modelId}...`);
+  console.log(`Messages count: ${messages.length}`);
+  
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: modelId,
+        messages: messages,
+        max_tokens: 1000,
+      })
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Anthropic API error: ${response.status}`, errorText);
+      try {
+        const error = JSON.parse(errorText);
+        throw new Error(error.error?.message || `Anthropic API error: ${response.status}`);
+      } catch (e) {
+        throw new Error(`Anthropic API error: ${response.status} - ${errorText}`);
+      }
     }
+    
+    console.log(`Successfully received response from Anthropic`);
+    const data = await response.json();
+    
+    // Log the first part of the response for debugging
+    console.log(`Anthropic response type: ${typeof data}`);
+    console.log(`Anthropic response content type: ${typeof data.content}`);
+    console.log(`Anthropic response structure: ${JSON.stringify(Object.keys(data))}`);
+    
+    if (data.content && Array.isArray(data.content) && data.content.length > 0) {
+      return new Response(
+        JSON.stringify({ 
+          content: data.content[0].text,
+          model: modelId,
+          provider: 'Anthropic'
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    } else {
+      console.error("Unexpected Anthropic response format:", data);
+      throw new Error("Unexpected response format from Anthropic API");
+    }
+  } catch (error) {
+    console.error("Error in Anthropic API call:", error);
+    throw error;
   }
-  
-  console.log(`Successfully received response from Anthropic`);
-  const data = await response.json();
-  return new Response(
-    JSON.stringify({ 
-      content: data.content[0].text,
-      model: modelId,
-      provider: 'Anthropic'
-    }),
-    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-  );
 }
 
 // Google (Gemini) handler
