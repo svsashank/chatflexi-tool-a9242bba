@@ -22,6 +22,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
   if (!user) {
     console.log("ProtectedRoute - No user, redirecting to /auth");
+    // Don't force a reload here, just redirect
     return <Navigate to="/auth" replace />;
   }
 

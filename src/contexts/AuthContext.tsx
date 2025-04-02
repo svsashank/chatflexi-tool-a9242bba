@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -23,13 +24,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const { toast } = useToast();
   const { createConversation, loadUserConversations, resetConversations } = useChatStore();
   
+  // Use refs to track initialization and prevent duplicate operations
   const conversationsInitialized = useRef(false);
+  const authCheckCompleted = useRef(false);
 
   useEffect(() => {
     console.log("Auth provider initializing");
     
+    // Set up the auth state change listener first
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, newSession) => {
+      (event, newSession) => {
         console.log("Auth state change event:", event);
         
         setSession(newSession);
@@ -41,10 +45,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             description: `Welcome${newSession.user?.user_metadata?.name ? `, ${newSession.user.user_metadata.name}` : ''}!`,
           });
           
-          if (!conversationsInitialized.current) {
-            console.log("Setting timeout to initialize conversations after sign in");
-            setTimeout(async () => {
-              try {
+          // Use setTimeout to avoid potential deadlocks with Supabase auth
+          setTimeout(async () => {
+            try {
+              if (!conversationsInitialized.current) {
                 console.log("Auth context: Loading conversations after sign in");
                 await loadUserConversations();
                 
@@ -54,11 +58,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                   await createConversation();
                 }
                 conversationsInitialized.current = true;
-              } catch (error) {
-                console.error("Error loading conversations after sign in:", error);
               }
-            }, 0);
-          }
+            } catch (error) {
+              console.error("Error loading conversations after sign in:", error);
+            }
+          }, 0);
         }
         
         if (event === 'SIGNED_OUT') {
@@ -67,6 +71,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             description: "Come back soon!",
           });
           
+          // Reset conversations on sign out
           setTimeout(() => {
             console.log("Resetting conversations after sign out");
             resetConversations();
@@ -77,7 +82,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
     );
 
+    // Then check for existing session only if we haven't already
     const checkExistingSession = async () => {
+      if (authCheckCompleted.current) {
+        // Avoid checking multiple times
+        return;
+      }
+
       try {
         const { data: { session: existingSession } } = await supabase.auth.getSession();
         console.log("Existing session check:", existingSession ? "Found session" : "No session");
@@ -105,6 +116,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           conversationsInitialized.current = true;
         }
         
+        authCheckCompleted.current = true;
         setLoading(false);
       } catch (error) {
         console.error("Error checking existing session:", error);
