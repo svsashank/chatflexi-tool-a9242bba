@@ -51,7 +51,7 @@ const useChatStore = create<ChatStore>((set, get) => ({
   selectModel: selectModelAction(set),
   generateResponse: generateResponseAction(set, get),
   loadUserConversations: loadUserConversationsAction(set),
-  ...createMessageSlice(set, get)
+  ...createMessageSlice(set, get, {}) // Fixed: Added empty object as the third parameter
 }));
 
 export default useChatStore;
