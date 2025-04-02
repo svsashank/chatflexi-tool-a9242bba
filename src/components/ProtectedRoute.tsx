@@ -5,7 +5,16 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/components/ui/use-toast';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, loading } = useAuth();
+  let authData;
+  
+  try {
+    authData = useAuth();
+  } catch (error) {
+    console.error("Error accessing AuthContext:", error);
+    return <Navigate to="/auth" replace />;
+  }
+  
+  const { user, loading } = authData;
   const navigate = useNavigate();
 
   // Add detailed debugging
