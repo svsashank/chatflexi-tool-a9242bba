@@ -80,7 +80,7 @@ export const loadUserConversationsAction = (set: Function) => async () => {
             model,
             createdAt: msg.created_at,
             // The database doesn't have metadata field, so create an empty object
-            metadata: {} // Fixed: providing default empty object instead of accessing non-existent property
+            metadata: {} // Providing default empty object for metadata
           };
         }) || [];
         

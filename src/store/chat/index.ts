@@ -46,12 +46,12 @@ const useChatStore = create<ChatStore>((set, get) => ({
   createConversation: createConversationAction(set, get),
   setCurrentConversation: setCurrentConversationAction(set, get),
   deleteConversation: deleteConversationAction(set, get),
-  resetConversations: resetConversationsAction(set), // This was incorrectly passing get as well
+  resetConversations: resetConversationsAction(set), // Passing only set as needed
   addMessage: addMessageAction(set, get),
   selectModel: selectModelAction(set),
   generateResponse: generateResponseAction(set, get),
   loadUserConversations: loadUserConversationsAction(set),
-  ...createMessageSlice(set, get, {}) // Fixed: Added empty object as the third parameter
+  ...createMessageSlice(set, get) // Removed the third parameter since it's not needed
 }));
 
 export default useChatStore;

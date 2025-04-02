@@ -21,8 +21,8 @@ export const generateResponseAction = (set: any, get: any) => async () => {
   return get().regenerateMessage();
 };
 
-// The createMessageSlice signature needs to be updated to match the expected 3 arguments
-// Based on the Zustand docs, the third argument is typically a custom store API
+// Modified the function signature to match Zustand's StateCreator pattern
+// The third parameter is not used in this slice implementation
 export const createMessageSlice: StateCreator<
   ChatState, 
   [], 

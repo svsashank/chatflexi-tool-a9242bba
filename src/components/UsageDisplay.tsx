@@ -5,12 +5,10 @@ interface UsageDisplayProps {
   usageText: string;
 }
 
-const UsageDisplay = ({ usageText }: UsageDisplayProps) => {
+const UsageDisplay: React.FC<UsageDisplayProps> = ({ usageText }) => {
   return (
-    <div className="mt-2 text-xs text-muted-foreground">
-      <pre className="p-2 bg-background/50 rounded overflow-auto whitespace-pre font-mono">
-        {usageText}
-      </pre>
+    <div className="mt-2 text-xs font-mono p-2 bg-muted/50 rounded whitespace-pre overflow-x-auto">
+      {usageText}
     </div>
   );
 };
