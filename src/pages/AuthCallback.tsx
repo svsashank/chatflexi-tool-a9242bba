@@ -12,6 +12,7 @@ const AuthCallback = () => {
     const handleAuthCallback = async () => {
       console.log("AuthCallback: Processing authentication callback");
       try {
+        // Get the session directly from the URL
         const { data, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -26,10 +27,10 @@ const AuthCallback = () => {
         }
         
         if (data.session) {
-          console.log("Auth callback successful, navigating to home");
-          // We no longer need to initialize conversations here since AuthContext handles that
+          console.log("Auth callback successful, session found, navigating to home");
           navigate('/', { replace: true });
         } else {
+          console.log("No session found after callback, navigating to auth page");
           navigate('/auth', { replace: true });
         }
       } catch (err) {
