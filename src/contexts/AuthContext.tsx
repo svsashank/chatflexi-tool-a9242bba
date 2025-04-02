@@ -26,16 +26,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   
   // Use refs to track initialization and prevent duplicate operations
   const conversationsInitialized = useRef(false);
-  const authCheckCompleted = useRef(false);
+  const authListenerInitialized = useRef(false);
 
   useEffect(() => {
-    console.log("Auth provider initializing");
+    // Only set up auth state listener once
+    if (authListenerInitialized.current) return;
     
-    // Set up the auth state change listener first
+    console.log("Auth provider initializing auth listener");
+    authListenerInitialized.current = true;
+    
+    // Set up the auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, newSession) => {
-        console.log("Auth state change event:", event);
+        console.log("Auth state change event:", event, "Session:", newSession ? "present" : "null");
         
+        // Synchronously update the session and user state
         setSession(newSession);
         setUser(newSession?.user ?? null);
         
@@ -45,7 +50,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             description: `Welcome${newSession.user?.user_metadata?.name ? `, ${newSession.user.user_metadata.name}` : ''}!`,
           });
           
-          // Use setTimeout to avoid potential deadlocks with Supabase auth
+          // Defer any Supabase calls to avoid auth deadlocks
           setTimeout(async () => {
             try {
               if (!conversationsInitialized.current) {
@@ -79,24 +84,34 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             conversationsInitialized.current = false;
           }, 0);
         }
+        
+        // Set loading to false regardless of the event type
+        setLoading(false);
       }
     );
 
-    // Then check for existing session only if we haven't already
-    const checkExistingSession = async () => {
-      if (authCheckCompleted.current) {
-        // Avoid checking multiple times
-        return;
-      }
-
+    // Get initial session
+    const checkInitialSession = async () => {
       try {
-        const { data: { session: existingSession } } = await supabase.auth.getSession();
-        console.log("Existing session check:", existingSession ? "Found session" : "No session");
+        console.log("Checking for initial session");
+        const { data: { session: initialSession }, error } = await supabase.auth.getSession();
         
-        setSession(existingSession);
-        setUser(existingSession?.user ?? null);
+        if (error) {
+          console.error("Error getting initial session:", error);
+          setLoading(false);
+          return;
+        }
         
-        if (existingSession?.user && !conversationsInitialized.current) {
+        console.log("Initial session check:", initialSession ? "Found session" : "No session");
+        
+        // Only update states if needed (avoid unnecessary re-renders)
+        if (initialSession !== session) {
+          setSession(initialSession);
+          setUser(initialSession?.user ?? null);
+        }
+        
+        // If we have a session, initialize conversations
+        if (initialSession?.user && !conversationsInitialized.current) {
           console.log("Initializing conversations from existing session");
           try {
             await loadUserConversations();
@@ -110,27 +125,27 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           } catch (error) {
             console.error("Error initializing conversations from existing session:", error);
           }
-        } else if (!existingSession && !conversationsInitialized.current) {
+        } else if (!initialSession && !conversationsInitialized.current) {
           console.log("No session, creating local conversation");
           createConversation();
           conversationsInitialized.current = true;
         }
         
-        authCheckCompleted.current = true;
         setLoading(false);
-      } catch (error) {
-        console.error("Error checking existing session:", error);
+      } catch (err) {
+        console.error("Unexpected error during initial session check:", err);
         setLoading(false);
       }
     };
     
-    checkExistingSession();
+    checkInitialSession();
 
     return () => {
       console.log("Cleaning up auth subscription");
       subscription.unsubscribe();
+      authListenerInitialized.current = false;
     };
-  }, [toast, loadUserConversations, createConversation, resetConversations]);
+  }, []);
 
   const signIn = async (email: string, password: string) => {
     try {
