@@ -79,8 +79,8 @@ export const loadUserConversationsAction = (set: Function) => async () => {
             role: msg.role as 'user' | 'assistant' | 'system',
             model,
             createdAt: msg.created_at,
-            // Add empty metadata object if none exists in the database
-            metadata: msg.metadata as Record<string, any> || {},
+            // The database doesn't have metadata field, so create an empty object
+            metadata: {} // Fixed: providing default empty object instead of accessing non-existent property
           };
         }) || [];
         

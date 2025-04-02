@@ -46,7 +46,7 @@ const useChatStore = create<ChatStore>((set, get) => ({
   createConversation: createConversationAction(set, get),
   setCurrentConversation: setCurrentConversationAction(set, get),
   deleteConversation: deleteConversationAction(set, get),
-  resetConversations: resetConversationsAction(set, get),
+  resetConversations: resetConversationsAction(set), // This was incorrectly passing get as well
   addMessage: addMessageAction(set, get),
   selectModel: selectModelAction(set),
   generateResponse: generateResponseAction(set, get),

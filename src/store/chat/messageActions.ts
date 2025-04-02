@@ -21,8 +21,16 @@ export const generateResponseAction = (set: any, get: any) => async () => {
   return get().regenerateMessage();
 };
 
-export const createMessageSlice: StateCreator<ChatState, [], [], MessageSlice> = (set, get) => ({
+// The createMessageSlice signature needs to be updated to match the expected 3 arguments
+// Based on the Zustand docs, the third argument is typically a custom store API
+export const createMessageSlice: StateCreator<
+  ChatState, 
+  [], 
+  [], 
+  MessageSlice
+> = (set, get) => ({
   sendMessage: async (content) => {
+    // Add user message to state
     const currentConversationId = get().currentConversationId;
     const selectedModel = get().selectedModel;
     const user = get().user;
