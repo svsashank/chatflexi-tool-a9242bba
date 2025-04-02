@@ -58,8 +58,8 @@ export const loadUserConversationsAction = (set: Function) => async () => {
             id: conv.id,
             title: conv.title,
             messages: [],
-            createdAt: new Date(conv.created_at),
-            updatedAt: new Date(conv.updated_at),
+            createdAt: conv.created_at,
+            updatedAt: conv.updated_at,
             contextSummary: '',
           };
         }
@@ -76,9 +76,10 @@ export const loadUserConversationsAction = (set: Function) => async () => {
           return {
             id: msg.id,
             content: msg.content,
-            role: msg.role as 'user' | 'assistant',
+            role: msg.role as 'user' | 'assistant' | 'system',
             model,
-            timestamp: new Date(msg.created_at),
+            createdAt: msg.created_at,
+            metadata: msg.metadata,
           };
         }) || [];
         
@@ -92,8 +93,8 @@ export const loadUserConversationsAction = (set: Function) => async () => {
           id: conv.id,
           title: conv.title,
           messages: formattedMessages,
-          createdAt: new Date(conv.created_at),
-          updatedAt: new Date(conv.updated_at),
+          createdAt: conv.created_at,
+          updatedAt: conv.updated_at,
           contextSummary,
         };
       })

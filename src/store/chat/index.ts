@@ -2,9 +2,8 @@
 import { create } from 'zustand';
 import { v4 as uuidv4 } from 'uuid';
 import { DEFAULT_MODEL } from '@/constants';
-import { Conversation, Message } from '@/types';
+import { Conversation } from '@/types';
 import { ChatStore } from './types';
-import { createMessageSlice, addMessageAction, selectModelAction, generateResponseAction } from './messageActions';
 
 // Import all action creators
 import { 
@@ -15,6 +14,13 @@ import {
 } from './conversationActions';
 
 import { loadUserConversationsAction } from './dataActions';
+
+import {
+  addMessageAction,
+  selectModelAction,
+  generateResponseAction,
+  createMessageSlice
+} from './messageActions';
 
 // Create an initial conversation
 const initialConversation: Conversation = {

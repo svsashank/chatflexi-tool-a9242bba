@@ -12,6 +12,11 @@ export interface ChatState {
   user: User | null; // Add user property for authentication
 }
 
+export interface MessageSlice {
+  sendMessage: (content: string) => Promise<void>;
+  regenerateMessage: () => Promise<void>;
+}
+
 export interface ChatStoreActions {
   createConversation: () => Promise<void>;
   setCurrentConversation: (id: string) => void;
@@ -21,8 +26,6 @@ export interface ChatStoreActions {
   generateResponse: () => Promise<void>;
   loadUserConversations: () => Promise<void>;
   resetConversations: () => void;
-  sendMessage: (content: string) => Promise<void>;
-  regenerateMessage: () => Promise<void>;
 }
 
-export type ChatStore = ChatState & ChatStoreActions;
+export type ChatStore = ChatState & ChatStoreActions & MessageSlice;

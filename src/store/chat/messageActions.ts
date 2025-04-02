@@ -1,15 +1,11 @@
 
 import { StateCreator } from 'zustand';
 import { v4 as uuidv4 } from 'uuid';
-import { ChatState } from './types';
+import { ChatState, MessageSlice } from './types';
 import { sendMessageToLLM } from '@/services/llmService';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
-
-export interface MessageSlice {
-  sendMessage: (content: string) => Promise<void>;
-  regenerateMessage: () => Promise<void>;
-}
+import { Message } from '@/types';
 
 // Export these actions so they can be imported in the store index file
 export const addMessageAction = (set: any, get: any) => async (content: string) => {
@@ -59,7 +55,7 @@ export const createMessageSlice: StateCreator<ChatState, [], [], MessageSlice> =
       return;
     }
 
-    const userMessage = {
+    const userMessage: Message = {
       id: uuidv4(),
       role: 'user',
       content: content,
@@ -69,7 +65,7 @@ export const createMessageSlice: StateCreator<ChatState, [], [], MessageSlice> =
     
     try {
       // Add user message to state
-      set(state => ({
+      set((state: ChatState) => ({
         ...state,
         messages: [...state.messages, userMessage],
         isProcessing: true,
@@ -117,7 +113,7 @@ export const createMessageSlice: StateCreator<ChatState, [], [], MessageSlice> =
       );
 
       // Create AI message 
-      const aiMessage = {
+      const aiMessage: Message = {
         id: uuidv4(),
         role: 'assistant',
         content: responseContent,
@@ -130,7 +126,7 @@ export const createMessageSlice: StateCreator<ChatState, [], [], MessageSlice> =
       };
 
       // Update state with AI response
-      set(state => ({
+      set((state: ChatState) => ({
         ...state,
         messages: [...state.messages, aiMessage],
         isProcessing: false,
@@ -170,7 +166,7 @@ export const createMessageSlice: StateCreator<ChatState, [], [], MessageSlice> =
       }
     } catch (error) {
       console.error("LLM service error:", error);
-      set(state => ({
+      set((state: ChatState) => ({
         ...state,
         isProcessing: false
       }));
@@ -216,7 +212,11 @@ export const createMessageSlice: StateCreator<ChatState, [], [], MessageSlice> =
     }
 
     // Find the last AI message
-    const lastAiMessageIndex = messages.findLastIndex(msg => msg.role === 'assistant');
+    const lastAiMessageIndex = messages.findIndex((msg, index, arr) => {
+      // Start from the end and find the first assistant message
+      const reverseIndex = arr.length - 1 - index;
+      return reverseIndex >= 0 && arr[reverseIndex].role === 'assistant';
+    });
 
     if (lastAiMessageIndex === -1) {
       toast({
@@ -242,7 +242,7 @@ export const createMessageSlice: StateCreator<ChatState, [], [], MessageSlice> =
     // Remove the last AI message
     const updatedMessages = messages.slice(0, lastAiMessageIndex);
 
-    set(state => ({
+    set((state: ChatState) => ({
       ...state,
       messages: updatedMessages,
       isProcessing: true,
@@ -258,7 +258,7 @@ export const createMessageSlice: StateCreator<ChatState, [], [], MessageSlice> =
       );
 
       // Create AI message
-      const aiMessage = {
+      const aiMessage: Message = {
         id: uuidv4(),
         role: 'assistant',
         content: responseContent,
@@ -270,7 +270,7 @@ export const createMessageSlice: StateCreator<ChatState, [], [], MessageSlice> =
       };
 
       // Update state with AI response
-      set(state => ({
+      set((state: ChatState) => ({
         ...state,
         messages: [...state.messages, aiMessage],
         isProcessing: false,
@@ -310,7 +310,7 @@ export const createMessageSlice: StateCreator<ChatState, [], [], MessageSlice> =
       }
     } catch (error) {
       console.error("LLM service error:", error);
-      set(state => ({
+      set((state: ChatState) => ({
         ...state,
         isProcessing: false
       }));

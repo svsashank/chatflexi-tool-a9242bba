@@ -11,8 +11,8 @@ export const createConversationAction = (set: Function, get: () => ChatStore) =>
       id: uuidv4(),
       title: 'New Conversation',
       messages: [],
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
       contextSummary: '',
     };
 
@@ -29,8 +29,8 @@ export const createConversationAction = (set: Function, get: () => ChatStore) =>
           id: newConversation.id,
           user_id: session.user.id,
           title: newConversation.title,
-          created_at: newConversation.createdAt.toISOString(),
-          updated_at: newConversation.updatedAt.toISOString()
+          created_at: newConversation.createdAt,
+          updated_at: newConversation.updatedAt
         });
         
       if (error) {
@@ -135,8 +135,8 @@ export const resetConversationsAction = (set: Function) => () => {
     id: uuidv4(),
     title: 'New Conversation',
     messages: [],
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
     contextSummary: '',
   };
   
