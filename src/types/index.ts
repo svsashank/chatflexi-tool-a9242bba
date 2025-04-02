@@ -1,43 +1,40 @@
 
+// Define model details
+export interface AIModel {
+  id: string;
+  name: string;
+  provider: string;
+  description?: string;
+  capabilities?: string[];
+  limitations?: string[];
+  contextLength?: number;
+  apiSupported?: boolean;
+}
 
 export interface Message {
   id: string;
+  role: 'user' | 'assistant' | 'system';
   content: string;
-  role: 'user' | 'assistant';
   model: AIModel;
-  timestamp: Date;
+  createdAt: string;
+  metadata?: {
+    usageDisplay?: string;
+    [key: string]: any;
+  };
 }
 
 export interface Conversation {
   id: string;
   title: string;
-  messages: Message[];
-  createdAt: Date;
-  updatedAt: Date;
-  contextSummary: string; // Added for improved context tracking
-  userId?: string; // Added to link conversations to users
+  createdAt: string;
+  updatedAt: string;
 }
 
-export type AIModel = {
-  id: string;
-  name: string;
-  provider: string;
-  description: string;
-  capabilities: Array<'text' | 'images' | 'code' | 'audio'>;
-  avatarColor: string;
+export interface UsageStats {
+  totalTokens: number;
+  totalComputePoints: number;
+  byModel: Record<string, {
+    tokens: number;
+    computePoints: number;
+  }>;
 }
-
-export interface ChatState {
-  conversations: Conversation[];
-  currentConversationId: string | null;
-  selectedModel: AIModel;
-  isLoading: boolean;
-}
-
-export interface UserProfile {
-  id: string;
-  name: string;
-  email: string;
-  avatarUrl?: string;
-}
-

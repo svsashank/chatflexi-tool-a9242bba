@@ -17,5 +17,13 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     storageKey: 'supabase.auth.token',
     detectSessionInUrl: true,
     flowType: 'implicit',
+  },
+  global: {
+    headers: {
+      // Pass the auth token to every request if available
+      ...(typeof window !== 'undefined' && localStorage.getItem('supabase.auth.token') 
+          ? { Authorization: `Bearer ${JSON.parse(localStorage.getItem('supabase.auth.token') || '{}')?.access_token}` } 
+          : {})
+    }
   }
 });

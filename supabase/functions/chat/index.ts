@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 
@@ -26,20 +25,66 @@ serve(async (req) => {
     const systemPrompt = generateSystemPrompt(messageHistory);
     
     // Format varies by provider
+    let response;
     switch(model.provider.toLowerCase()) {
       case 'openai':
-        return await handleOpenAI(messageHistory, content, model.id, systemPrompt);
+        response = await handleOpenAI(messageHistory, content, model.id, systemPrompt);
+        break;
       case 'anthropic':
-        return await handleAnthropic(messageHistory, content, model.id, systemPrompt);
+        response = await handleAnthropic(messageHistory, content, model.id, systemPrompt);
+        break;
       case 'google':
-        return await handleGoogle(messageHistory, content, model.id, systemPrompt);
+        response = await handleGoogle(messageHistory, content, model.id, systemPrompt);
+        break;
       case 'xai':
-        return await handleXAI(messageHistory, content, model.id, systemPrompt);
+        response = await handleXAI(messageHistory, content, model.id, systemPrompt);
+        break;
       case 'krutrim':
-        return await handleKrutrim(messageHistory, content, model.id, systemPrompt);
+        response = await handleKrutrim(messageHistory, content, model.id, systemPrompt);
+        break;
       default:
         throw new Error(`Provider ${model.provider} not supported`);
     }
+    
+    // Track token usage and compute points if we have user authentication
+    const authHeader = req.headers.get('Authorization');
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      try {
+        const token = authHeader.substring(7);
+        const userId = await verifyAndGetUserId(token);
+        
+        if (userId) {
+          // Estimate tokens used (input + output)
+          // This is a simple estimation - different models count tokens differently
+          const inputTokens = estimateTokenCount(content);
+          const outputTokens = estimateTokenCount(response.content);
+          const totalTokens = inputTokens + outputTokens;
+          
+          // Get point rate for this model
+          const pointRate = await getComputePointRate(model.id);
+          const computePoints = totalTokens * pointRate;
+          
+          // Log usage to database
+          await logUsage(userId, model.id, totalTokens, computePoints);
+          
+          // Add usage info to response
+          response.usage = {
+            tokens: totalTokens,
+            computePoints: computePoints,
+            pointRate: pointRate,
+            model: model.id
+          };
+        }
+      } catch (error) {
+        console.error("Error tracking usage:", error);
+        // Continue with the response even if tracking fails
+      }
+    }
+    
+    return new Response(
+      JSON.stringify(response),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   } catch (error) {
     console.error(`Error in chat function:`, error);
     return new Response(
@@ -51,6 +96,126 @@ serve(async (req) => {
     );
   }
 });
+
+// Verify JWT token and extract user ID
+async function verifyAndGetUserId(token) {
+  try {
+    // This is a simple JWT verification
+    // In production, you would use a proper JWT library
+    const tokenParts = token.split('.');
+    if (tokenParts.length !== 3) return null;
+    
+    const payload = JSON.parse(atob(tokenParts[1]));
+    return payload.sub; // This should be the user ID in Supabase JWTs
+  } catch (error) {
+    console.error("Error verifying token:", error);
+    return null;
+  }
+}
+
+// Get compute point rate for a specific model
+async function getComputePointRate(modelId) {
+  try {
+    // Create Supabase admin client for database operations
+    const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+      console.warn("Supabase credentials missing, using default point rate");
+      return getDefaultPointRate(modelId);
+    }
+    
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/compute_points_config?model=eq.${encodeURIComponent(modelId)}`, {
+      headers: {
+        'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        'apikey': SUPABASE_SERVICE_ROLE_KEY,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      console.warn(`Error fetching point rate for ${modelId}, using default`);
+      return getDefaultPointRate(modelId);
+    }
+    
+    const data = await response.json();
+    if (data && data.length > 0) {
+      return parseFloat(data[0].points_per_token);
+    }
+    
+    // If model not found in config, use default
+    return getDefaultPointRate(modelId);
+  } catch (error) {
+    console.error("Error getting compute point rate:", error);
+    return getDefaultPointRate(modelId);
+  }
+}
+
+// Get default point rate based on model type
+function getDefaultPointRate(modelId) {
+  const modelLower = modelId.toLowerCase();
+  
+  // Default rates based on model families
+  if (modelLower.includes('gpt-4')) return 1.3;
+  if (modelLower.includes('gpt-3.5')) return 0.37;
+  if (modelLower.includes('claude-3-opus')) return 9.36;
+  if (modelLower.includes('claude-3-sonnet')) return 1.87;
+  if (modelLower.includes('gemini')) return 0.65;
+  if (modelLower.includes('deepseek')) return 0.07;
+  
+  // Generic default
+  return 0.5;
+}
+
+// Log usage to database
+async function logUsage(userId, modelId, tokensConsumed, computePoints) {
+  try {
+    // Create Supabase admin client for database operations
+    const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+      console.error("Supabase credentials missing, cannot log usage");
+      return;
+    }
+    
+    // Insert usage record
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/compute_usage`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        'apikey': SUPABASE_SERVICE_ROLE_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify({
+        user_id: userId,
+        model: modelId,
+        tokens_consumed: tokensConsumed,
+        compute_points: computePoints
+      })
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Error logging usage: ${response.status} - ${errorText}`);
+    } else {
+      console.log(`Successfully logged usage for user ${userId}`);
+    }
+  } catch (error) {
+    console.error("Error logging usage:", error);
+  }
+}
+
+// Estimate token count for a string
+// This is a very simple estimation, not accurate for all models
+function estimateTokenCount(text) {
+  if (!text) return 0;
+  
+  // Simple estimation: ~4 chars per token for English text
+  // This varies by model and language
+  return Math.ceil(text.length / 4);
+}
 
 // Generate a system prompt based on conversation context
 function generateSystemPrompt(messageHistory) {
@@ -553,4 +718,3 @@ async function handleKrutrim(messageHistory, content, modelId, systemPrompt) {
     throw error;
   }
 }
-

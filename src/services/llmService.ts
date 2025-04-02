@@ -31,12 +31,32 @@ const formatMessageHistory = (messages: Message[]) => {
   });
 };
 
+// Interface for usage information
+interface UsageInfo {
+  tokens: number;
+  computePoints: number;
+  pointRate: number;
+  model: string;
+}
+
+// Create a formatted usage display
+const formatUsageDisplay = (usage: UsageInfo): string => {
+  return `
+╭───────── Usage Statistics ─────────╮
+│ Model: ${usage.model.padEnd(25)} │
+│ Tokens Used: ${usage.tokens.toString().padEnd(20)} │
+│ Rate: ${usage.pointRate.toFixed(4).padEnd(24)} pts/token │
+│ Compute Points: ${usage.computePoints.toFixed(2).padEnd(17)} │
+╰──────────────────────────────────╯
+`;
+};
+
 // Sends a message to the specified model via Supabase Edge Function
 export const sendMessageToLLM = async (
   content: string,
   model: AIModel,
   conversationHistory: Message[]
-): Promise<string> => {
+): Promise<{ content: string; usage?: string }> => {
   try {
     // Format conversation history with better context preservation
     const messageHistory = formatMessageHistory(conversationHistory);
@@ -52,15 +72,30 @@ export const sendMessageToLLM = async (
     
     if (error) {
       console.error(`Error with ${model.provider} API:`, error);
-      return `Error: ${error.message || 'Failed to get response from model'}`;
+      return { 
+        content: `Error: ${error.message || 'Failed to get response from model'}`
+      };
     }
     
-    // For DeepSeek models, preserve the thinking tags in the response
-    // For other models, return the response as-is
-    return data.content;
+    // Extract content and usage information
+    const responseContent = data.content;
+    let usageDisplay: string | undefined = undefined;
+    
+    // Format usage information if available
+    if (data.usage) {
+      usageDisplay = formatUsageDisplay(data.usage);
+    }
+    
+    // Return content and usage display
+    return { 
+      content: responseContent,
+      usage: usageDisplay
+    };
   } catch (error: any) {
     console.error(`Error with ${model.provider} API:`, error);
-    return `Error: ${error.message || 'Failed to get response from model'}`;
+    return { 
+      content: `Error: ${error.message || 'Failed to get response from model'}`
+    };
   }
 };
 
