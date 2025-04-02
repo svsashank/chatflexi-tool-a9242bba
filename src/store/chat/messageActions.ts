@@ -1,3 +1,4 @@
+
 import { StateCreator } from 'zustand';
 import { v4 as uuidv4 } from 'uuid';
 import { ChatState } from './types';
@@ -9,6 +10,21 @@ export interface MessageSlice {
   sendMessage: (content: string) => Promise<void>;
   regenerateMessage: () => Promise<void>;
 }
+
+// Export these actions so they can be imported in the store index file
+export const addMessageAction = (set: any, get: any) => async (content: string) => {
+  // This is an alias for sendMessage
+  return get().sendMessage(content);
+};
+
+export const selectModelAction = (set: any) => (model: any) => {
+  set({ selectedModel: model });
+};
+
+export const generateResponseAction = (set: any, get: any) => async () => {
+  // This is an alias for regenerateMessage
+  return get().regenerateMessage();
+};
 
 export const createMessageSlice: StateCreator<ChatState, [], [], MessageSlice> = (set, get) => ({
   sendMessage: async (content) => {
@@ -54,6 +70,7 @@ export const createMessageSlice: StateCreator<ChatState, [], [], MessageSlice> =
     try {
       // Add user message to state
       set(state => ({
+        ...state,
         messages: [...state.messages, userMessage],
         isProcessing: true,
       }));
@@ -114,6 +131,7 @@ export const createMessageSlice: StateCreator<ChatState, [], [], MessageSlice> =
 
       // Update state with AI response
       set(state => ({
+        ...state,
         messages: [...state.messages, aiMessage],
         isProcessing: false,
       }));
@@ -152,7 +170,10 @@ export const createMessageSlice: StateCreator<ChatState, [], [], MessageSlice> =
       }
     } catch (error) {
       console.error("LLM service error:", error);
-      set({ isProcessing: false });
+      set(state => ({
+        ...state,
+        isProcessing: false
+      }));
       toast({
         title: "Error",
         description: "Failed to get response from model.",
@@ -218,13 +239,14 @@ export const createMessageSlice: StateCreator<ChatState, [], [], MessageSlice> =
       return;
     }
 
-    // Remove the last AI message and the last user message
-    const updatedMessages = messages.slice(0, lastAiMessageIndex - 1);
+    // Remove the last AI message
+    const updatedMessages = messages.slice(0, lastAiMessageIndex);
 
-    set({
+    set(state => ({
+      ...state,
       messages: updatedMessages,
       isProcessing: true,
-    });
+    }));
 
     try {
       // Generate AI response
@@ -232,7 +254,7 @@ export const createMessageSlice: StateCreator<ChatState, [], [], MessageSlice> =
       const { content: responseContent, usage } = await sendMessageToLLM(
         lastUserMessage.content,
         model,
-        [...updatedMessages, lastUserMessage]
+        [...updatedMessages]
       );
 
       // Create AI message
@@ -249,6 +271,7 @@ export const createMessageSlice: StateCreator<ChatState, [], [], MessageSlice> =
 
       // Update state with AI response
       set(state => ({
+        ...state,
         messages: [...state.messages, aiMessage],
         isProcessing: false,
       }));
@@ -287,7 +310,10 @@ export const createMessageSlice: StateCreator<ChatState, [], [], MessageSlice> =
       }
     } catch (error) {
       console.error("LLM service error:", error);
-      set({ isProcessing: false });
+      set(state => ({
+        ...state,
+        isProcessing: false
+      }));
       toast({
         title: "Error",
         description: "Failed to get response from model.",

@@ -2,8 +2,9 @@
 import { create } from 'zustand';
 import { v4 as uuidv4 } from 'uuid';
 import { DEFAULT_MODEL } from '@/constants';
-import { Conversation } from '@/types';
+import { Conversation, Message } from '@/types';
 import { ChatStore } from './types';
+import { createMessageSlice, addMessageAction, selectModelAction, generateResponseAction } from './messageActions';
 
 // Import all action creators
 import { 
@@ -13,12 +14,6 @@ import {
   resetConversationsAction
 } from './conversationActions';
 
-import {
-  addMessageAction,
-  selectModelAction,
-  generateResponseAction
-} from './messageActions';
-
 import { loadUserConversationsAction } from './dataActions';
 
 // Create an initial conversation
@@ -26,9 +21,8 @@ const initialConversation: Conversation = {
   id: uuidv4(),
   title: 'New Conversation',
   messages: [],
-  createdAt: new Date(),
-  updatedAt: new Date(),
-  contextSummary: '',
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
 };
 
 // Create the store
@@ -38,6 +32,9 @@ const useChatStore = create<ChatStore>((set, get) => ({
   currentConversationId: initialConversation.id,
   selectedModel: DEFAULT_MODEL,
   isLoading: false,
+  isProcessing: false,
+  messages: [],
+  user: null,
 
   // Actions
   createConversation: createConversationAction(set, get),
@@ -48,6 +45,7 @@ const useChatStore = create<ChatStore>((set, get) => ({
   selectModel: selectModelAction(set),
   generateResponse: generateResponseAction(set, get),
   loadUserConversations: loadUserConversationsAction(set),
+  ...createMessageSlice(set, get)
 }));
 
 export default useChatStore;

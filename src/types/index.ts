@@ -9,6 +9,7 @@ export interface AIModel {
   limitations?: string[];
   contextLength?: number;
   apiSupported?: boolean;
+  avatarColor?: string; // Add avatar color for UI representation
 }
 
 export interface Message {
@@ -28,6 +29,8 @@ export interface Conversation {
   title: string;
   createdAt: string;
   updatedAt: string;
+  messages: Message[]; // Add messages array to the Conversation type
+  contextSummary?: string; // Make this optional
 }
 
 export interface UsageStats {
