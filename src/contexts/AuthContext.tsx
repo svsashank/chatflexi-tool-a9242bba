@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
@@ -22,39 +22,49 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
-  const { createConversation, loadUserConversations, conversations } = useChatStore();
+  const { createConversation, loadUserConversations, resetConversations } = useChatStore();
+  
+  // Use a ref to track if conversations have been initialized
+  const conversationsInitialized = useRef(false);
 
   useEffect(() => {
+    console.log("Auth provider initializing");
+    
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      async (event, newSession) => {
         console.log("Auth state change event:", event);
-        setSession(session);
-        setUser(session?.user ?? null);
         
-        if (event === 'SIGNED_IN' && session) {
+        // Always update session and user state
+        setSession(newSession);
+        setUser(newSession?.user ?? null);
+        
+        if (event === 'SIGNED_IN' && newSession) {
           toast({
             title: "Signed in successfully",
-            description: `Welcome${session.user?.user_metadata?.name ? `, ${session.user.user_metadata.name}` : ''}!`,
+            description: `Welcome${newSession.user?.user_metadata?.name ? `, ${newSession.user.user_metadata.name}` : ''}!`,
           });
           
-          // Load user conversations after successful sign in
-          // Using setTimeout to avoid potential deadlocks with Supabase auth
-          setTimeout(async () => {
-            try {
-              console.log("Auth context: Loading conversations after sign in");
-              await loadUserConversations();
-              
-              // Create a new conversation if none were loaded
-              const { conversations } = useChatStore.getState();
-              if (conversations.length === 0) {
-                console.log("No conversations found after login, creating a new one");
-                await createConversation();
+          // Defer loading conversations to avoid potential deadlocks
+          if (!conversationsInitialized.current) {
+            console.log("Setting timeout to initialize conversations after sign in");
+            setTimeout(async () => {
+              try {
+                console.log("Auth context: Loading conversations after sign in");
+                await loadUserConversations();
+                
+                // Create a new conversation if none were loaded
+                const { conversations } = useChatStore.getState();
+                if (conversations.length === 0) {
+                  console.log("No conversations found after login, creating a new one");
+                  await createConversation();
+                }
+                conversationsInitialized.current = true;
+              } catch (error) {
+                console.error("Error loading conversations after sign in:", error);
               }
-            } catch (error) {
-              console.error("Error loading conversations after sign in:", error);
-            }
-          }, 0);
+            }, 0);
+          }
         }
         
         if (event === 'SIGNED_OUT') {
@@ -63,26 +73,63 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             description: "Come back soon!",
           });
           
-          // Reset the conversations state and create a new local conversation when signing out
+          // Reset conversations state and create a new local conversation
           setTimeout(() => {
-            const store = useChatStore.getState();
-            // Clear existing conversations and create a fresh one for non-authenticated use
-            store.resetConversations();
+            console.log("Resetting conversations after sign out");
+            resetConversations();
             createConversation();
+            conversationsInitialized.current = false;
           }, 0);
         }
       }
     );
 
     // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+    const checkExistingSession = async () => {
+      try {
+        const { data: { session: existingSession } } = await supabase.auth.getSession();
+        console.log("Existing session check:", existingSession ? "Found session" : "No session");
+        
+        setSession(existingSession);
+        setUser(existingSession?.user ?? null);
+        
+        // Only initialize conversations once
+        if (existingSession?.user && !conversationsInitialized.current) {
+          console.log("Initializing conversations from existing session");
+          try {
+            await loadUserConversations();
+            
+            // Create a new conversation if none were loaded
+            const { conversations } = useChatStore.getState();
+            if (conversations.length === 0) {
+              console.log("No conversations found for existing session, creating a new one");
+              await createConversation();
+            }
+            conversationsInitialized.current = true;
+          } catch (error) {
+            console.error("Error initializing conversations from existing session:", error);
+          }
+        } else if (!existingSession && !conversationsInitialized.current) {
+          // For non-authenticated users, create a local conversation
+          console.log("No session, creating local conversation");
+          createConversation();
+          conversationsInitialized.current = true;
+        }
+        
+        setLoading(false);
+      } catch (error) {
+        console.error("Error checking existing session:", error);
+        setLoading(false);
+      }
+    };
+    
+    checkExistingSession();
 
-    return () => subscription.unsubscribe();
-  }, [toast]);
+    return () => {
+      console.log("Cleaning up auth subscription");
+      subscription.unsubscribe();
+    };
+  }, [toast, loadUserConversations, createConversation, resetConversations]);
 
   const signIn = async (email: string, password: string) => {
     try {

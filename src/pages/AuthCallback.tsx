@@ -2,12 +2,10 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { useChatStore } from '@/store';
 import { toast } from '@/components/ui/use-toast';
 
 const AuthCallback = () => {
   const navigate = useNavigate();
-  const { loadUserConversations, createConversation } = useChatStore();
 
   useEffect(() => {
     // Handle the OAuth callback
@@ -27,26 +25,9 @@ const AuthCallback = () => {
         }
         
         if (data.session) {
-          console.log("Auth callback successful, loading conversations");
-          try {
-            // First, reset the conversation state to clear any existing unauthenticated conversations
-            useChatStore.getState().resetConversations();
-            
-            // Then load user's conversations after successful authentication
-            await loadUserConversations();
-            
-            // Create a new conversation if none were loaded
-            if (useChatStore.getState().conversations.length === 0) {
-              await createConversation();
-            }
-            
-            navigate('/', { replace: true });
-          } catch (err) {
-            console.error('Error loading conversations:', err);
-            // Still navigate to home even if conversation loading fails
-            // The ProtectedRoute will try again
-            navigate('/', { replace: true });
-          }
+          console.log("Auth callback successful, navigating to home");
+          // We no longer need to initialize conversations here since AuthContext handles that
+          navigate('/', { replace: true });
         } else {
           navigate('/auth', { replace: true });
         }
@@ -62,7 +43,7 @@ const AuthCallback = () => {
     };
 
     handleAuthCallback();
-  }, [navigate, loadUserConversations, createConversation]);
+  }, [navigate]);
 
   return (
     <div className="flex h-screen w-full items-center justify-center">
