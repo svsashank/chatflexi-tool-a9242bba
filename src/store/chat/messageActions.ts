@@ -22,7 +22,7 @@ export const generateResponseAction = (set: any, get: any) => async () => {
 };
 
 // Modified the function signature to match Zustand's StateCreator pattern
-// The third parameter is not used in this slice implementation
+// Removed the unused third parameter
 export const createMessageSlice: StateCreator<
   ChatState, 
   [], 
