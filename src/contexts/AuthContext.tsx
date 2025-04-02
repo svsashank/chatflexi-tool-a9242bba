@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -24,18 +23,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const { toast } = useToast();
   const { createConversation, loadUserConversations, resetConversations } = useChatStore();
   
-  // Use a ref to track if conversations have been initialized
   const conversationsInitialized = useRef(false);
 
   useEffect(() => {
     console.log("Auth provider initializing");
     
-    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
         console.log("Auth state change event:", event);
         
-        // Always update session and user state
         setSession(newSession);
         setUser(newSession?.user ?? null);
         
@@ -45,7 +41,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             description: `Welcome${newSession.user?.user_metadata?.name ? `, ${newSession.user.user_metadata.name}` : ''}!`,
           });
           
-          // Defer loading conversations to avoid potential deadlocks
           if (!conversationsInitialized.current) {
             console.log("Setting timeout to initialize conversations after sign in");
             setTimeout(async () => {
@@ -53,7 +48,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 console.log("Auth context: Loading conversations after sign in");
                 await loadUserConversations();
                 
-                // Create a new conversation if none were loaded
                 const { conversations } = useChatStore.getState();
                 if (conversations.length === 0) {
                   console.log("No conversations found after login, creating a new one");
@@ -73,7 +67,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             description: "Come back soon!",
           });
           
-          // Reset conversations state and create a new local conversation
           setTimeout(() => {
             console.log("Resetting conversations after sign out");
             resetConversations();
@@ -84,7 +77,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
     );
 
-    // THEN check for existing session
     const checkExistingSession = async () => {
       try {
         const { data: { session: existingSession } } = await supabase.auth.getSession();
@@ -93,13 +85,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setSession(existingSession);
         setUser(existingSession?.user ?? null);
         
-        // Only initialize conversations once
         if (existingSession?.user && !conversationsInitialized.current) {
           console.log("Initializing conversations from existing session");
           try {
             await loadUserConversations();
             
-            // Create a new conversation if none were loaded
             const { conversations } = useChatStore.getState();
             if (conversations.length === 0) {
               console.log("No conversations found for existing session, creating a new one");
@@ -110,7 +100,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             console.error("Error initializing conversations from existing session:", error);
           }
         } else if (!existingSession && !conversationsInitialized.current) {
-          // For non-authenticated users, create a local conversation
           console.log("No session, creating local conversation");
           createConversation();
           conversationsInitialized.current = true;

@@ -7,7 +7,10 @@ import { toast } from '@/components/ui/use-toast';
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
 
-  // We'll no longer handle conversation loading here since it's now centralized in AuthContext
+  // Add debugging to see if the auth context is working correctly
+  useEffect(() => {
+    console.log("ProtectedRoute - Auth state:", { user, loading });
+  }, [user, loading]);
 
   if (loading) {
     return (
@@ -18,9 +21,11 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   }
 
   if (!user) {
+    console.log("ProtectedRoute - No user, redirecting to /auth");
     return <Navigate to="/auth" replace />;
   }
 
+  console.log("ProtectedRoute - User authenticated, rendering protected content");
   return <>{children}</>;
 };
 
