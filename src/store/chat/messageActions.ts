@@ -1,4 +1,3 @@
-
 import { StateCreator } from 'zustand';
 import { v4 as uuidv4 } from 'uuid';
 import { ChatState, MessageSlice } from './types';
@@ -22,13 +21,13 @@ export const generateResponseAction = (set: any, get: any) => async () => {
   return get().regenerateMessage();
 };
 
-// Corrected function signature to match Zustand's StateCreator pattern with all 3 parameters
+// Corrected function signature to match Zustand's StateCreator pattern
 export const createMessageSlice: StateCreator<
   ChatState, 
   [], 
   [], 
   MessageSlice
-> = (set, get, _store) => ({
+> = (set, get) => ({
   sendMessage: async (content) => {
     // Add user message to state
     const currentConversationId = get().currentConversationId;

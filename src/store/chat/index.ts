@@ -51,7 +51,7 @@ const useChatStore = create<ChatStore>((set, get) => ({
   selectModel: selectModelAction(set),
   generateResponse: generateResponseAction(set, get),
   loadUserConversations: loadUserConversationsAction(set),
-  ...createMessageSlice(set, get, {}) // Providing empty object as third parameter
+  ...createMessageSlice(set, get) // Removing the third parameter that was causing the error
 }));
 
 export default useChatStore;
