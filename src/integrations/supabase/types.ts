@@ -33,6 +33,48 @@ export type Database = {
         }
         Relationships: []
       }
+      compute_points_config: {
+        Row: {
+          model: string
+          points_per_token: number
+        }
+        Insert: {
+          model: string
+          points_per_token: number
+        }
+        Update: {
+          model?: string
+          points_per_token?: number
+        }
+        Relationships: []
+      }
+      compute_usage: {
+        Row: {
+          compute_points: number
+          created_at: string
+          id: string
+          model: string
+          tokens_consumed: number
+          user_id: string
+        }
+        Insert: {
+          compute_points: number
+          created_at?: string
+          id?: string
+          model: string
+          tokens_consumed: number
+          user_id: string
+        }
+        Update: {
+          compute_points?: number
+          created_at?: string
+          id?: string
+          model?: string
+          tokens_consumed?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       conversation_messages: {
         Row: {
           content: string

@@ -19,4 +19,9 @@ export interface ChatStoreActions {
   resetConversations: () => void;
 }
 
-export type ChatStore = ChatState & ChatStoreActions;
+export interface MessageSlice {
+  sendMessage: (content: string) => Promise<void>;
+  regenerateMessage: () => Promise<void>;
+}
+
+export type ChatStore = ChatState & ChatStoreActions & MessageSlice;
