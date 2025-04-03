@@ -17,7 +17,8 @@ import {
   addMessageAction,
   selectModelAction,
   generateResponseAction,
-  createMessageSlice
+  createSendMessageAction,
+  createRegenerateMessageAction
 } from './messageActions';
 
 import { loadUserConversationsAction } from './dataActions';
@@ -32,26 +33,36 @@ const initialConversation: Conversation = {
   contextSummary: '',
 };
 
-// Create the store
-const useChatStore = create<ChatStore>((set, get) => ({
+// Create the store with a simpler approach to avoid TypeScript errors
+const useChatStore = create<ChatStore>((set, get) => {
   // Initial state
-  conversations: [initialConversation],
-  currentConversationId: initialConversation.id,
-  selectedModel: DEFAULT_MODEL,
-  isLoading: false,
+  const state = {
+    conversations: [initialConversation],
+    currentConversationId: initialConversation.id,
+    selectedModel: DEFAULT_MODEL,
+    isLoading: false,
+  };
 
-  // Actions
-  createConversation: createConversationAction(set, get),
-  setCurrentConversation: setCurrentConversationAction(set, get),
-  deleteConversation: deleteConversationAction(set, get),
-  resetConversations: resetConversationsAction(set),
-  addMessage: addMessageAction(set, get),
-  selectModel: selectModelAction(set),
-  generateResponse: generateResponseAction(set, get),
-  loadUserConversations: loadUserConversationsAction(set),
-  
-  // Include the message slice with correct parameters
-  ...createMessageSlice(set, get)
-}));
+  // Create all actions
+  const actions = {
+    createConversation: createConversationAction(set, get),
+    setCurrentConversation: setCurrentConversationAction(set, get),
+    deleteConversation: deleteConversationAction(set, get),
+    resetConversations: resetConversationsAction(set),
+    addMessage: addMessageAction(set, get),
+    selectModel: selectModelAction(set),
+    generateResponse: generateResponseAction(set, get),
+    loadUserConversations: loadUserConversationsAction(set),
+    
+    // Message slice actions
+    sendMessage: createSendMessageAction(set, get),
+    regenerateMessage: createRegenerateMessageAction(set, get)
+  };
+
+  return {
+    ...state,
+    ...actions
+  };
+});
 
 export default useChatStore;
