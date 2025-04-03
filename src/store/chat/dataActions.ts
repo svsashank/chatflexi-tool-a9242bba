@@ -58,8 +58,8 @@ export const loadUserConversationsAction = (set: Function) => async () => {
             id: conv.id,
             title: conv.title,
             messages: [],
-            createdAt: conv.created_at,
-            updatedAt: conv.updated_at,
+            createdAt: new Date(conv.created_at),
+            updatedAt: new Date(conv.updated_at),
             contextSummary: '',
           };
         }
@@ -76,11 +76,9 @@ export const loadUserConversationsAction = (set: Function) => async () => {
           return {
             id: msg.id,
             content: msg.content,
-            role: msg.role as 'user' | 'assistant' | 'system',
+            role: msg.role as 'user' | 'assistant',
             model,
-            createdAt: msg.created_at,
-            // The database doesn't have metadata field, so create an empty object
-            metadata: {} // Providing default empty object for metadata
+            timestamp: new Date(msg.created_at),
           };
         }) || [];
         
@@ -94,8 +92,8 @@ export const loadUserConversationsAction = (set: Function) => async () => {
           id: conv.id,
           title: conv.title,
           messages: formattedMessages,
-          createdAt: conv.created_at,
-          updatedAt: conv.updated_at,
+          createdAt: new Date(conv.created_at),
+          updatedAt: new Date(conv.updated_at),
           contextSummary,
         };
       })

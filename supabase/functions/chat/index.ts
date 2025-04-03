@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 
@@ -25,66 +26,20 @@ serve(async (req) => {
     const systemPrompt = generateSystemPrompt(messageHistory);
     
     // Format varies by provider
-    let response;
     switch(model.provider.toLowerCase()) {
       case 'openai':
-        response = await handleOpenAI(messageHistory, content, model.id, systemPrompt);
-        break;
+        return await handleOpenAI(messageHistory, content, model.id, systemPrompt);
       case 'anthropic':
-        response = await handleAnthropic(messageHistory, content, model.id, systemPrompt);
-        break;
+        return await handleAnthropic(messageHistory, content, model.id, systemPrompt);
       case 'google':
-        response = await handleGoogle(messageHistory, content, model.id, systemPrompt);
-        break;
+        return await handleGoogle(messageHistory, content, model.id, systemPrompt);
       case 'xai':
-        response = await handleXAI(messageHistory, content, model.id, systemPrompt);
-        break;
+        return await handleXAI(messageHistory, content, model.id, systemPrompt);
       case 'krutrim':
-        response = await handleKrutrim(messageHistory, content, model.id, systemPrompt);
-        break;
+        return await handleKrutrim(messageHistory, content, model.id, systemPrompt);
       default:
         throw new Error(`Provider ${model.provider} not supported`);
     }
-    
-    // Track token usage and compute points if we have user authentication
-    const authHeader = req.headers.get('Authorization');
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      try {
-        const token = authHeader.substring(7);
-        const userId = await verifyAndGetUserId(token);
-        
-        if (userId) {
-          // Estimate tokens used (input + output)
-          // This is a simple estimation - different models count tokens differently
-          const inputTokens = estimateTokenCount(content);
-          const outputTokens = estimateTokenCount(response.content);
-          const totalTokens = inputTokens + outputTokens;
-          
-          // Get point rate for this model
-          const pointRate = await getComputePointRate(model.id);
-          const computePoints = totalTokens * pointRate;
-          
-          // Log usage to database
-          await logUsage(userId, model.id, totalTokens, computePoints);
-          
-          // Add usage info to response
-          response.usage = {
-            tokens: totalTokens,
-            computePoints: computePoints,
-            pointRate: pointRate,
-            model: model.id
-          };
-        }
-      } catch (error) {
-        console.error("Error tracking usage:", error);
-        // Continue with the response even if tracking fails
-      }
-    }
-    
-    return new Response(
-      JSON.stringify(response),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
   } catch (error) {
     console.error(`Error in chat function:`, error);
     return new Response(
@@ -96,126 +51,6 @@ serve(async (req) => {
     );
   }
 });
-
-// Verify JWT token and extract user ID
-async function verifyAndGetUserId(token) {
-  try {
-    // This is a simple JWT verification
-    // In production, you would use a proper JWT library
-    const tokenParts = token.split('.');
-    if (tokenParts.length !== 3) return null;
-    
-    const payload = JSON.parse(atob(tokenParts[1]));
-    return payload.sub; // This should be the user ID in Supabase JWTs
-  } catch (error) {
-    console.error("Error verifying token:", error);
-    return null;
-  }
-}
-
-// Get compute point rate for a specific model
-async function getComputePointRate(modelId) {
-  try {
-    // Create Supabase admin client for database operations
-    const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
-    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    
-    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-      console.warn("Supabase credentials missing, using default point rate");
-      return getDefaultPointRate(modelId);
-    }
-    
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/compute_points_config?model=eq.${encodeURIComponent(modelId)}`, {
-      headers: {
-        'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-        'apikey': SUPABASE_SERVICE_ROLE_KEY,
-        'Content-Type': 'application/json'
-      }
-    });
-    
-    if (!response.ok) {
-      console.warn(`Error fetching point rate for ${modelId}, using default`);
-      return getDefaultPointRate(modelId);
-    }
-    
-    const data = await response.json();
-    if (data && data.length > 0) {
-      return parseFloat(data[0].points_per_token);
-    }
-    
-    // If model not found in config, use default
-    return getDefaultPointRate(modelId);
-  } catch (error) {
-    console.error("Error getting compute point rate:", error);
-    return getDefaultPointRate(modelId);
-  }
-}
-
-// Get default point rate based on model type
-function getDefaultPointRate(modelId) {
-  const modelLower = modelId.toLowerCase();
-  
-  // Default rates based on model families
-  if (modelLower.includes('gpt-4')) return 1.3;
-  if (modelLower.includes('gpt-3.5')) return 0.37;
-  if (modelLower.includes('claude-3-opus')) return 9.36;
-  if (modelLower.includes('claude-3-sonnet')) return 1.87;
-  if (modelLower.includes('gemini')) return 0.65;
-  if (modelLower.includes('deepseek')) return 0.07;
-  
-  // Generic default
-  return 0.5;
-}
-
-// Log usage to database
-async function logUsage(userId, modelId, tokensConsumed, computePoints) {
-  try {
-    // Create Supabase admin client for database operations
-    const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
-    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    
-    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-      console.error("Supabase credentials missing, cannot log usage");
-      return;
-    }
-    
-    // Insert usage record
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/compute_usage`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-        'apikey': SUPABASE_SERVICE_ROLE_KEY,
-        'Content-Type': 'application/json',
-        'Prefer': 'return=minimal'
-      },
-      body: JSON.stringify({
-        user_id: userId,
-        model: modelId,
-        tokens_consumed: tokensConsumed,
-        compute_points: computePoints
-      })
-    });
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`Error logging usage: ${response.status} - ${errorText}`);
-    } else {
-      console.log(`Successfully logged usage for user ${userId}`);
-    }
-  } catch (error) {
-    console.error("Error logging usage:", error);
-  }
-}
-
-// Estimate token count for a string
-// This is a very simple estimation, not accurate for all models
-function estimateTokenCount(text) {
-  if (!text) return 0;
-  
-  // Simple estimation: ~4 chars per token for English text
-  // This varies by model and language
-  return Math.ceil(text.length / 4);
-}
 
 // Generate a system prompt based on conversation context
 function generateSystemPrompt(messageHistory) {
@@ -294,7 +129,6 @@ async function handleOpenAI(messageHistory, content, modelId, systemPrompt) {
     { role: 'system', content: systemPrompt },
     ...messageHistory.map(msg => ({
       role: msg.role,
-      // Only include the actual content, not any internal notes or system info
       content: msg.content
     })),
     { role: 'user', content }
@@ -332,7 +166,7 @@ async function handleOpenAI(messageHistory, content, modelId, systemPrompt) {
   );
 }
 
-// Anthropic (Claude) handler
+// Anthropic (Claude) handler - similar modifications for the remaining handlers...
 async function handleAnthropic(messageHistory, content, modelId, systemPrompt) {
   const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
   if (!ANTHROPIC_API_KEY) {
@@ -348,7 +182,6 @@ async function handleAnthropic(messageHistory, content, modelId, systemPrompt) {
     { role: 'user', content: `<instructions>${systemPrompt}</instructions>` },
     ...messageHistory.map(msg => ({
       role: msg.role === 'assistant' ? 'assistant' : 'user',
-      // Only include the actual content, not any internal notes or system info
       content: msg.content
     })),
     { role: 'user', content }
@@ -389,8 +222,6 @@ async function handleAnthropic(messageHistory, content, modelId, systemPrompt) {
       }
     }
     
-    // Parse JSON response
-    const data = JSON.parse(responseText);
     console.log(`Successfully received response from Anthropic`);
     console.log(`Response structure: ${JSON.stringify(Object.keys(data))}`);
     
@@ -429,13 +260,10 @@ async function handleGoogle(messageHistory, content, modelId, systemPrompt) {
       role: 'user',
       parts: [{ text: `System: ${systemPrompt}` }]
     },
-    // Add regular message history - filter out any internal thinking
+    // Add regular message history
     ...messageHistory.map(msg => ({
       role: msg.role,
-      parts: [{ 
-        // Only include the actual content, not any internal notes
-        text: msg.content 
-      }]
+      parts: [{ text: msg.content }]
     })),
     // Add the current message
     {
@@ -514,7 +342,6 @@ async function handleXAI(messageHistory, content, modelId, systemPrompt) {
     { role: 'system', content: systemPrompt },
     ...messageHistory.map(msg => ({
       role: msg.role,
-      // Only include the actual message content
       content: msg.content
     })),
     { role: 'user', content }
@@ -541,17 +368,7 @@ async function handleXAI(messageHistory, content, modelId, systemPrompt) {
     console.log(`xAI API response status: ${response.status}`);
     console.log(`xAI API response first 100 chars: ${responseText.substring(0, 100)}...`);
     
-    if (!response.ok) {
-      console.error(`xAI API error: ${response.status} - ${responseText}`);
-      try {
-        const error = JSON.parse(responseText);
-        throw new Error(`xAI API error: ${response.status} - ${error.error?.message || error.error || 'Unknown error'}`);
-      } catch (e) {
-        throw new Error(`xAI API error: ${response.status} - ${responseText}`);
-      }
-    }
-    
-    // Parse JSON response
+    // Try to parse the response as JSON to better handle errors
     let parsedResponse;
     try {
       parsedResponse = JSON.parse(responseText);
@@ -560,6 +377,20 @@ async function handleXAI(messageHistory, content, modelId, systemPrompt) {
     } catch (parseError) {
       console.error(`Failed to parse xAI response as JSON: ${responseText}`);
       throw new Error(`Invalid JSON response from xAI API: ${responseText.substring(0, 100)}...`);
+    }
+    
+    // Check for authentication errors
+    if (parsedResponse.code === 401 || !response.ok) {
+      if (parsedResponse.msg) {
+        // This captures the Chinese error message we saw in the logs
+        console.error(`xAI authentication error: ${parsedResponse.msg}`);
+        throw new Error(`xAI API authentication failed. Please check your API key and permissions. Error code: ${parsedResponse.code || response.status}`);
+      } else if (parsedResponse.error) {
+        console.error(`xAI API error: ${JSON.stringify(parsedResponse.error)}`);
+        throw new Error(`xAI API error: ${parsedResponse.error.message || 'Unknown error'}`);
+      } else {
+        throw new Error(`xAI API returned status ${response.status}: ${responseText.substring(0, 100)}`);
+      }
     }
     
     // Validate the expected response structure before trying to use it
@@ -588,7 +419,7 @@ async function handleXAI(messageHistory, content, modelId, systemPrompt) {
   }
 }
 
-// Krutrim API handler for DeepSeek-R1 models
+// Krutrim API handler for DeepSeek-R1
 async function handleKrutrim(messageHistory, content, modelId, systemPrompt) {
   const KRUTRIM_API_KEY = Deno.env.get('KRUTRIM_API_KEY');
   if (!KRUTRIM_API_KEY) {
@@ -597,60 +428,18 @@ async function handleKrutrim(messageHistory, content, modelId, systemPrompt) {
   
   console.log(`Processing request for Krutrim model ${modelId} with content: ${content.substring(0, 50)}...`);
   
-  // Clean message history to remove any <think> blocks or other internal notes
-  const cleanedHistory = messageHistory.map(msg => {
-    let cleanContent = msg.content;
-    
-    // Remove any content between <think> and </think> tags
-    cleanContent = cleanContent.replace(/<think>[\s\S]*?<\/think>/g, '');
-    
-    // Remove any system prompt text that might have been captured
-    if (cleanContent.includes("You are Krix, a helpful AI assistant")) {
-      cleanContent = cleanContent.replace(/You are Krix, a helpful AI assistant[^"]*/g, '');
-    }
-    
-    // Trim any whitespace
-    cleanContent = cleanContent.trim();
-    
-    return {
-      role: msg.role,
-      content: cleanContent
-    };
-  });
-  
-  // Filter out any empty messages after cleaning
-  const filteredHistory = cleanedHistory.filter(msg => msg.content.length > 0);
-  
   // Format messages for Krutrim API
   const formattedMessages = [
     { role: 'system', content: systemPrompt },
-    ...filteredHistory,
+    ...messageHistory.map(msg => ({
+      role: msg.role,
+      content: msg.content
+    })),
     { role: 'user', content }
   ];
 
   console.log(`Calling Krutrim API with model ${modelId}...`);
   console.log(`Number of messages: ${formattedMessages.length}`);
-  
-  // Map the model ID to the actual Krutrim model ID based on the specific model
-  let krutrimModelId;
-  
-  switch(modelId) {
-    case 'deepseek-r1':
-      krutrimModelId = "DeepSeek-R1";
-      break;
-    case 'deepseek-r1-llama-70b':
-      krutrimModelId = "DeepSeek-R1-Llama-70B";
-      break;
-    case 'deepseek-r1-llama-8b':
-      krutrimModelId = "DeepSeek-R1-Llama-8B";
-      break;
-    case 'deepseek-r1-qwen-14b':
-      krutrimModelId = "DeepSeek-R1-Qwen-14B";
-      break;
-    default:
-      krutrimModelId = "DeepSeek-R1"; // Default to DeepSeek-R1 if no match
-      console.log(`Unknown model ID ${modelId}, defaulting to DeepSeek-R1`);
-  }
   
   try {
     const response = await fetch('https://cloud.olakrutrim.com/v1/chat/completions', {
@@ -660,14 +449,14 @@ async function handleKrutrim(messageHistory, content, modelId, systemPrompt) {
         'Authorization': `Bearer ${KRUTRIM_API_KEY}`
       },
       body: JSON.stringify({
-        model: krutrimModelId, // Use the mapped model ID
+        model: "DeepSeek-R1", // Hardcoded as per requirement
         messages: formattedMessages,
         temperature: 0.7,
-        max_tokens: 25000, // High token limit as requested
+        max_tokens: 25000, // Increased from 1000 to 25000 as requested
       })
     });
     
-    // Capture the full response as text for better debugging
+    // Capture the full response as text first for better debugging
     const responseText = await response.text();
     console.log(`Krutrim API response status: ${response.status}`);
     console.log(`Krutrim API response first 100 chars: ${responseText.substring(0, 100)}...`);
@@ -682,7 +471,6 @@ async function handleKrutrim(messageHistory, content, modelId, systemPrompt) {
       }
     }
     
-    // Parse response text to JSON only once
     let parsedResponse;
     try {
       parsedResponse = JSON.parse(responseText);

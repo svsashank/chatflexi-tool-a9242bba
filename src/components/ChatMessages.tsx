@@ -5,7 +5,7 @@ import MessageItem from "./MessageItem";
 import { User, Hexagon } from "lucide-react";
 
 const ChatMessages = () => {
-  const { conversations, currentConversationId, isProcessing, messages } = useChatStore();
+  const { conversations, currentConversationId, isLoading } = useChatStore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const currentConversation = conversations.find(
@@ -15,7 +15,7 @@ const ChatMessages = () => {
   // Scroll to bottom when messages change or when loading state changes
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isProcessing]);
+  }, [currentConversation?.messages, isLoading]);
 
   if (!currentConversation) {
     return <div className="flex-1 overflow-y-auto p-4">No conversation selected</div>;
@@ -23,7 +23,7 @@ const ChatMessages = () => {
 
   return (
     <div className="flex-1 overflow-y-auto p-4 space-y-6">
-      {messages.length === 0 && !isProcessing ? (
+      {currentConversation.messages.length === 0 && !isLoading ? (
         <div className="h-full flex flex-col items-center justify-center text-center px-4 py-12">
           <div className="flex gap-2 mb-4">
             {[
@@ -54,11 +54,11 @@ const ChatMessages = () => {
         </div>
       ) : (
         <>
-          {messages.map((message) => (
+          {currentConversation.messages.map((message) => (
             <MessageItem key={message.id} message={message} />
           ))}
           
-          {isProcessing && (
+          {isLoading && (
             <div className="flex items-start gap-4 animate-fade-in">
               <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
                 <div className="relative">

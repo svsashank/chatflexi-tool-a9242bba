@@ -1,4 +1,3 @@
-
 // AI Models
 export const AI_MODELS = [
   {
@@ -14,30 +13,6 @@ export const AI_MODELS = [
     name: 'DeepSeek-R1',
     provider: 'krutrim',
     description: 'Krutrim\'s DeepSeek-R1 model with strong reasoning capabilities',
-    capabilities: ['text', 'code'] as Array<'text' | 'code'>,
-    avatarColor: '#6366f1', // Indigo color for Krutrim
-  },
-  {
-    id: 'deepseek-r1-llama-70b',
-    name: 'DeepSeek-R1 Llama 70B',
-    provider: 'krutrim',
-    description: 'Krutrim\'s DeepSeek-R1 Llama 70B model for advanced language tasks',
-    capabilities: ['text', 'code'] as Array<'text' | 'code'>,
-    avatarColor: '#6366f1', // Indigo color for Krutrim
-  },
-  {
-    id: 'deepseek-r1-llama-8b',
-    name: 'DeepSeek-R1 Llama 8B',
-    provider: 'krutrim',
-    description: 'Krutrim\'s DeepSeek-R1 Llama 8B model, efficient for faster responses',
-    capabilities: ['text', 'code'] as Array<'text' | 'code'>,
-    avatarColor: '#6366f1', // Indigo color for Krutrim
-  },
-  {
-    id: 'deepseek-r1-qwen-14b',
-    name: 'DeepSeek-R1 Qwen 14B',
-    provider: 'krutrim',
-    description: 'Krutrim\'s DeepSeek-R1 Qwen 14B model with balanced performance',
     capabilities: ['text', 'code'] as Array<'text' | 'code'>,
     avatarColor: '#6366f1', // Indigo color for Krutrim
   },

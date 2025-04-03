@@ -1,3 +1,4 @@
+
 import React, { useEffect } from "react";
 import { History, MessageSquare, Search, Plus, Trash2 } from "lucide-react";
 import { format } from "date-fns";
@@ -19,21 +20,7 @@ import { toast } from "@/components/ui/use-toast";
 const ConversationHistory = () => {
   const [searchQuery, setSearchQuery] = React.useState("");
   const [isOpen, setIsOpen] = React.useState(false);
-  
-  let authContext;
-  try {
-    authContext = useAuth();
-  } catch (error) {
-    console.error("Error using AuthContext:", error);
-    return (
-      <button className="flex items-center justify-center w-8 h-8 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/30">
-        <History size={18} />
-      </button>
-    );
-  }
-  
-  const { user } = authContext;
-  
+  const { user } = useAuth();
   const { 
     conversations, 
     currentConversationId, 
@@ -43,6 +30,7 @@ const ConversationHistory = () => {
     loadUserConversations
   } = useChatStore();
 
+  // If user is logged in but no conversations are loaded, load them
   useEffect(() => {
     if (user && conversations.length === 0) {
       console.log("ConversationHistory: No conversations found, loading from database");
@@ -63,6 +51,7 @@ const ConversationHistory = () => {
   const handleConversationSelect = async (id: string) => {
     console.log("Selecting conversation:", id);
     try {
+      // Verify the conversation exists before setting it
       const conversationExists = conversations.some(conv => conv.id === id);
       if (!conversationExists) {
         console.error("Conversation not found:", id);

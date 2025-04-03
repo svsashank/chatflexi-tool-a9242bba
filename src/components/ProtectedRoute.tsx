@@ -1,33 +1,50 @@
 
 import { useEffect } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useChatStore } from '@/store';
 import { toast } from '@/components/ui/use-toast';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const navigate = useNavigate();
-  
-  // Wrap authentication check in try/catch to handle errors gracefully
-  let authData;
-  try {
-    authData = useAuth();
-  } catch (error) {
-    console.error("ProtectedRoute - Error accessing AuthContext:", error);
-    return <Navigate to="/auth" replace />;
-  }
-  
-  const { user, loading } = authData;
+  const { user, loading } = useAuth();
+  const { loadUserConversations, createConversation, conversations } = useChatStore();
 
-  // Add detailed debugging
   useEffect(() => {
-    console.log("ProtectedRoute - Auth state:", { 
-      user: user ? `User ID: ${user.id.substring(0, 8)}...` : 'No user', 
-      loading 
-    });
-  }, [user, loading]);
+    if (user && !loading) {
+      // Load user's conversations when authenticated
+      const initConversations = async () => {
+        console.log("ProtectedRoute: Initializing conversations for authenticated user");
+        try {
+          // Only load conversations if we don't already have them
+          if (conversations.length === 0) {
+            console.log("No conversations in state, loading from database");
+            await loadUserConversations();
+            
+            // Only create a new conversation if none were loaded
+            if (conversations.length === 0) {
+              console.log("No conversations found, creating a new one");
+              await createConversation();
+            } else {
+              console.log(`Loaded ${conversations.length} conversations, not reloading`);
+            }
+          } else {
+            console.log(`Already have ${conversations.length} conversations in state, not reloading`);
+          }
+        } catch (error) {
+          console.error("Error initializing conversations:", error);
+          toast({
+            title: 'Error',
+            description: 'Could not load your conversations',
+            variant: 'destructive',
+          });
+        }
+      };
+      
+      initConversations();
+    }
+  }, [user, loading, loadUserConversations, createConversation, conversations]);
 
   if (loading) {
-    console.log("ProtectedRoute - Still loading auth state, showing loading indicator");
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -36,11 +53,9 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   }
 
   if (!user) {
-    console.log("ProtectedRoute - No authenticated user, redirecting to /auth");
     return <Navigate to="/auth" replace />;
   }
 
-  console.log("ProtectedRoute - User authenticated, rendering protected content");
   return <>{children}</>;
 };
 
