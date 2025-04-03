@@ -166,7 +166,7 @@ async function handleOpenAI(messageHistory, content, modelId, systemPrompt) {
   );
 }
 
-// Anthropic (Claude) handler - similar modifications for the remaining handlers...
+// Anthropic (Claude) handler - FIXED
 async function handleAnthropic(messageHistory, content, modelId, systemPrompt) {
   const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
   if (!ANTHROPIC_API_KEY) {
@@ -176,22 +176,28 @@ async function handleAnthropic(messageHistory, content, modelId, systemPrompt) {
   // Log model ID to help with debugging
   console.log(`Processing request for Anthropic model ${modelId} with content: ${content.substring(0, 50)}...`);
   
-  // Convert from chat format to messages format for Anthropic API
+  // Format messages for Anthropic API v1 format
   const messages = [
-    // System prompt for Anthropic
-    { role: 'user', content: `<instructions>${systemPrompt}</instructions>` },
-    ...messageHistory.map(msg => ({
-      role: msg.role === 'assistant' ? 'assistant' : 'user',
-      content: msg.content
-    })),
-    { role: 'user', content }
+    { role: 'user', content: `<instructions>${systemPrompt}</instructions>\n\n${content}` }
   ];
+  
+  // Add message history - for Anthropic, we need to alternate user/assistant
+  if (messageHistory.length > 0) {
+    const formattedHistory = [];
+    for (let i = 0; i < messageHistory.length; i++) {
+      const msg = messageHistory[i];
+      formattedHistory.push({
+        role: msg.role === 'assistant' ? 'assistant' : 'user',
+        content: msg.content
+      });
+    }
+    messages.unshift(...formattedHistory);
+  }
   
   console.log(`Calling Anthropic API with model ${modelId}...`);
   console.log(`Messages count: ${messages.length}`);
   
   try {
-    // Using the correct Claude model IDs
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -206,22 +212,18 @@ async function handleAnthropic(messageHistory, content, modelId, systemPrompt) {
       })
     });
     
-    const responseText = await response.text();
-    console.log(`Anthropic API response status: ${response.status}`);
-    console.log(`Anthropic API response first 100 chars: ${responseText.substring(0, 100)}...`);
-    
     if (!response.ok) {
-      console.error(`Anthropic API error: ${response.status} - ${responseText}`);
+      const errorText = await response.text();
+      console.error(`Anthropic API error: ${response.status} - ${errorText}`);
       try {
-        const error = JSON.parse(responseText);
-        throw new Error(
-          `Anthropic API error: ${response.status} - ${error.error?.message || error.type || 'Unknown error'}`
-        );
+        const error = JSON.parse(errorText);
+        throw new Error(`Anthropic API error: ${response.status} - ${error.error?.message || error.type || 'Unknown error'}`);
       } catch (e) {
-        throw new Error(`Anthropic API error: ${response.status} - ${responseText}`);
+        throw new Error(`Anthropic API error: ${response.status} - ${errorText}`);
       }
     }
     
+    const data = await response.json();
     console.log(`Successfully received response from Anthropic`);
     console.log(`Response structure: ${JSON.stringify(Object.keys(data))}`);
     

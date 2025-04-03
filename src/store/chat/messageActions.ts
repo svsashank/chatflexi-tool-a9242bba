@@ -96,9 +96,10 @@ export const generateResponseAction = (set: Function, get: Function) => async ()
               variant: 'destructive',
             });
           } else {
+            // Update the conversation timestamp without context_summary field
             const { error: conversationError } = await supabase
               .from('conversations')
-              .update({ updated_at: new Date().toISOString(), context_summary: updatedContextSummary })
+              .update({ updated_at: new Date().toISOString() })
               .eq('id', currentConversationId);
 
             if (conversationError) {
@@ -258,9 +259,10 @@ export const createSendMessageAction = (set: Function, get: Function) =>
             variant: 'destructive',
           });
         } else {
+          // Update the conversation timestamp without context_summary field
           const { error: conversationError } = await supabase
             .from('conversations')
-            .update({ updated_at: new Date().toISOString(), context_summary: updatedContextSummary })
+            .update({ updated_at: new Date().toISOString() })
             .eq('id', currentConversationId);
           
           if (conversationError) {
