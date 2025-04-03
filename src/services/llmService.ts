@@ -25,6 +25,8 @@ export const sendMessageToLLM = async (
     // Format conversation history with better context preservation
     const messageHistory = formatMessageHistory(conversationHistory);
     
+    console.log('Sending message to LLM:', { model, content, messageHistory });
+    
     // Call the Supabase Edge Function
     const { data, error } = await supabase.functions.invoke('chat', {
       body: { 
@@ -38,6 +40,8 @@ export const sendMessageToLLM = async (
       console.error(`Error with ${model.provider} API:`, error);
       return `Error: ${error.message || 'Failed to get response from model'}`;
     }
+    
+    console.log('Received response from LLM:', data);
     
     return data.content;
   } catch (error: any) {

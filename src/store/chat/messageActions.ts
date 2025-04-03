@@ -1,3 +1,4 @@
+
 import { v4 as uuidv4 } from 'uuid';
 import { ChatState } from './types';
 import { sendMessageToLLM } from '@/services/llmService';
@@ -276,9 +277,17 @@ export const createSendMessageAction = (set: Function, get: Function) =>
       });
     }
     
+    // After adding the user message, generate an AI response
     const generateResponse = get().generateResponse;
     if (generateResponse) {
       await generateResponse();
+    } else {
+      console.error('generateResponse function is not available in the store');
+      toast({
+        title: 'Error',
+        description: 'Failed to generate AI response',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -306,6 +315,14 @@ export const createRegenerateMessageAction = (set: Function, get: Function) =>
       
       return { conversations: updatedConversations };
     });
+    
+    // After removing the last AI message, generate a new response
+    const generateResponse = get().generateResponse;
+    if (generateResponse) {
+      await generateResponse();
+    } else {
+      console.error('generateResponse function is not available in the store');
+    }
     
     return Promise.resolve();
   };

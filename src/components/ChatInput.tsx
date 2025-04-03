@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 
 const ChatInput = () => {
   const [inputValue, setInputValue] = useState("");
-  const { addMessage, isLoading, selectedModel, selectModel } = useChatStore();
+  const { sendMessage, isLoading, selectedModel, selectModel } = useChatStore();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Auto-resize textarea as content grows
@@ -32,7 +32,7 @@ const ChatInput = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (inputValue.trim() && !isLoading) {
-      addMessage(inputValue.trim());
+      sendMessage(inputValue.trim());
       setInputValue("");
       // Reset textarea height
       if (textareaRef.current) {
