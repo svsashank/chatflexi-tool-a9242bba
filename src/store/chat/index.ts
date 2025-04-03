@@ -49,6 +49,8 @@ const useChatStore = create<ChatStore>((set, get) => ({
   selectModel: selectModelAction(set),
   generateResponse: generateResponseAction(set, get),
   loadUserConversations: loadUserConversationsAction(set),
+  
+  // Include the message slice
   ...createMessageSlice(set, get)
 }));
 

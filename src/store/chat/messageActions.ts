@@ -1,7 +1,8 @@
+
 import { StateCreator } from 'zustand';
 import { v4 as uuidv4 } from 'uuid';
 import { ChatState, MessageSlice } from './types';
-import { generateAIResponse } from '@/services/llmService';
+import { sendMessageToLLM } from '@/services/llmService';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import { updateContextSummary } from './utils';
@@ -28,17 +29,28 @@ export const generateResponseAction = (set: Function, get: Function) => async ()
       return;
     }
 
-    const userMessages = currentConversation.messages.map(msg => ({
-      role: msg.role,
-      content: msg.content,
-    }));
+    const lastMessage = currentConversation.messages[currentConversation.messages.length - 1];
+    if (!lastMessage || lastMessage.role !== 'user') {
+      toast({
+        title: 'Error',
+        description: 'Please send a message first',
+        variant: 'destructive',
+      });
+      set({ isLoading: false });
+      return;
+    }
 
-    const aiResponse = await generateAIResponse(userMessages, selectedModel, currentConversation.contextSummary);
+    // Use the sendMessageToLLM function instead of generateAIResponse
+    const aiResponse = await sendMessageToLLM(
+      lastMessage.content,
+      selectedModel,
+      currentConversation.messages
+    );
 
-    if (aiResponse && aiResponse.content) {
+    if (aiResponse) {
       const newMessage = {
         id: uuidv4(),
-        content: aiResponse.content,
+        content: aiResponse,
         role: 'assistant' as const,
         model: selectedModel,
         timestamp: new Date(),
@@ -120,17 +132,10 @@ export const generateResponseAction = (set: Function, get: Function) => async ()
     console.error('Error generating response:', error);
     set({ isLoading: false });
   }
-  
-  return get().regenerateMessage();
 };
 
-// Updated to match the expected StateCreator pattern without the third parameter
-export const createMessageSlice: StateCreator<
-  ChatState, 
-  [], 
-  [], 
-  MessageSlice
-> = (set, get) => ({
+// Fixed the createMessageSlice to correctly implement StateCreator interface
+export const createMessageSlice: StateCreator<ChatState & MessageSlice> = (set, get) => ({
   sendMessage: async (content) => {
     // Add user message to state
     const currentConversationId = get().currentConversationId;
@@ -215,6 +220,9 @@ export const createMessageSlice: StateCreator<
         variant: 'destructive',
       });
     }
+    
+    // After sending the message, generate a response
+    await get().generateResponse();
   },
   
   regenerateMessage: async () => {
