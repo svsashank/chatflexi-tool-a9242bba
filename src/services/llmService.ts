@@ -25,7 +25,28 @@ export const sendMessageToLLM = async (
     // Format conversation history with better context preservation
     const messageHistory = formatMessageHistory(conversationHistory);
     
-    console.log('Sending message to LLM:', { model, content, messageHistory });
+    console.log('Sending message to LLM:', { 
+      model: model.name, 
+      content: content.substring(0, 50) + (content.length > 50 ? '...' : ''),
+      messageHistoryCount: messageHistory.length 
+    });
+    
+    // Debug log to check if the current message appears in the history
+    const lastUserMessageInHistory = messageHistory
+      .filter(msg => msg.role === 'user')
+      .pop();
+      
+    if (lastUserMessageInHistory) {
+      console.log('Last user message in history:', {
+        content: lastUserMessageInHistory.content.substring(0, 50) + 
+                (lastUserMessageInHistory.content.length > 50 ? '...' : '')
+      });
+      
+      // Check if the current message is already in history
+      if (lastUserMessageInHistory.content === content) {
+        console.warn('WARNING: Current message appears to be duplicated in history!');
+      }
+    }
     
     // Call the Supabase Edge Function
     const { data, error } = await supabase.functions.invoke('chat', {
@@ -41,7 +62,11 @@ export const sendMessageToLLM = async (
       return `Error: ${error.message || 'Failed to get response from model'}`;
     }
     
-    console.log('Received response from LLM:', data);
+    console.log('Received response from LLM:', {
+      contentPreview: data.content.substring(0, 50) + (data.content.length > 50 ? '...' : ''),
+      model: data.model,
+      provider: data.provider
+    });
     
     return data.content;
   } catch (error: any) {
