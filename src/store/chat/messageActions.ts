@@ -135,7 +135,7 @@ export const generateResponseAction = (set: Function, get: Function) => async ()
 };
 
 // Fixed the createMessageSlice to correctly implement StateCreator interface
-export const createMessageSlice: StateCreator<ChatState & MessageSlice> = (set, get) => ({
+export const createMessageSlice: StateCreator<ChatState, [], [], MessageSlice> = (set, get) => ({
   sendMessage: async (content) => {
     // Add user message to state
     const currentConversationId = get().currentConversationId;
@@ -222,7 +222,8 @@ export const createMessageSlice: StateCreator<ChatState & MessageSlice> = (set, 
     }
     
     // After sending the message, generate a response
-    await get().generateResponse();
+    const { generateResponse } = get();
+    await generateResponse();
   },
   
   regenerateMessage: async () => {

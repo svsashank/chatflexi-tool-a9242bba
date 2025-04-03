@@ -50,7 +50,7 @@ const useChatStore = create<ChatStore>((set, get) => ({
   generateResponse: generateResponseAction(set, get),
   loadUserConversations: loadUserConversationsAction(set),
   
-  // Include the message slice
+  // Include the message slice with correct parameters
   ...createMessageSlice(set, get)
 }));
 
