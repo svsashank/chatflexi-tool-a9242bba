@@ -70,10 +70,13 @@ export const generateResponseAction = (set: Function, get: Function) => async ()
         isLoading: false,
       }));
 
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
+      // Check for authentication before saving to database
+      const { data: { session } } = await supabase.auth.getSession();
 
-        if (session?.user) {
+      if (session?.user) {
+        try {
+          console.log("Saving assistant message to database for conversation:", currentConversationId);
+          
           const { error } = await supabase
             .from('conversation_messages')
             .insert([
@@ -106,14 +109,16 @@ export const generateResponseAction = (set: Function, get: Function) => async ()
               console.error('Error updating conversation timestamp:', conversationError);
             }
           }
+        } catch (dbError) {
+          console.error('Database error:', dbError);
+          toast({
+            title: 'Error',
+            description: 'Failed to save message to database',
+            variant: 'destructive',
+          });
         }
-      } catch (dbError) {
-        console.error('Database error:', dbError);
-        toast({
-          title: 'Error',
-          description: 'Failed to save message to database',
-          variant: 'destructive',
-        });
+      } else {
+        console.warn("User not authenticated, skipping database save");
       }
     } else {
       toast({
@@ -158,10 +163,13 @@ export const addMessageAction = (set: Function, get: Function) => async (content
     )
   }));
 
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
+  // Check for authentication before saving to database
+  const { data: { session } } = await supabase.auth.getSession();
 
-    if (session?.user) {
+  if (session?.user) {
+    try {
+      console.log("Saving user message to database for conversation:", currentConversationId);
+      
       const { error } = await supabase
         .from('conversation_messages')
         .insert([
@@ -184,14 +192,16 @@ export const addMessageAction = (set: Function, get: Function) => async (content
           variant: 'destructive',
         });
       }
+    } catch (dbError) {
+      console.error('Database error:', dbError);
+      toast({
+        title: 'Error',
+        description: 'Failed to save message to database',
+        variant: 'destructive',
+      });
     }
-  } catch (dbError) {
-    console.error('Database error:', dbError);
-    toast({
-      title: 'Error',
-      description: 'Failed to save message to database',
-      variant: 'destructive',
-    });
+  } else {
+    console.warn("User not authenticated, skipping database save");
   }
 };
 
@@ -233,10 +243,13 @@ export const createSendMessageAction = (set: Function, get: Function) =>
       )
     }));
     
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session?.user) {
+    // Check for authentication before saving to database
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (session?.user) {
+      try {
+        console.log("Saving user message to database for conversation:", currentConversationId);
+        
         const { error } = await supabase
           .from('conversation_messages')
           .insert([
@@ -269,14 +282,16 @@ export const createSendMessageAction = (set: Function, get: Function) =>
             console.error('Error updating conversation timestamp:', conversationError);
           }
         }
+      } catch (dbError) {
+        console.error('Database error:', dbError);
+        toast({
+          title: 'Error',
+          description: 'Failed to save message to database',
+          variant: 'destructive',
+        });
       }
-    } catch (dbError) {
-      console.error('Database error:', dbError);
-      toast({
-        title: 'Error',
-        description: 'Failed to save message to database',
-        variant: 'destructive',
-      });
+    } else {
+      console.warn("User not authenticated, skipping database save");
     }
     
     // After adding the user message, generate an AI response
