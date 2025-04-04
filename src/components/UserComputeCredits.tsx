@@ -15,6 +15,8 @@ const UserComputeCredits = () => {
         const { data: { session } } = await supabase.auth.getSession();
         
         if (session?.user) {
+          console.log("Fetching credits for user:", session.user.id);
+          
           // Use a raw query since the types don't recognize our new table yet
           const { data, error } = await supabase
             .from('user_compute_credits')
@@ -22,16 +24,21 @@ const UserComputeCredits = () => {
             .eq('user_id', session.user.id)
             .single();
           
-          if (error && error.code !== 'PGRST116') { // Not found is OK for new users
-            console.error('Error fetching user compute credits:', error);
-            toast({
-              title: "Error",
-              description: "Failed to load credits data",
-              variant: "destructive",
-            });
+          if (error) {
+            if (error.code === 'PGRST116') { // Not found is OK for new users
+              console.log("No credits record found for user, setting to 0");
+              setTotalCredits(0);
+            } else {
+              console.error('Error fetching user compute credits:', error);
+              toast({
+                title: "Error",
+                description: "Failed to load credits data",
+                variant: "destructive",
+              });
+            }
           } else {
-            setTotalCredits(data?.total_credits || 0);
             console.log("Fetched total credits:", data?.total_credits || 0);
+            setTotalCredits(data?.total_credits || 0);
           }
         }
       } catch (error) {
@@ -43,12 +50,12 @@ const UserComputeCredits = () => {
 
     fetchUserCredits();
 
-    // Set up a subscription to listen for credit updates
+    // Set up a subscription to listen for auth changes
     const { data: authListener } = supabase.auth.onAuthStateChange(() => {
       fetchUserCredits();
     });
 
-    // Also set up a subscription to listen for changes on the user_compute_credits table
+    // Set up a subscription to listen for changes on the user_compute_credits table
     const channel = supabase
       .channel('user-credits-changes')
       .on(
