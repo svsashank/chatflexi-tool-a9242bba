@@ -1,7 +1,6 @@
-
 import React, { useState } from "react";
 import { Message } from "../types";
-import { Bot, Check, Copy, User, Zap } from "lucide-react";
+import { Bot, Check, Copy, User, Zap, Cpu } from "lucide-react";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
@@ -60,11 +59,8 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, showTotalCredits = f
                 className="w-2.5 h-2.5 rounded-full mr-2 animate-pulse" 
                 style={{ backgroundColor: message.model.avatarColor }}
               />
-              <span className="text-xs font-medium flex items-center">
+              <span className="text-xs font-medium">
                 {message.model.name}
-                <span className="ml-1.5 text-xs font-medium text-primary-500 flex items-center">
-                  <Zap size={10} className="mr-0.5 text-yellow-400" />GPU Accelerated
-                </span>
               </span>
             </div>
           )}
@@ -108,7 +104,6 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, showTotalCredits = f
           </div>
         </div>
         
-        {/* Credits display area */}
         <div className="mt-1 self-end flex items-center gap-2">
           {!isUserMessage && message.computeCredits !== undefined && message.tokens && (
             <ComputeCredits 
@@ -118,7 +113,6 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, showTotalCredits = f
             />
           )}
           
-          {/* Show total user credits only on the first assistant message if requested */}
           {showTotalCredits && !isUserMessage && (
             <UserComputeCredits />
           )}

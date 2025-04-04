@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Zap } from 'lucide-react';
+import { Cpu } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface ComputeCreditsProps {
@@ -21,14 +21,14 @@ const ComputeCredits: React.FC<ComputeCreditsProps> = ({ credits, tokens, modelI
       <Tooltip>
         <TooltipTrigger asChild>
           <div className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
-            <Zap size={14} className="text-amber-500" />
+            <Cpu size={14} className="text-cyan-400" />
             <span>{roundedCredits.toLocaleString()} CR</span>
           </div>
         </TooltipTrigger>
         <TooltipContent side="top" className="max-w-xs">
           <div className="space-y-1.5">
             <p className="font-medium flex items-center gap-1.5">
-              <Zap size={14} className="text-amber-500" />
+              <Cpu size={14} className="text-cyan-400" />
               {roundedCredits.toLocaleString()} Compute Credits
             </p>
             <div className="text-xs space-y-0.5">
