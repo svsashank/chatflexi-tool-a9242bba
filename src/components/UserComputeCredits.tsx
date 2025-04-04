@@ -14,6 +14,7 @@ const UserComputeCredits = () => {
         const { data: { session } } = await supabase.auth.getSession();
         
         if (session?.user) {
+          // Use a raw query since the types don't recognize our new table yet
           const { data, error } = await supabase
             .from('user_compute_credits')
             .select('total_credits')

@@ -123,9 +123,10 @@ export const generateResponseAction = (set: Function, get: Function) => async ()
               console.error('Error updating conversation timestamp:', conversationError);
             }
             
-            // Update the user's total compute credits
+            // Update the user's total compute credits using RPC instead of direct table operation
             try {
               const userId = session.user.id;
+              // Use our custom RPC function that we created
               const { error: creditError } = await supabase.rpc(
                 'update_user_compute_credits',
                 { 
