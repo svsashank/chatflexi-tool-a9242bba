@@ -126,6 +126,8 @@ export const generateResponseAction = (set: Function, get: Function) => async ()
             // Update the user's total compute credits using RPC instead of direct table operation
             try {
               const userId = session.user.id;
+              console.log(`Updating user ${userId} compute credits: +${computeCredits} credits`);
+              
               // Use our custom RPC function that we created
               const { error: creditError } = await supabase.rpc(
                 'update_user_compute_credits',
@@ -137,6 +139,11 @@ export const generateResponseAction = (set: Function, get: Function) => async ()
               
               if (creditError) {
                 console.error('Error updating user compute credits:', creditError);
+                toast({
+                  title: 'Warning',
+                  description: 'Failed to update your compute credits',
+                  variant: 'destructive',
+                });
               } else {
                 console.log(`Updated user compute credits: +${computeCredits} credits`);
               }

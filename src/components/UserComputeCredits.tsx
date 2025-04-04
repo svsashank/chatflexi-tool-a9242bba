@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { Zap } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { toast } from '@/components/ui/use-toast';
 
 const UserComputeCredits = () => {
   const [totalCredits, setTotalCredits] = useState<number | null>(null);
@@ -23,8 +24,14 @@ const UserComputeCredits = () => {
           
           if (error && error.code !== 'PGRST116') { // Not found is OK for new users
             console.error('Error fetching user compute credits:', error);
+            toast({
+              title: "Error",
+              description: "Failed to load credits data",
+              variant: "destructive",
+            });
           } else {
             setTotalCredits(data?.total_credits || 0);
+            console.log("Fetched total credits:", data?.total_credits || 0);
           }
         }
       } catch (error) {
@@ -41,8 +48,26 @@ const UserComputeCredits = () => {
       fetchUserCredits();
     });
 
+    // Also set up a subscription to listen for changes on the user_compute_credits table
+    const channel = supabase
+      .channel('user-credits-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'user_compute_credits'
+        },
+        (payload) => {
+          console.log('Credits updated:', payload);
+          fetchUserCredits();
+        }
+      )
+      .subscribe();
+
     return () => {
       authListener.subscription.unsubscribe();
+      supabase.removeChannel(channel);
     };
   }, []);
 
