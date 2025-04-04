@@ -18,6 +18,9 @@ export const COMPUTE_CREDITS_PER_TOKEN: Record<string, number> = {
   'gpt-4o': 6.75,
   'gpt-4o-mini': 6.75,
   'deepseek-r1': 0.36,
+  'deepseek-r1-llama-70b': 0.08,
+  'deepseek-r1-llama-8b': 0.02,
+  'deepseek-r1-qwen-14b': 0.08,
   'grok-2-latest': 6.75,
 };
 
