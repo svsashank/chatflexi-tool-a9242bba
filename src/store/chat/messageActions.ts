@@ -5,6 +5,7 @@ import { sendMessageToLLM } from '@/services/llmService';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import { updateContextSummary } from './utils';
+import { calculateComputeCredits } from '@/utils/computeCredits';
 
 export const selectModelAction = (set: Function) => (model: any) => {
   set({ selectedModel: model });
@@ -46,12 +47,22 @@ export const generateResponseAction = (set: Function, get: Function) => async ()
     );
 
     if (aiResponse) {
+      // Extract token counts and calculate compute credits
+      const tokens = aiResponse.tokens || { input: 0, output: 0 };
+      const computeCredits = calculateComputeCredits(
+        tokens.input, 
+        tokens.output, 
+        selectedModel.id
+      );
+      
       const newMessage = {
         id: uuidv4(),
-        content: aiResponse,
+        content: aiResponse.content,
         role: 'assistant' as const,
         model: selectedModel,
         timestamp: new Date(),
+        tokens: tokens,
+        computeCredits: computeCredits
       };
 
       const updatedContextSummary = updateContextSummary(currentConversation.contextSummary, newMessage);
@@ -88,6 +99,9 @@ export const generateResponseAction = (set: Function, get: Function) => async ()
                 model_id: selectedModel.id,
                 model_provider: selectedModel.provider,
                 created_at: newMessage.timestamp.toISOString(),
+                input_tokens: tokens.input,
+                output_tokens: tokens.output,
+                compute_credits: computeCredits
               },
             ]);
 

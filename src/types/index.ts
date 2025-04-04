@@ -5,6 +5,11 @@ export interface Message {
   role: 'user' | 'assistant';
   model: AIModel;
   timestamp: Date;
+  tokens?: {
+    input: number;
+    output: number;
+  };
+  computeCredits?: number;
 }
 
 export interface Conversation {
@@ -39,4 +44,3 @@ export interface UserProfile {
   email: string;
   avatarUrl?: string;
 }
-

@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 
@@ -156,17 +155,26 @@ async function handleOpenAI(messageHistory, content, modelId, systemPrompt) {
   
   console.log(`Successfully received response from OpenAI`);
   const data = await response.json();
+  
+  // Extract token counts
+  const inputTokens = data.usage ? data.usage.prompt_tokens : 0;
+  const outputTokens = data.usage ? data.usage.completion_tokens : 0;
+  
   return new Response(
     JSON.stringify({ 
       content: data.choices[0].message.content,
       model: modelId,
-      provider: 'OpenAI'
+      provider: 'OpenAI',
+      tokens: {
+        input: inputTokens,
+        output: outputTokens
+      }
     }),
     { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
   );
 }
 
-// Anthropic (Claude) handler - FIXED
+// Anthropic (Claude) handler
 async function handleAnthropic(messageHistory, content, modelId, systemPrompt) {
   const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
   if (!ANTHROPIC_API_KEY) {
@@ -227,12 +235,23 @@ async function handleAnthropic(messageHistory, content, modelId, systemPrompt) {
     console.log(`Successfully received response from Anthropic`);
     console.log(`Response structure: ${JSON.stringify(Object.keys(data))}`);
     
+    // Extract token counts (estimated from character counts if not provided)
+    // Anthropic doesn't always provide exact token counts, so this is an approximation
+    const inputTokens = data.usage?.input_tokens || Math.round(content.length / 4);
+    const outputTokens = data.usage?.output_tokens || 
+      (data.content && Array.isArray(data.content) && data.content.length > 0) ? 
+      Math.round(data.content[0].text.length / 4) : 0;
+    
     if (data.content && Array.isArray(data.content) && data.content.length > 0) {
       return new Response(
         JSON.stringify({ 
           content: data.content[0].text,
           model: modelId,
-          provider: 'Anthropic'
+          provider: 'Anthropic',
+          tokens: {
+            input: inputTokens,
+            output: outputTokens
+          }
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -314,11 +333,21 @@ async function handleGoogle(messageHistory, content, modelId, systemPrompt) {
     
     console.log(`Successfully received response from Google`);
     const data = await response.json();
+    
+    // Estimate token counts (Google doesn't always provide this)
+    const inputTokensEstimate = Math.round((content.length + systemPrompt.length) / 4);
+    const outputTokensEstimate = data.candidates && data.candidates[0] && data.candidates[0].content.parts[0] ? 
+      Math.round(data.candidates[0].content.parts[0].text.length / 4) : 0;
+    
     return new Response(
       JSON.stringify({ 
         content: data.candidates[0].content.parts[0].text,
         model: modelId,
-        provider: 'Google'
+        provider: 'Google',
+        tokens: {
+          input: data.usage?.promptTokenCount || inputTokensEstimate,
+          output: data.usage?.candidatesTokenCount || outputTokensEstimate
+        }
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
@@ -406,7 +435,13 @@ async function handleXAI(messageHistory, content, modelId, systemPrompt) {
         JSON.stringify({ 
           content: parsedResponse.choices[0].message.content,
           model: grokModelId,
-          provider: 'xAI'
+          provider: 'xAI',
+          tokens: {
+            input: parsedResponse.usage?.prompt_tokens || Math.round((content.length + systemPrompt.length) / 4),
+            output: parsedResponse.usage?.completion_tokens || 
+              (parsedResponse.choices && parsedResponse.choices[0] && parsedResponse.choices[0].message) ?
+              Math.round(parsedResponse.choices[0].message.content.length / 4) : 0
+          }
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -494,7 +529,13 @@ async function handleKrutrim(messageHistory, content, modelId, systemPrompt) {
         JSON.stringify({ 
           content: parsedResponse.choices[0].message.content,
           model: modelId,
-          provider: 'Krutrim'
+          provider: 'Krutrim',
+          tokens: {
+            input: parsedResponse.usage?.prompt_tokens || Math.round((content.length + systemPrompt.length) / 4),
+            output: parsedResponse.usage?.completion_tokens || 
+              (parsedResponse.choices && parsedResponse.choices[0] && parsedResponse.choices[0].message) ?
+              Math.round(parsedResponse.choices[0].message.content.length / 4) : 0
+          }
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );

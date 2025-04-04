@@ -20,7 +20,13 @@ export const sendMessageToLLM = async (
   content: string,
   model: AIModel,
   conversationHistory: Message[]
-): Promise<string> => {
+): Promise<{
+  content: string;
+  tokens?: {
+    input: number;
+    output: number;
+  }
+}> => {
   try {
     // Format conversation history with better context preservation
     const messageHistory = formatMessageHistory(conversationHistory);
@@ -59,19 +65,29 @@ export const sendMessageToLLM = async (
     
     if (error) {
       console.error(`Error with ${model.provider} API:`, error);
-      return `Error: ${error.message || 'Failed to get response from model'}`;
+      return {
+        content: `Error: ${error.message || 'Failed to get response from model'}`,
+        tokens: { input: 0, output: 0 }
+      };
     }
     
     console.log('Received response from LLM:', {
       contentPreview: data.content.substring(0, 50) + (data.content.length > 50 ? '...' : ''),
       model: data.model,
-      provider: data.provider
+      provider: data.provider,
+      tokens: data.tokens
     });
     
-    return data.content;
+    return {
+      content: data.content,
+      tokens: data.tokens
+    };
   } catch (error: any) {
     console.error(`Error with ${model.provider} API:`, error);
-    return `Error: ${error.message || 'Failed to get response from model'}`;
+    return {
+      content: `Error: ${error.message || 'Failed to get response from model'}`,
+      tokens: { input: 0, output: 0 }
+    };
   }
 };
 

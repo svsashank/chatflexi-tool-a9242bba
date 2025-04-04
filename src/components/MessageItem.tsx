@@ -6,6 +6,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import { toast } from "sonner";
+import ComputeCredits from "./ComputeCredits";
 
 interface MessageItemProps {
   message: Message;
@@ -51,12 +52,21 @@ const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
         }`}
       >
         {!isUserMessage && (
-          <div className="flex items-center mb-1.5">
-            <div 
-              className="w-2.5 h-2.5 rounded-full mr-2" 
-              style={{ backgroundColor: message.model.avatarColor }}
-            />
-            <span className="text-xs font-medium">{message.model.name}</span>
+          <div className="mb-1.5 flex items-center justify-between">
+            <div className="flex items-center">
+              <div 
+                className="w-2.5 h-2.5 rounded-full mr-2" 
+                style={{ backgroundColor: message.model.avatarColor }}
+              />
+              <span className="text-xs font-medium">{message.model.name}</span>
+            </div>
+            {message.computeCredits !== undefined && message.tokens && (
+              <ComputeCredits 
+                credits={message.computeCredits}
+                tokens={message.tokens}
+                modelId={message.model.id}
+              />
+            )}
           </div>
         )}
         
