@@ -143,14 +143,14 @@ const Profile = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* User Info Card */}
         <Card className="md:col-span-1">
-          <CardHeader className="flex flex-row items-center space-x-4 pb-2">
-            <Avatar className="h-16 w-16">
+          <CardHeader className="flex flex-row items-start space-x-4 pb-2">
+            <Avatar className="h-16 w-16 flex-shrink-0">
               <AvatarImage src={user.user_metadata?.avatar_url} />
               <AvatarFallback className="text-xl">{getUserInitials()}</AvatarFallback>
             </Avatar>
-            <div>
-              <CardTitle className="text-xl text-wrap break-words">{user.user_metadata?.name || 'User'}</CardTitle>
-              <CardDescription className="text-wrap break-words">{user.email}</CardDescription>
+            <div className="flex-1 min-w-0">
+              <CardTitle className="text-xl text-wrap break-words leading-tight mb-1">{user.user_metadata?.name || 'User'}</CardTitle>
+              <CardDescription className="text-wrap break-words text-sm">{user.email}</CardDescription>
             </div>
           </CardHeader>
           <CardContent className="pt-4">
