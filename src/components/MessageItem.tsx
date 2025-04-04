@@ -1,7 +1,7 @@
 
 import React, { useState } from "react";
 import { Message } from "../types";
-import { Bot, Check, Copy, User } from "lucide-react";
+import { Bot, Check, Copy, User, Zap } from "lucide-react";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
@@ -44,69 +44,73 @@ const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
         )}
       </div>
       
-      <div 
-        className={`flex-1 p-4 rounded-lg ${
-          isUserMessage 
-            ? "bg-muted/30 text-foreground" 
-            : "glass-morphism"
-        }`}
-      >
-        {!isUserMessage && (
-          <div className="mb-1.5 flex items-center justify-between">
-            <div className="flex items-center">
+      <div className="flex-1 flex flex-col">
+        <div 
+          className={`p-4 rounded-lg ${
+            isUserMessage 
+              ? "bg-muted/30 text-foreground" 
+              : "glass-morphism"
+          }`}
+        >
+          {!isUserMessage && (
+            <div className="mb-1.5 flex items-center">
               <div 
                 className="w-2.5 h-2.5 rounded-full mr-2" 
                 style={{ backgroundColor: message.model.avatarColor }}
               />
               <span className="text-xs font-medium">{message.model.name}</span>
             </div>
-            {message.computeCredits !== undefined && message.tokens && (
-              <ComputeCredits 
-                credits={message.computeCredits}
-                tokens={message.tokens}
-                modelId={message.model.id}
-              />
-            )}
-          </div>
-        )}
-        
-        <div className="chat-message">
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
-            rehypePlugins={[rehypeHighlight]}
-            components={{
-              code({ node, className, children, ...props }) {
-                const match = /language-(\w+)/.exec(className || '');
-                const inline = !match && !className;
-                
-                if (inline) {
-                  return (
-                    <code className={className} {...props}>
-                      {children}
-                    </code>
-                  );
-                }
-                return (
-                  <div className="code-block relative group">
-                    <button
-                      onClick={copyToClipboard}
-                      className="absolute top-2 right-2 p-1 rounded-md bg-muted/80 hover:bg-muted text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      {copied ? <Check size={14} /> : <Copy size={14} />}
-                    </button>
-                    <pre className="overflow-auto">
-                      <code className={className}>
+          )}
+          
+          <div className="chat-message">
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              rehypePlugins={[rehypeHighlight]}
+              components={{
+                code({ node, className, children, ...props }) {
+                  const match = /language-(\w+)/.exec(className || '');
+                  const inline = !match && !className;
+                  
+                  if (inline) {
+                    return (
+                      <code className={className} {...props}>
                         {children}
                       </code>
-                    </pre>
-                  </div>
-                );
-              }
-            }}
-          >
-            {message.content}
-          </ReactMarkdown>
+                    );
+                  }
+                  return (
+                    <div className="code-block relative group">
+                      <button
+                        onClick={copyToClipboard}
+                        className="absolute top-2 right-2 p-1 rounded-md bg-muted/80 hover:bg-muted text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        {copied ? <Check size={14} /> : <Copy size={14} />}
+                      </button>
+                      <pre className="overflow-auto">
+                        <code className={className}>
+                          {children}
+                        </code>
+                      </pre>
+                    </div>
+                  );
+                }
+              }}
+            >
+              {message.content}
+            </ReactMarkdown>
+          </div>
         </div>
+        
+        {/* Moved compute credits below the message */}
+        {!isUserMessage && message.computeCredits !== undefined && message.tokens && (
+          <div className="mt-1 self-end">
+            <ComputeCredits 
+              credits={message.computeCredits}
+              tokens={message.tokens}
+              modelId={message.model.id}
+            />
+          </div>
+        )}
       </div>
       
       {!isUserMessage && (

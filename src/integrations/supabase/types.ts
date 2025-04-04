@@ -77,30 +77,39 @@ export type Database = {
       }
       conversation_messages: {
         Row: {
+          compute_credits: number | null
           content: string
           conversation_id: string
           created_at: string
           id: string
+          input_tokens: number | null
           model_id: string | null
           model_provider: string | null
+          output_tokens: number | null
           role: string
         }
         Insert: {
+          compute_credits?: number | null
           content: string
           conversation_id: string
           created_at?: string
           id?: string
+          input_tokens?: number | null
           model_id?: string | null
           model_provider?: string | null
+          output_tokens?: number | null
           role: string
         }
         Update: {
+          compute_credits?: number | null
           content?: string
           conversation_id?: string
           created_at?: string
           id?: string
+          input_tokens?: number | null
           model_id?: string | null
           model_provider?: string | null
+          output_tokens?: number | null
           role?: string
         }
         Relationships: [
