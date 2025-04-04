@@ -22,7 +22,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
-  const { createConversation, loadUserConversations, conversations } = useChatStore();
+  const { createConversation, loadUserConversations, resetConversations } = useChatStore();
 
   useEffect(() => {
     // Set up auth state listener FIRST
@@ -65,9 +65,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           
           // Reset the conversations state and create a new local conversation when signing out
           setTimeout(() => {
-            const store = useChatStore.getState();
             // Clear existing conversations and create a fresh one for non-authenticated use
-            store.resetConversations();
+            resetConversations();
             createConversation();
           }, 0);
         }
@@ -82,7 +81,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     });
 
     return () => subscription.unsubscribe();
-  }, [toast]);
+  }, [toast, loadUserConversations, createConversation, resetConversations]);
 
   const signIn = async (email: string, password: string) => {
     try {
