@@ -149,8 +149,8 @@ const Profile = () => {
               <AvatarFallback className="text-xl">{getUserInitials()}</AvatarFallback>
             </Avatar>
             <div>
-              <CardTitle className="text-xl">{user.user_metadata?.name || 'User'}</CardTitle>
-              <CardDescription>{user.email}</CardDescription>
+              <CardTitle className="text-xl text-wrap break-words">{user.user_metadata?.name || 'User'}</CardTitle>
+              <CardDescription className="text-wrap break-words">{user.email}</CardDescription>
             </div>
           </CardHeader>
           <CardContent className="pt-4">
@@ -194,9 +194,9 @@ const Profile = () => {
                 <h4 className="font-medium text-blue-700 mb-2">Model Flexibility</h4>
                 <p className="text-sm text-blue-600">
                   Different AI models have varying computational costs. 
-                  Advanced models like GPT-4 and Claude Opus consume more credits 
-                  than simpler models like GPT-3.5. You have the flexibility to choose 
-                  which model to use based on your needs and credit availability.
+                  More advanced models consume more credits than simpler ones.
+                  You have the flexibility to choose which model to use based 
+                  on your specific needs and credit availability.
                 </p>
               </div>
             </div>
