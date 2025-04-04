@@ -123,55 +123,117 @@ async function handleOpenAI(messageHistory, content, modelId, systemPrompt) {
   
   console.log(`Processing request for model ${modelId} with content: ${content.substring(0, 50)}...`);
   
-  // Format messages for OpenAI
-  const formattedMessages = [
-    { role: 'system', content: systemPrompt },
-    ...messageHistory.map(msg => ({
-      role: msg.role,
-      content: msg.content
-    })),
-    { role: 'user', content }
-  ];
+  // Check if this is an O1 model which requires completions API instead of chat
+  const isO1Model = modelId.startsWith('o1');
+  
+  if (isO1Model) {
+    // For O1 models, use the completions endpoint
+    console.log(`Using completions endpoint for O1 model: ${modelId}`);
+    
+    // Format prompt for completions API
+    let fullPrompt = `${systemPrompt}\n\n`;
+    
+    // Add conversation history
+    for (const msg of messageHistory) {
+      const role = msg.role === 'assistant' ? 'Assistant' : 'User';
+      fullPrompt += `${role}: ${msg.content}\n`;
+    }
+    
+    // Add current user message
+    fullPrompt += `User: ${content}\nAssistant:`;
+    
+    console.log(`Calling OpenAI completions API for ${modelId}...`);
+    const response = await fetch('https://api.openai.com/v1/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENAI_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: modelId,
+        prompt: fullPrompt,
+        temperature: 0.7,
+        max_tokens: 1000,
+        stop: ["\nUser:", "\n\nUser:"]
+      })
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error?.message || `OpenAI API error: ${response.status}`);
+    }
+    
+    console.log(`Successfully received response from OpenAI completions API`);
+    const data = await response.json();
+    
+    // Extract token counts
+    const inputTokens = data.usage ? data.usage.prompt_tokens : 0;
+    const outputTokens = data.usage ? data.usage.completion_tokens : 0;
+    
+    return new Response(
+      JSON.stringify({ 
+        content: data.choices[0].text.trim(),
+        model: modelId,
+        provider: 'OpenAI',
+        tokens: {
+          input: inputTokens,
+          output: outputTokens
+        }
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  } else {
+    // For regular OpenAI models, use the chat completions endpoint
+    // Format messages for OpenAI
+    const formattedMessages = [
+      { role: 'system', content: systemPrompt },
+      ...messageHistory.map(msg => ({
+        role: msg.role,
+        content: msg.content
+      })),
+      { role: 'user', content }
+    ];
 
-  console.log(`Calling OpenAI API...`);
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${OPENAI_API_KEY}`
-    },
-    body: JSON.stringify({
-      model: modelId,
-      messages: formattedMessages,
-      temperature: 0.7,
-      max_tokens: 1000,
-    })
-  });
-  
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error?.message || `OpenAI API error: ${response.status}`);
+    console.log(`Calling OpenAI chat API...`);
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENAI_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: modelId,
+        messages: formattedMessages,
+        temperature: 0.7,
+        max_tokens: 1000,
+      })
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error?.message || `OpenAI API error: ${response.status}`);
+    }
+    
+    console.log(`Successfully received response from OpenAI`);
+    const data = await response.json();
+    
+    // Extract token counts
+    const inputTokens = data.usage ? data.usage.prompt_tokens : 0;
+    const outputTokens = data.usage ? data.usage.completion_tokens : 0;
+    
+    return new Response(
+      JSON.stringify({ 
+        content: data.choices[0].message.content,
+        model: modelId,
+        provider: 'OpenAI',
+        tokens: {
+          input: inputTokens,
+          output: outputTokens
+        }
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   }
-  
-  console.log(`Successfully received response from OpenAI`);
-  const data = await response.json();
-  
-  // Extract token counts
-  const inputTokens = data.usage ? data.usage.prompt_tokens : 0;
-  const outputTokens = data.usage ? data.usage.completion_tokens : 0;
-  
-  return new Response(
-    JSON.stringify({ 
-      content: data.choices[0].message.content,
-      model: modelId,
-      provider: 'OpenAI',
-      tokens: {
-        input: inputTokens,
-        output: outputTokens
-      }
-    }),
-    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-  );
 }
 
 // Anthropic (Claude) handler
