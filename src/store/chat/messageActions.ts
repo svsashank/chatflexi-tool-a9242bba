@@ -88,7 +88,57 @@ export const generateResponseAction = (set: Function, get: Function) => async ()
         try {
           console.log("Saving assistant message to database for conversation:", currentConversationId);
           
-          // First, update the conversation timestamp
+          // First, check if the conversation exists and has the correct user_id
+          const { data: convData, error: convCheckError } = await supabase
+            .from('conversations')
+            .select('id, user_id')
+            .eq('id', currentConversationId)
+            .maybeSingle();
+            
+          if (convCheckError) {
+            console.error('Error checking conversation:', convCheckError);
+            toast({
+              title: 'Error',
+              description: 'Failed to verify conversation ownership',
+              variant: 'destructive',
+            });
+            return;
+          }
+          
+          if (!convData) {
+            console.log('Conversation not found in database, creating it now...');
+            // Create the conversation if it doesn't exist
+            const { error: createConvError } = await supabase
+              .from('conversations')
+              .insert([{
+                id: currentConversationId,
+                user_id: session.user.id,
+                title: currentConversation.title,
+                created_at: currentConversation.createdAt.toISOString(),
+                updated_at: new Date().toISOString()
+              }]);
+              
+            if (createConvError) {
+              console.error('Error creating conversation:', createConvError);
+              toast({
+                title: 'Error',
+                description: 'Failed to create conversation in database',
+                variant: 'destructive',
+              });
+              return;
+            }
+            console.log('Successfully created conversation in database');
+          } else if (convData.user_id !== session.user.id) {
+            console.error('Conversation belongs to a different user');
+            toast({
+              title: 'Error',
+              description: 'You do not have permission to access this conversation',
+              variant: 'destructive',
+            });
+            return;
+          }
+          
+          // Update the conversation timestamp
           const { error: conversationError } = await supabase
             .from('conversations')
             .update({ updated_at: new Date().toISOString() })
@@ -135,14 +185,14 @@ export const generateResponseAction = (set: Function, get: Function) => async ()
               const userId = session.user.id;
               console.log(`Updating user ${userId} compute credits: +${computeCredits} credits`);
               
-              // Create a record for the user if it doesn't exist
+              // Check if a record exists for the user
               const { data: existingRecord, error: checkError } = await supabase
                 .from('user_compute_credits')
                 .select('id')
                 .eq('user_id', userId)
                 .maybeSingle();
                 
-              if (checkError && checkError.code !== 'PGRST116') {
+              if (checkError) {
                 console.error('Error checking user compute credits record:', checkError);
               }
               
@@ -168,7 +218,7 @@ export const generateResponseAction = (set: Function, get: Function) => async ()
                   console.log(`Created new credit record with ${computeCredits} credits`);
                 }
               } else {
-                // Use our custom RPC function for existing records
+                // Use the RPC function to update existing records
                 const { error: creditError } = await supabase.rpc(
                   'update_user_compute_credits',
                   { 
@@ -333,6 +383,56 @@ export const createSendMessageAction = (set: Function, get: Function) =>
       try {
         console.log("Saving user message to database for conversation:", currentConversationId);
         
+        // First, check if the conversation exists and has the correct user_id
+        const { data: convData, error: convCheckError } = await supabase
+          .from('conversations')
+          .select('id, user_id')
+          .eq('id', currentConversationId)
+          .maybeSingle();
+          
+        if (convCheckError) {
+          console.error('Error checking conversation:', convCheckError);
+          toast({
+            title: 'Error',
+            description: 'Failed to verify conversation ownership',
+            variant: 'destructive',
+          });
+          return;
+        }
+        
+        if (!convData) {
+          console.log('Conversation not found in database, creating it now...');
+          // Create the conversation if it doesn't exist
+          const { error: createConvError } = await supabase
+            .from('conversations')
+            .insert([{
+              id: currentConversationId,
+              user_id: session.user.id,
+              title: currentConversation?.title || 'New Conversation',
+              created_at: currentConversation?.createdAt.toISOString() || new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            }]);
+            
+          if (createConvError) {
+            console.error('Error creating conversation:', createConvError);
+            toast({
+              title: 'Error',
+              description: 'Failed to create conversation in database',
+              variant: 'destructive',
+            });
+            return;
+          }
+          console.log('Successfully created conversation in database');
+        } else if (convData.user_id !== session.user.id) {
+          console.error('Conversation belongs to a different user');
+          toast({
+            title: 'Error',
+            description: 'You do not have permission to access this conversation',
+            variant: 'destructive',
+          });
+          return;
+        }
+        
         const { error } = await supabase
           .from('conversation_messages')
           .insert([
@@ -355,7 +455,7 @@ export const createSendMessageAction = (set: Function, get: Function) =>
             variant: 'destructive',
           });
         } else {
-          // Update the conversation timestamp without context_summary field
+          // Update the conversation timestamp
           const { error: conversationError } = await supabase
             .from('conversations')
             .update({ updated_at: new Date().toISOString() })
