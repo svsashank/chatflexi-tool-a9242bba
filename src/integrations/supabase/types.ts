@@ -247,12 +247,42 @@ export type Database = {
         }
         Relationships: []
       }
+      user_compute_credits: {
+        Row: {
+          created_at: string
+          id: string
+          total_credits: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          total_credits?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          total_credits?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      update_user_compute_credits: {
+        Args: {
+          p_user_id: string
+          p_credits: number
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

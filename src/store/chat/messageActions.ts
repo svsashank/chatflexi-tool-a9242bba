@@ -122,6 +122,26 @@ export const generateResponseAction = (set: Function, get: Function) => async ()
             if (conversationError) {
               console.error('Error updating conversation timestamp:', conversationError);
             }
+            
+            // Update the user's total compute credits
+            try {
+              const userId = session.user.id;
+              const { error: creditError } = await supabase.rpc(
+                'update_user_compute_credits',
+                { 
+                  p_user_id: userId,
+                  p_credits: computeCredits
+                }
+              );
+              
+              if (creditError) {
+                console.error('Error updating user compute credits:', creditError);
+              } else {
+                console.log(`Updated user compute credits: +${computeCredits} credits`);
+              }
+            } catch (creditUpdateError) {
+              console.error('Error calling update_user_compute_credits:', creditUpdateError);
+            }
           }
         } catch (dbError) {
           console.error('Database error:', dbError);

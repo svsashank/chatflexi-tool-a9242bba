@@ -7,12 +7,14 @@ import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import { toast } from "sonner";
 import ComputeCredits from "./ComputeCredits";
+import UserComputeCredits from "./UserComputeCredits";
 
 interface MessageItemProps {
   message: Message;
+  showTotalCredits?: boolean;
 }
 
-const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
+const MessageItem: React.FC<MessageItemProps> = ({ message, showTotalCredits = false }) => {
   const [copied, setCopied] = useState(false);
 
   const copyToClipboard = async () => {
@@ -101,16 +103,21 @@ const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
           </div>
         </div>
         
-        {/* Moved compute credits below the message */}
-        {!isUserMessage && message.computeCredits !== undefined && message.tokens && (
-          <div className="mt-1 self-end">
+        {/* Credits display area */}
+        <div className="mt-1 self-end flex items-center gap-2">
+          {!isUserMessage && message.computeCredits !== undefined && message.tokens && (
             <ComputeCredits 
               credits={message.computeCredits}
               tokens={message.tokens}
               modelId={message.model.id}
             />
-          </div>
-        )}
+          )}
+          
+          {/* Show total user credits only on the first assistant message if requested */}
+          {showTotalCredits && !isUserMessage && (
+            <UserComputeCredits />
+          )}
+        </div>
       </div>
       
       {!isUserMessage && (

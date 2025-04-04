@@ -21,6 +21,12 @@ const ChatMessages = () => {
     return <div className="flex-1 overflow-y-auto p-4">No conversation selected</div>;
   }
 
+  // Find the last assistant message index to display total credits
+  const lastAssistantIndex = currentConversation.messages
+    .map((msg, index) => ({ role: msg.role, index }))
+    .filter(item => item.role === 'assistant')
+    .pop()?.index;
+
   return (
     <div className="flex-1 overflow-y-auto p-4 space-y-6">
       {currentConversation.messages.length === 0 && !isLoading ? (
@@ -54,8 +60,12 @@ const ChatMessages = () => {
         </div>
       ) : (
         <>
-          {currentConversation.messages.map((message) => (
-            <MessageItem key={message.id} message={message} />
+          {currentConversation.messages.map((message, index) => (
+            <MessageItem 
+              key={message.id} 
+              message={message} 
+              showTotalCredits={index === lastAssistantIndex}
+            />
           ))}
           
           {isLoading && (
