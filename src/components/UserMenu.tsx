@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { User, LogOut, CreditCard } from 'lucide-react';
+import { User, LogOut, Cpu } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 
 export function UserMenu() {
@@ -94,7 +94,7 @@ export function UserMenu() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => navigate('/profile')}>
-          <CreditCard className="mr-2 h-4 w-4" />
+          <Cpu className="mr-2 h-4 w-4 text-cyan-400" />
           <span>Profile</span>
         </DropdownMenuItem>
         <DropdownMenuItem onClick={handleSignOut}>
