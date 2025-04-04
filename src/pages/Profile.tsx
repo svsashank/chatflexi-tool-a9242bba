@@ -1,16 +1,18 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Cpu, ArrowLeft } from 'lucide-react';
+import { Cpu, ArrowLeft, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 
 const Profile = () => {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
   const [totalCredits, setTotalCredits] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [joinedDate, setJoinedDate] = useState<string>('');
@@ -33,6 +35,24 @@ const Profile = () => {
       .map(n => n.charAt(0).toUpperCase())
       .slice(0, 2)
       .join('');
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      toast({
+        title: "Signed out successfully",
+        description: "You have been logged out",
+      });
+      navigate('/auth');
+    } catch (error) {
+      console.error('Error signing out:', error);
+      toast({
+        title: "Error",
+        description: "Failed to sign out",
+        variant: "destructive",
+      });
+    }
   };
 
   useEffect(() => {
@@ -105,13 +125,19 @@ const Profile = () => {
 
   return (
     <div className="container max-w-4xl py-6 px-4 md:px-6 space-y-8">
-      <div className="flex items-center space-x-2">
-        <Button variant="ghost" size="icon" asChild>
-          <Link to="/">
-            <ArrowLeft size={20} />
-          </Link>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          <Button variant="ghost" size="icon" asChild>
+            <Link to="/">
+              <ArrowLeft size={20} />
+            </Link>
+          </Button>
+          <h1 className="text-2xl font-bold">Your Profile</h1>
+        </div>
+        <Button variant="outline" size="sm" onClick={handleSignOut} className="text-red-500 hover:text-red-600 hover:bg-red-50 border-red-200">
+          <LogOut size={16} className="mr-2" />
+          Sign Out
         </Button>
-        <h1 className="text-2xl font-bold">Your Profile</h1>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -164,6 +190,15 @@ const Profile = () => {
                 Compute credits represent the computational resources used when interacting 
                 with AI models. More complex models and longer conversations consume more credits.
               </p>
+              <div className="p-4 bg-blue-50 rounded-lg border border-blue-100">
+                <h4 className="font-medium text-blue-700 mb-2">Model Flexibility</h4>
+                <p className="text-sm text-blue-600">
+                  Different AI models have varying computational costs. 
+                  Advanced models like GPT-4 and Claude Opus consume more credits 
+                  than simpler models like GPT-3.5. You have the flexibility to choose 
+                  which model to use based on your needs and credit availability.
+                </p>
+              </div>
             </div>
           </CardContent>
         </Card>
