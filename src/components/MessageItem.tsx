@@ -41,7 +41,7 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, showTotalCredits = f
           <User size={18} />
         ) : (
           <div className="flex items-center justify-center">
-            <Bot size={18} />
+            <Zap size={18} className="text-yellow-400" />
           </div>
         )}
       </div>
@@ -57,10 +57,15 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, showTotalCredits = f
           {!isUserMessage && (
             <div className="mb-1.5 flex items-center">
               <div 
-                className="w-2.5 h-2.5 rounded-full mr-2" 
+                className="w-2.5 h-2.5 rounded-full mr-2 animate-pulse" 
                 style={{ backgroundColor: message.model.avatarColor }}
               />
-              <span className="text-xs font-medium">{message.model.name}</span>
+              <span className="text-xs font-medium flex items-center">
+                {message.model.name}
+                <span className="ml-1.5 text-xs font-medium text-primary-500 flex items-center">
+                  <Zap size={10} className="mr-0.5 text-yellow-400" />GPU Accelerated
+                </span>
+              </span>
             </div>
           )}
           
