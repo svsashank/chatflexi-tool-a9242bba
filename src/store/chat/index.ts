@@ -19,7 +19,7 @@ import {
   generateResponseAction,
   createSendMessageAction,
   createRegenerateMessageAction
-} from './messageActions';
+} from './actions';
 
 import { loadUserConversationsAction } from './dataActions';
 
