@@ -121,14 +121,14 @@ async function handleOpenAI(messageHistory, content, modelId, systemPrompt) {
     throw new Error("OpenAI API key not configured");
   }
   
-  console.log(`Processing request for model ${modelId} with content: ${content.substring(0, 50)}...`);
+  console.log(`Processing request for OpenAI model ${modelId} with content: ${content.substring(0, 50)}...`);
   
-  // Check if this is an O1 model which requires completions API instead of chat
-  const isO1Model = modelId.startsWith('o1');
+  // Check if this is an O-series model (o1, o1-mini, o1-pro, o3-mini)
+  const isOModel = modelId.startsWith('o1') || modelId.startsWith('o3');
   
-  if (isO1Model) {
-    // For O1 models, use the completions endpoint
-    console.log(`Using completions endpoint for O1 model: ${modelId}`);
+  if (isOModel) {
+    // For O-series models, use the completions endpoint
+    console.log(`Using completions endpoint for O-series model: ${modelId}`);
     
     // Format prompt for completions API
     let fullPrompt = `${systemPrompt}\n\n`;
@@ -159,11 +159,17 @@ async function handleOpenAI(messageHistory, content, modelId, systemPrompt) {
     });
     
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error?.message || `OpenAI API error: ${response.status}`);
+      const errorText = await response.text();
+      console.error(`OpenAI API error for ${modelId}: ${response.status}`, errorText);
+      try {
+        const error = JSON.parse(errorText);
+        throw new Error(error.error?.message || `OpenAI API error: ${response.status} - ${errorText}`);
+      } catch (e) {
+        throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
+      }
     }
     
-    console.log(`Successfully received response from OpenAI completions API`);
+    console.log(`Successfully received response from OpenAI completions API for ${modelId}`);
     const data = await response.json();
     
     // Extract token counts
@@ -194,7 +200,7 @@ async function handleOpenAI(messageHistory, content, modelId, systemPrompt) {
       { role: 'user', content }
     ];
 
-    console.log(`Calling OpenAI chat API...`);
+    console.log(`Calling OpenAI chat API for model ${modelId}...`);
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -210,11 +216,17 @@ async function handleOpenAI(messageHistory, content, modelId, systemPrompt) {
     });
     
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error?.message || `OpenAI API error: ${response.status}`);
+      const errorText = await response.text();
+      console.error(`OpenAI API error for ${modelId}: ${response.status}`, errorText);
+      try {
+        const error = JSON.parse(errorText);
+        throw new Error(error.error?.message || `OpenAI API error: ${response.status} - ${errorText}`);
+      } catch (e) {
+        throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
+      }
     }
     
-    console.log(`Successfully received response from OpenAI`);
+    console.log(`Successfully received response from OpenAI for model ${modelId}`);
     const data = await response.json();
     
     // Extract token counts
@@ -237,7 +249,7 @@ async function handleOpenAI(messageHistory, content, modelId, systemPrompt) {
 }
 
 // Anthropic (Claude) handler
-async function handleAnthropic(messageHistory, content, modelId, systemPrompt) {
+function handleAnthropic(messageHistory, content, modelId, systemPrompt) {
   const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
   if (!ANTHROPIC_API_KEY) {
     throw new Error("Anthropic API key not configured");
@@ -328,7 +340,7 @@ async function handleAnthropic(messageHistory, content, modelId, systemPrompt) {
 }
 
 // Google (Gemini) handler
-async function handleGoogle(messageHistory, content, modelId, systemPrompt) {
+function handleGoogle(messageHistory, content, modelId, systemPrompt) {
   const GOOGLE_API_KEY = Deno.env.get('GOOGLE_API_KEY');
   if (!GOOGLE_API_KEY) {
     throw new Error("Google API key not configured");
@@ -420,7 +432,7 @@ async function handleGoogle(messageHistory, content, modelId, systemPrompt) {
 }
 
 // xAI (Grok) handler
-async function handleXAI(messageHistory, content, modelId, systemPrompt) {
+function handleXAI(messageHistory, content, modelId, systemPrompt) {
   const XAI_API_KEY = Deno.env.get('XAI_API_KEY');
   if (!XAI_API_KEY) {
     throw new Error("xAI API key not configured. Please add your xAI API key in the Supabase settings.");
@@ -519,7 +531,7 @@ async function handleXAI(messageHistory, content, modelId, systemPrompt) {
 }
 
 // Krutrim API handler for DeepSeek-R1
-async function handleKrutrim(messageHistory, content, modelId, systemPrompt) {
+function handleKrutrim(messageHistory, content, modelId, systemPrompt) {
   const KRUTRIM_API_KEY = Deno.env.get('KRUTRIM_API_KEY');
   if (!KRUTRIM_API_KEY) {
     throw new Error("Krutrim API key not configured. Please add your Krutrim API key in the Supabase settings.");
