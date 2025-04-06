@@ -41,7 +41,10 @@ export const createSendMessageAction = (
       })
     });
     
-    // Generate AI response
-    generateResponse();
+    // Add a slight delay before generating the AI response to improve UX
+    setTimeout(() => {
+      // Generate AI response
+      generateResponse();
+    }, 100);
   };
 };

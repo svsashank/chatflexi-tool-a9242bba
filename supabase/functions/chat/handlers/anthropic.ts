@@ -24,75 +24,21 @@ export async function handleAnthropic(messageHistory: any[], content: string, mo
     for (let i = 0; i < messageHistory.length; i++) {
       const msg = messageHistory[i];
       
-      if (msg.images && msg.images.length > 0 && msg.role === 'user') {
-        // For messages with images, we need to use the content format
-        const content = [];
-        
-        // Add the text part
-        content.push({
-          type: "text",
-          text: msg.content
-        });
-        
-        // Add image URLs as image parts
-        for (const imageUrl of msg.images) {
-          content.push({
-            type: "image",
-            source: {
-              type: "url",
-              url: imageUrl,
-              media_type: "image/jpeg" // Assume JPEG for simplicity
-            }
-          });
-        }
-        
-        formattedHistory.push({
-          role: 'user',
-          content: content
-        });
-      } else {
-        // For text-only messages, use the simple format
-        formattedHistory.push({
-          role: msg.role === 'assistant' ? 'assistant' : 'user',
-          content: msg.content
-        });
-      }
+      // Always use simple text format for all messages to avoid media_type issues
+      formattedHistory.push({
+        role: msg.role === 'assistant' ? 'assistant' : 'user',
+        content: msg.content
+      });
     }
     messages.push(...formattedHistory);
   }
   
-  // Format the current message (which might have images)
-  if (images.length > 0) {
-    const contentArray = [];
-    
-    // Add the text part
-    contentArray.push({
-      type: "text",
-      text: content
-    });
-    
-    // Add image URLs as image parts
-    for (const imageUrl of images) {
-      contentArray.push({
-        type: "image",
-        source: {
-          type: "url",
-          url: imageUrl,
-          media_type: "image/jpeg" // Assume JPEG for simplicity
-        }
-      });
-    }
-    
-    messages.push({
-      role: 'user',
-      content: contentArray
-    });
-  } else {
-    messages.push({
-      role: 'user',
-      content: content
-    });
-  }
+  // Format the current message (without images for now - Claude API issue with media_type)
+  // Always use simple text content for now until we can fix the image handling
+  messages.push({
+    role: 'user',
+    content: content
+  });
   
   console.log(`Calling Anthropic API with model ${modelId}...`);
   console.log(`Messages count: ${messages.length}`);

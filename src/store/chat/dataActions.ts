@@ -70,7 +70,7 @@ export const loadUserConversationsAction = (set: Function) => async () => {
         const formattedMessages: Message[] = messages?.map(msg => {
           // Find the model based on model_id and provider
           const model = AI_MODELS.find(
-            m => m.id === msg.model_id && m.provider.toLowerCase() === msg.model_provider?.toLowerCase()
+            m => m.id === msg.model_id && m.provider.toLowerCase() === (msg.model_provider || '').toLowerCase()
           ) || DEFAULT_MODEL;
           
           return {
@@ -79,6 +79,7 @@ export const loadUserConversationsAction = (set: Function) => async () => {
             role: msg.role as 'user' | 'assistant',
             model,
             timestamp: new Date(msg.created_at),
+            images: msg.images || [] // Add images if they exist
           };
         }) || [];
         

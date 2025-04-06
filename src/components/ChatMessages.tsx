@@ -7,15 +7,36 @@ import { User, Hexagon } from "lucide-react";
 const ChatMessages = () => {
   const { conversations, currentConversationId, isLoading } = useChatStore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isAutoScrollEnabled, setIsAutoScrollEnabled] = React.useState(true);
 
   const currentConversation = conversations.find(
     (conv) => conv.id === currentConversationId
   );
 
+  // Handle scroll events to determine if auto-scroll should be enabled
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!containerRef.current) return;
+      
+      const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
+      const isAtBottom = Math.abs(scrollHeight - scrollTop - clientHeight) < 50;
+      setIsAutoScrollEnabled(isAtBottom);
+    };
+
+    const container = containerRef.current;
+    if (container) {
+      container.addEventListener("scroll", handleScroll);
+      return () => container.removeEventListener("scroll", handleScroll);
+    }
+  }, []);
+
   // Scroll to bottom when messages change or when loading state changes
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [currentConversation?.messages, isLoading]);
+    if (isAutoScrollEnabled && messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [currentConversation?.messages, isLoading, isAutoScrollEnabled]);
 
   if (!currentConversation) {
     return <div className="flex-1 overflow-y-auto p-4">No conversation selected</div>;
@@ -28,7 +49,7 @@ const ChatMessages = () => {
     .pop()?.index;
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 space-y-6">
+    <div ref={containerRef} className="flex-1 overflow-y-auto p-4 space-y-6">
       {currentConversation.messages.length === 0 && !isLoading ? (
         <div className="h-full flex flex-col items-center justify-center text-center px-4 py-12">
           <div className="flex gap-2 mb-4">

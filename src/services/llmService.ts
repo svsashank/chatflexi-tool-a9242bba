@@ -4,7 +4,7 @@ import { Message, AIModel } from "@/types";
 
 // Formats the chat history for better context preservation
 const formatMessageHistory = (messages: Message[]) => {
-  // Only include the last 10 messages to avoid token limits
+  // Only include the last 10 messages to avoid token limits and improve performance
   const recentMessages = messages.slice(-10);
   
   return recentMessages.map(msg => ({
@@ -13,7 +13,7 @@ const formatMessageHistory = (messages: Message[]) => {
     // Include model info for better context
     model: msg.model.name,
     // Include images if they exist
-    images: msg.images
+    images: msg.images || []
   }));
 };
 
@@ -57,41 +57,57 @@ export const sendMessageToLLM = async (
                 (lastUserMessageInHistory.content.length > 50 ? '...' : ''),
         hasImages: lastUserMessageInHistory.images && lastUserMessageInHistory.images.length > 0
       });
-      
-      // Check if the current message is already in history
-      if (lastUserMessageInHistory.content === content) {
-        console.warn('WARNING: Current message appears to be duplicated in history!');
+    }
+    
+    // Call the Supabase Edge Function with retries for better reliability
+    let attempts = 0;
+    const maxAttempts = 2;
+    let lastError;
+    
+    while (attempts < maxAttempts) {
+      try {
+        const { data, error } = await supabase.functions.invoke('chat', {
+          body: { 
+            model,
+            content,
+            messages: messageHistory,
+            images  // Pass images for API compatibility
+          }
+        });
+        
+        if (error) {
+          console.error(`Attempt ${attempts + 1}: Error with ${model.provider} API:`, error);
+          lastError = error;
+          attempts++;
+          // Wait before retry
+          if (attempts < maxAttempts) await new Promise(resolve => setTimeout(resolve, 1000));
+          continue;
+        }
+        
+        console.log('Received response from LLM:', {
+          contentPreview: data.content.substring(0, 50) + (data.content.length > 50 ? '...' : ''),
+          model: data.model,
+          provider: data.provider,
+          tokens: data.tokens
+        });
+        
+        return {
+          content: data.content,
+          tokens: data.tokens
+        };
+      } catch (error) {
+        console.error(`Attempt ${attempts + 1}: Error with ${model.provider} API:`, error);
+        lastError = error;
+        attempts++;
+        // Wait before retry
+        if (attempts < maxAttempts) await new Promise(resolve => setTimeout(resolve, 1000));
       }
     }
     
-    // Call the Supabase Edge Function
-    const { data, error } = await supabase.functions.invoke('chat', {
-      body: { 
-        model,
-        content,
-        messages: messageHistory,
-        images // Pass images separately for API compatibility
-      }
-    });
-    
-    if (error) {
-      console.error(`Error with ${model.provider} API:`, error);
-      return {
-        content: `Error: ${error.message || 'Failed to get response from model'}`,
-        tokens: { input: 0, output: 0 }
-      };
-    }
-    
-    console.log('Received response from LLM:', {
-      contentPreview: data.content.substring(0, 50) + (data.content.length > 50 ? '...' : ''),
-      model: data.model,
-      provider: data.provider,
-      tokens: data.tokens
-    });
-    
+    // If we get here, all attempts failed
     return {
-      content: data.content,
-      tokens: data.tokens
+      content: `Error: ${lastError?.message || 'Failed to get response after multiple attempts'}`,
+      tokens: { input: 0, output: 0 }
     };
   } catch (error: any) {
     console.error(`Error with ${model.provider} API:`, error);
@@ -100,22 +116,4 @@ export const sendMessageToLLM = async (
       tokens: { input: 0, output: 0 }
     };
   }
-};
-
-// Fallback mock responses if needed
-const getMockResponse = (modelId: string): string => {
-  const mockResponses: Record<string, string> = {
-    'gpt-4o': "I'm GPT-4o, OpenAI's most advanced model. I can help with complex reasoning, creative tasks, and analyze images. How can I assist you today?",
-    'claude-3-opus': "Hello! I'm Claude 3 Opus by Anthropic. I excel at thoughtful analysis, creative writing, and can understand images. What would you like to explore?",
-    'gemini-pro': "Hi there, I'm Google's Gemini Pro. I'm designed to handle a wide range of tasks including text, code, and images. How can I help you?",
-    'llama-3': "Greetings! I'm Llama 3 from Meta. I'm an open model focused on helpful, harmless, and honest AI assistance. What questions do you have?",
-    'mixtral-8x7b': "Hello! I'm Mixtral 8x7B developed by Mistral AI. I'm a mixture-of-experts model with strong capabilities across multiple languages and domains. How may I assist you?",
-    'deepseek-r1': "Hello! I'm DeepSeek-R1 accessed through Krutrim. I'm designed to provide thoughtful, accurate responses. What would you like to know?",
-    'o1': "Hello! I'm o1, OpenAI's reasoning model. I'm designed to provide thoughtful responses with robust reasoning. How may I help you today?",
-    'o1-mini': "Hi there! I'm o1-mini, a compact version of OpenAI's reasoning model. I can help solve problems with structured reasoning. What would you like to explore?",
-    'o3-mini': "Hello! I'm o3-mini, OpenAI's third-generation reasoning model. I can provide logical and thoughtful responses to your questions. How can I assist you?",
-    'o1-pro': "Greetings! I'm o1-pro, OpenAI's premium reasoning model. I'm designed for advanced problem-solving and detailed analysis. What would you like me to help with?"
-  };
-  
-  return mockResponses[modelId] || "I'll help you with that request.";
 };
