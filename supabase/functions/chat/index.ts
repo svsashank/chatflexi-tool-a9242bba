@@ -124,11 +124,11 @@ async function handleOpenAI(messageHistory, content, modelId, systemPrompt) {
   console.log(`Processing request for OpenAI model ${modelId} with content: ${content.substring(0, 50)}...`);
   
   // Check if this is an O-series model (o1, o1-mini, o1-pro, o3-mini)
-  const isOModel = modelId.toLowerCase().startsWith('o1') || modelId.toLowerCase().startsWith('o3');
+  const isOModel = modelId.toLowerCase().includes('o1') || modelId.toLowerCase().includes('o3');
   
   if (isOModel) {
-    // For O-series reasoning models, use the /v1/chat/completions endpoint with reasoning_effort
-    console.log(`Using chat completions endpoint with reasoning_effort for O-series model: ${modelId}`);
+    // For O-series reasoning models
+    console.log(`Using specific parameters for O-series model: ${modelId}`);
     
     // Format messages for O-series models
     const formattedMessages = [
@@ -140,15 +140,15 @@ async function handleOpenAI(messageHistory, content, modelId, systemPrompt) {
       { role: 'user', content }
     ];
     
-    console.log(`Calling OpenAI chat API for O-series model ${modelId} with reasoning_effort...`);
+    console.log(`Calling OpenAI chat API for O-series model ${modelId}...`);
     
     try {
-      // Use the correct parameters for O-series models (max_completion_tokens instead of max_tokens)
+      // ONLY use the parameters that O-series models support
       const requestBody = JSON.stringify({
         model: modelId,
         messages: formattedMessages,
-        max_completion_tokens: 1000,
-        reasoning_effort: 0.7  // Important parameter for O-series models, value between 0 and 1
+        max_tokens: 1000,
+        stream: false
       });
       
       console.log(`Request body for O-series model: ${requestBody.substring(0, 200)}...`);
@@ -162,6 +162,7 @@ async function handleOpenAI(messageHistory, content, modelId, systemPrompt) {
         body: requestBody
       });
       
+      // Log the full response for debugging
       if (!response.ok) {
         const errorText = await response.text();
         console.error(`OpenAI API error for ${modelId}: ${response.status}`, errorText);
