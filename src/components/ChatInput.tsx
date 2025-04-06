@@ -35,7 +35,12 @@ const ChatInput = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if ((inputValue.trim() || uploadedImages.length > 0) && !isLoading) {
-      sendMessage(inputValue.trim(), uploadedImages);
+      // Fix: Check if we need to send the message with or without images
+      if (uploadedImages.length > 0) {
+        sendMessage(inputValue.trim(), uploadedImages);
+      } else {
+        sendMessage(inputValue.trim());
+      }
       setInputValue("");
       setUploadedImages([]);
       // Reset textarea height
