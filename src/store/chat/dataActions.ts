@@ -79,7 +79,13 @@ export const loadUserConversationsAction = (set: Function) => async () => {
             role: msg.role as 'user' | 'assistant',
             model,
             timestamp: new Date(msg.created_at),
-            images: msg.images || [] // Add images if they exist
+            tokens: msg.input_tokens && msg.output_tokens ? {
+              input: msg.input_tokens,
+              output: msg.output_tokens
+            } : undefined,
+            computeCredits: msg.compute_credits,
+            // The database doesn't store images, so default to empty array
+            images: []
           };
         }) || [];
         
