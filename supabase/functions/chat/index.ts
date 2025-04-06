@@ -124,20 +124,16 @@ async function handleOpenAI(messageHistory, content, modelId, systemPrompt) {
   
   console.log(`Processing request for OpenAI model ${modelId} with content length: ${content.length}`);
   
-  // Check if this is an O-series model (o1, o1-mini, etc.)
-  const isOModel = modelId.toLowerCase().includes('o');
+  // Check if this is an O-series model specific IDs
+  const oSeriesModels = ['o1', 'o1-mini', 'o1-preview', 'o1-pro', 'o3', 'o3-preview', 'o3-mini'];
+  const isOModel = oSeriesModels.includes(modelId);
   
   if (isOModel) {
-    console.log(`Detected O-series model: ${modelId}`);
+    console.log(`Processing O-series model: ${modelId}`);
     
     try {
       // Format messages according to OpenAI's responses API format
       const messages = [];
-      
-      // Include system prompt if provided
-      if (systemPrompt) {
-        messages.push({ role: 'system', content: systemPrompt });
-      }
       
       // Add message history
       messageHistory.forEach(msg => {
@@ -150,14 +146,19 @@ async function handleOpenAI(messageHistory, content, modelId, systemPrompt) {
       // Add current user message
       messages.push({ role: 'user', content });
       
+      // Add system prompt as the first message if provided
+      if (systemPrompt) {
+        messages.unshift({ role: 'system', content: systemPrompt });
+      }
+      
       // Log details for debugging
-      console.log(`O-series API request - model: ${modelId}`);
+      console.log(`O-series API request for model: ${modelId}`);
       console.log(`Messages count: ${messages.length}`);
       
-      // Create request payload exactly as per OpenAI documentation
+      // Create request payload for /v1/responses endpoint
       const requestBody = {
         model: modelId,
-        input: messages,
+        input: messages,  // 'input' field for messages array, not 'messages'
         reasoning: {
           effort: "medium"
         }
@@ -165,12 +166,13 @@ async function handleOpenAI(messageHistory, content, modelId, systemPrompt) {
       
       console.log(`O-series request structure: ${JSON.stringify(Object.keys(requestBody))}`);
       
-      // Call the responses API
+      // Call the responses API, not chat/completions
       const response = await fetch('https://api.openai.com/v1/responses', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${OPENAI_API_KEY}`
+          'Authorization': `Bearer ${OPENAI_API_KEY}`,
+          'OpenAI-Beta': 'o1-preview'
         },
         body: JSON.stringify(requestBody)
       });
