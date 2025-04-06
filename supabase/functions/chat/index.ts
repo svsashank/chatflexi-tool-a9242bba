@@ -147,8 +147,7 @@ async function handleOpenAI(messageHistory, content, modelId, systemPrompt) {
       const requestBody = JSON.stringify({
         model: modelId,
         messages: formattedMessages,
-        temperature: 0.7,
-        max_completion_tokens: 1000,  // Using max_completion_tokens instead of max_tokens
+        max_completion_tokens: 1000,
         reasoning_effort: 0.7  // Important parameter for O-series models, value between 0 and 1
       });
       
@@ -408,7 +407,7 @@ async function handleGoogle(messageHistory, content, modelId, systemPrompt) {
       console.error(`Google API error: ${response.status}`, errorText);
       try {
         const error = JSON.parse(errorText);
-        throw new Error(error.error?.message || `Google API error: ${response.status}`);
+        throw new Error(`Google API error: ${response.status}`);
       } catch (e) {
         throw new Error(`Google API error: ${response.status} - ${errorText}`);
       }
