@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 
@@ -125,7 +124,7 @@ async function handleOpenAI(messageHistory, content, modelId, systemPrompt) {
   console.log(`Processing request for OpenAI model ${modelId} with content: ${content.substring(0, 50)}...`);
   
   // Check if this is an O-series model (o1, o1-mini, o1-pro, o3-mini)
-  const isOModel = modelId.startsWith('o1') || modelId.startsWith('o3');
+  const isOModel = modelId.toLowerCase().startsWith('o1') || modelId.toLowerCase().startsWith('o3');
   
   if (isOModel) {
     // For O-series reasoning models, use the /v1/chat/completions endpoint with reasoning_effort
@@ -144,19 +143,24 @@ async function handleOpenAI(messageHistory, content, modelId, systemPrompt) {
     console.log(`Calling OpenAI chat API for O-series model ${modelId} with reasoning_effort...`);
     
     try {
+      // Use the correct parameters for O-series models (max_completion_tokens instead of max_tokens)
+      const requestBody = JSON.stringify({
+        model: modelId,
+        messages: formattedMessages,
+        temperature: 0.7,
+        max_completion_tokens: 1000,  // Using max_completion_tokens instead of max_tokens
+        reasoning_effort: 0.7  // Important parameter for O-series models, value between 0 and 1
+      });
+      
+      console.log(`Request body for O-series model: ${requestBody.substring(0, 200)}...`);
+      
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${OPENAI_API_KEY}`
         },
-        body: JSON.stringify({
-          model: modelId,
-          messages: formattedMessages,
-          temperature: 0.7,
-          max_tokens: 1000,
-          reasoning_effort: 0.7  // Important parameter for O-series models, value between 0 and 1
-        })
+        body: requestBody
       });
       
       if (!response.ok) {
