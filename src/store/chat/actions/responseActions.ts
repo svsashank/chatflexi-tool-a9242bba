@@ -24,8 +24,21 @@ export const generateResponseAction = (set: Function, get: Function) => async ()
       return;
     }
 
+    // Check if there are any messages in the conversation
+    if (!currentConversation.messages || currentConversation.messages.length === 0) {
+      toast({
+        title: 'Error',
+        description: 'Please send a message first',
+        variant: 'destructive',
+      });
+      set({ isLoading: false });
+      return;
+    }
+
     const lastMessage = currentConversation.messages[currentConversation.messages.length - 1];
-    if (!lastMessage || lastMessage.role !== 'user') {
+    
+    // Only check if the last message is from a user if there are messages
+    if (lastMessage.role !== 'user') {
       toast({
         title: 'Error',
         description: 'Please send a message first',
