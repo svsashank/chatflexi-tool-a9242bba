@@ -123,37 +123,42 @@ async function handleOpenAI(messageHistory, content, modelId, systemPrompt) {
   
   console.log(`Processing request for OpenAI model ${modelId} with content: ${content.substring(0, 50)}...`);
   
-  // Check if this is an O-series model (o1, o1-mini, o1-pro, o3-mini)
+  // Check if this is an O-series model (o1, o1-mini, o1-pro, o3-mini, etc)
   const isOModel = modelId.toLowerCase().includes('o1') || modelId.toLowerCase().includes('o3');
   
   if (isOModel) {
-    // For O-series reasoning models
-    console.log(`Using specific parameters for O-series model: ${modelId}`);
+    // For O-series reasoning models, use the /v1/responses endpoint with reasoning
+    console.log(`Using responses endpoint for O-series model: ${modelId}`);
     
-    // Format messages for O-series models
-    const formattedMessages = [
-      { role: 'system', content: systemPrompt },
+    // Format input for O-series models
+    const formattedInput = [
+      // First include system prompt if provided
+      ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
+      
+      // Include message history
       ...messageHistory.map(msg => ({
         role: msg.role,
         content: msg.content
       })),
+      
+      // Add the current user message
       { role: 'user', content }
     ];
     
-    console.log(`Calling OpenAI chat API for O-series model ${modelId}...`);
+    console.log(`Calling OpenAI responses API for O-series model ${modelId}...`);
+    console.log(`Number of input messages: ${formattedInput.length}`);
     
     try {
-      // ONLY use the parameters that O-series models support
       const requestBody = JSON.stringify({
         model: modelId,
-        messages: formattedMessages,
-        max_tokens: 1000,
-        stream: false
+        reasoning: { effort: "medium" },
+        input: formattedInput,
+        max_tokens: 1000
       });
       
       console.log(`Request body for O-series model: ${requestBody.substring(0, 200)}...`);
       
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      const response = await fetch('https://api.openai.com/v1/responses', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -162,28 +167,36 @@ async function handleOpenAI(messageHistory, content, modelId, systemPrompt) {
         body: requestBody
       });
       
-      // Log the full response for debugging
+      // Log the response status
+      console.log(`O-series API response status: ${response.status}`);
+      
       if (!response.ok) {
         const errorText = await response.text();
         console.error(`OpenAI API error for ${modelId}: ${response.status}`, errorText);
         try {
           const error = JSON.parse(errorText);
-          throw new Error(error.error?.message || `OpenAI API error: ${response.status} - ${errorText}`);
+          throw new Error(error.error?.message || `OpenAI O-series API error: ${response.status} - ${errorText}`);
         } catch (e) {
-          throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
+          throw new Error(`OpenAI O-series API error: ${response.status} - ${errorText}`);
         }
       }
       
       console.log(`Successfully received response from OpenAI for O-series model ${modelId}`);
       const data = await response.json();
       
-      // Extract token counts
-      const inputTokens = data.usage ? data.usage.prompt_tokens : 0;
-      const outputTokens = data.usage ? data.usage.completion_tokens : 0;
+      // Log the response structure to help with debugging
+      console.log(`O-series response structure: ${JSON.stringify(Object.keys(data))}`);
+      
+      // Extract the content from responses API format
+      const responseContent = data.output_text;
+      
+      // Extract token counts or estimate them
+      const inputTokens = data.usage_metadata ? data.usage_metadata.input_tokens : 0;
+      const outputTokens = data.usage_metadata ? data.usage_metadata.output_tokens : 0;
       
       return new Response(
         JSON.stringify({ 
-          content: data.choices[0].message.content,
+          content: responseContent,
           model: modelId,
           provider: 'OpenAI',
           tokens: {
@@ -198,7 +211,9 @@ async function handleOpenAI(messageHistory, content, modelId, systemPrompt) {
       throw error;
     }
   } else {
-    // For regular OpenAI models, use the chat completions endpoint without reasoning_effort
+    // For regular OpenAI models, use the chat completions endpoint
+    console.log(`Processing request for OpenAI model ${modelId} with content: ${content.substring(0, 50)}...`);
+    
     // Format messages for OpenAI
     const formattedMessages = [
       { role: 'system', content: systemPrompt },
