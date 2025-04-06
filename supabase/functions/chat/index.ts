@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 
@@ -249,7 +250,7 @@ async function handleOpenAI(messageHistory, content, modelId, systemPrompt) {
 }
 
 // Anthropic (Claude) handler
-function handleAnthropic(messageHistory, content, modelId, systemPrompt) {
+async function handleAnthropic(messageHistory, content, modelId, systemPrompt) {
   const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
   if (!ANTHROPIC_API_KEY) {
     throw new Error("Anthropic API key not configured");
@@ -340,7 +341,7 @@ function handleAnthropic(messageHistory, content, modelId, systemPrompt) {
 }
 
 // Google (Gemini) handler
-function handleGoogle(messageHistory, content, modelId, systemPrompt) {
+async function handleGoogle(messageHistory, content, modelId, systemPrompt) {
   const GOOGLE_API_KEY = Deno.env.get('GOOGLE_API_KEY');
   if (!GOOGLE_API_KEY) {
     throw new Error("Google API key not configured");
@@ -432,7 +433,7 @@ function handleGoogle(messageHistory, content, modelId, systemPrompt) {
 }
 
 // xAI (Grok) handler
-function handleXAI(messageHistory, content, modelId, systemPrompt) {
+async function handleXAI(messageHistory, content, modelId, systemPrompt) {
   const XAI_API_KEY = Deno.env.get('XAI_API_KEY');
   if (!XAI_API_KEY) {
     throw new Error("xAI API key not configured. Please add your xAI API key in the Supabase settings.");
@@ -531,7 +532,7 @@ function handleXAI(messageHistory, content, modelId, systemPrompt) {
 }
 
 // Krutrim API handler for DeepSeek-R1
-function handleKrutrim(messageHistory, content, modelId, systemPrompt) {
+async function handleKrutrim(messageHistory, content, modelId, systemPrompt) {
   const KRUTRIM_API_KEY = Deno.env.get('KRUTRIM_API_KEY');
   if (!KRUTRIM_API_KEY) {
     throw new Error("Krutrim API key not configured. Please add your Krutrim API key in the Supabase settings.");
