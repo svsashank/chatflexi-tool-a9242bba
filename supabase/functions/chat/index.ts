@@ -127,10 +127,10 @@ async function handleOpenAI(messageHistory, content, modelId, systemPrompt) {
   const isOModel = modelId.toLowerCase().includes('o1') || modelId.toLowerCase().includes('o3');
   
   if (isOModel) {
-    // For O-series reasoning models, use the /v1/responses endpoint with reasoning
+    // For O-series reasoning models, use the /v1/responses endpoint
     console.log(`Using responses endpoint for O-series model: ${modelId}`);
     
-    // Format input for O-series models
+    // Format input for O-series models following the documentation
     const formattedInput = [
       // First include system prompt if provided
       ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
@@ -149,11 +149,11 @@ async function handleOpenAI(messageHistory, content, modelId, systemPrompt) {
     console.log(`Number of input messages: ${formattedInput.length}`);
     
     try {
+      // EXACTLY follow the API reference documentation format
       const requestBody = JSON.stringify({
         model: modelId,
         reasoning: { effort: "medium" },
-        input: formattedInput,
-        max_tokens: 1000
+        input: formattedInput
       });
       
       console.log(`Request body for O-series model: ${requestBody.substring(0, 200)}...`);
@@ -273,7 +273,7 @@ async function handleOpenAI(messageHistory, content, modelId, systemPrompt) {
 }
 
 // Anthropic (Claude) handler
-async function handleAnthropic(messageHistory, content, modelId, systemPrompt) {
+function handleAnthropic(messageHistory, content, modelId, systemPrompt) {
   const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
   if (!ANTHROPIC_API_KEY) {
     throw new Error("Anthropic API key not configured");
@@ -364,7 +364,7 @@ async function handleAnthropic(messageHistory, content, modelId, systemPrompt) {
 }
 
 // Google (Gemini) handler
-async function handleGoogle(messageHistory, content, modelId, systemPrompt) {
+function handleGoogle(messageHistory, content, modelId, systemPrompt) {
   const GOOGLE_API_KEY = Deno.env.get('GOOGLE_API_KEY');
   if (!GOOGLE_API_KEY) {
     throw new Error("Google API key not configured");
@@ -434,8 +434,7 @@ async function handleGoogle(messageHistory, content, modelId, systemPrompt) {
     
     // Estimate token counts (Google doesn't always provide this)
     const inputTokensEstimate = Math.round((content.length + systemPrompt.length) / 4);
-    const outputTokensEstimate = data.candidates && data.candidates[0] && data.candidates[0].content.parts[0] ? 
-      Math.round(data.candidates[0].content.parts[0].text.length / 4) : 0;
+    const outputTokensEstimate = data.usage ? data.usage.promptTokenCount || inputTokensEstimate : 0;
     
     return new Response(
       JSON.stringify({ 
@@ -456,7 +455,7 @@ async function handleGoogle(messageHistory, content, modelId, systemPrompt) {
 }
 
 // xAI (Grok) handler
-async function handleXAI(messageHistory, content, modelId, systemPrompt) {
+function handleXAI(messageHistory, content, modelId, systemPrompt) {
   const XAI_API_KEY = Deno.env.get('XAI_API_KEY');
   if (!XAI_API_KEY) {
     throw new Error("xAI API key not configured. Please add your xAI API key in the Supabase settings.");
@@ -555,7 +554,7 @@ async function handleXAI(messageHistory, content, modelId, systemPrompt) {
 }
 
 // Krutrim API handler for DeepSeek-R1
-async function handleKrutrim(messageHistory, content, modelId, systemPrompt) {
+function handleKrutrim(messageHistory, content, modelId, systemPrompt) {
   const KRUTRIM_API_KEY = Deno.env.get('KRUTRIM_API_KEY');
   if (!KRUTRIM_API_KEY) {
     throw new Error("Krutrim API key not configured. Please add your Krutrim API key in the Supabase settings.");
