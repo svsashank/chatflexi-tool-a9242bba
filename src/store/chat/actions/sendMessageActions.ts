@@ -2,7 +2,6 @@
 import { StateCreator } from 'zustand';
 import { v4 as uuidv4 } from 'uuid';
 import { ChatStore } from '../types';
-import { getDefaultSystemMessage } from '../utils';
 import { AIModel } from '@/types';
 
 export const createSendMessageAction = (

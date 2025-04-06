@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from "react";
 import { Send, ChevronDown, Image, X } from "lucide-react";
 import { useChatStore } from "@/store";
@@ -35,12 +34,8 @@ const ChatInput = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if ((inputValue.trim() || uploadedImages.length > 0) && !isLoading) {
-      // Fix: Check if we need to send the message with or without images
-      if (uploadedImages.length > 0) {
-        sendMessage(inputValue.trim(), uploadedImages);
-      } else {
-        sendMessage(inputValue.trim());
-      }
+      // Send message with content and images
+      sendMessage(inputValue.trim(), uploadedImages.length > 0 ? uploadedImages : undefined);
       setInputValue("");
       setUploadedImages([]);
       // Reset textarea height

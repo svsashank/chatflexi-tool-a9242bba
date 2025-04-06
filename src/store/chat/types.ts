@@ -17,7 +17,7 @@ export interface ChatStoreActions {
   generateResponse: () => Promise<void>;
   loadUserConversations: () => Promise<void>;
   resetConversations: () => void;
-  sendMessage: (content: string) => Promise<void>;
+  sendMessage: (content: string, images?: string[]) => void;
   regenerateMessage: () => Promise<void>;
 }
 

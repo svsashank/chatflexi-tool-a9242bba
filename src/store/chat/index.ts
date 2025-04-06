@@ -33,36 +33,27 @@ const initialConversation: Conversation = {
   contextSummary: '',
 };
 
-// Create the store with a simpler approach to avoid TypeScript errors
-const useChatStore = create<ChatStore>((set, get) => {
+// Create the store
+const useChatStore = create<ChatStore>((set, get) => ({
   // Initial state
-  const state = {
-    conversations: [initialConversation],
-    currentConversationId: initialConversation.id,
-    selectedModel: DEFAULT_MODEL,
-    isLoading: false,
-  };
-
-  // Create all actions
-  const actions = {
-    createConversation: createConversationAction(set, get),
-    setCurrentConversation: setCurrentConversationAction(set, get),
-    deleteConversation: deleteConversationAction(set, get),
-    resetConversations: resetConversationsAction(set),
-    addMessage: addMessageAction(set, get),
-    selectModel: selectModelAction(set),
-    generateResponse: generateResponseAction(set, get),
-    loadUserConversations: loadUserConversationsAction(set),
-    
-    // Message slice actions
-    sendMessage: createSendMessageAction(set, get),
-    regenerateMessage: createRegenerateMessageAction(set, get)
-  };
-
-  return {
-    ...state,
-    ...actions
-  };
-});
+  conversations: [initialConversation],
+  currentConversationId: initialConversation.id,
+  selectedModel: DEFAULT_MODEL,
+  isLoading: false,
+  
+  // Actions
+  createConversation: createConversationAction(set, get),
+  setCurrentConversation: setCurrentConversationAction(set, get),
+  deleteConversation: deleteConversationAction(set, get),
+  resetConversations: resetConversationsAction(set),
+  addMessage: addMessageAction(set, get),
+  selectModel: selectModelAction(set),
+  generateResponse: generateResponseAction(set, get),
+  loadUserConversations: loadUserConversationsAction(set),
+  
+  // Message slice actions
+  sendMessage: createSendMessageAction(set, get),
+  regenerateMessage: createRegenerateMessageAction(set, get)
+}));
 
 export default useChatStore;
