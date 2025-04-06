@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 
@@ -185,38 +186,47 @@ async function handleOpenAIReasoningModel(messageHistory, content, modelId, syst
     console.log(`Successfully received response from OpenAI reasoning model ${modelId}`);
     const data = await response.json();
     console.log(`Response structure: ${JSON.stringify(Object.keys(data))}`);
+    console.log(`Full response data: ${JSON.stringify(data, null, 2)}`);
     
-    // Extract content from the response format
+    // Extract content from the response format based on the structure we observed in logs
     let responseContent = '';
-    if (data.output) {
-      // If output is a string
-      if (typeof data.output === 'string') {
+    
+    // Check for the specific format seen in the logs
+    if (data.output && Array.isArray(data.output)) {
+      // Look for message type output with content
+      for (const item of data.output) {
+        if (item.type === 'message' && item.content && Array.isArray(item.content)) {
+          for (const contentItem of item.content) {
+            if (contentItem.type === 'output_text' && contentItem.text) {
+              responseContent = contentItem.text;
+              break;
+            }
+          }
+          if (responseContent) break;
+        }
+      }
+    }
+    
+    // Fallback to other possible formats if the above didn't work
+    if (!responseContent) {
+      if (data.output_text) {
+        responseContent = data.output_text;
+      } else if (typeof data.output === 'string') {
         responseContent = data.output;
       }
-      // If output is an array of messages
-      else if (Array.isArray(data.output) && data.output.length > 0) {
-        responseContent = data.output[0].content;
-      }
-      // If output has a text property
-      else if (data.output.text) {
-        responseContent = data.output.text;
-      }
-      // Fallback to output_text if available
-      else if (data.output_text) {
-        responseContent = data.output_text;
-      }
-    } else if (data.output_text) {
-      responseContent = data.output_text;
     }
     
     if (!responseContent) {
-      console.error("Unexpected OpenAI reasoning model response format:", data);
+      // Log the full response for debugging
+      console.error("Unexpected OpenAI reasoning model response format:", JSON.stringify(data, null, 2));
       throw new Error("Could not extract content from OpenAI reasoning model response");
     }
     
-    // Estimate token counts - the responses API doesn't return usage info the same way
-    const inputTokensEstimate = Math.round((content.length + systemPrompt.length) / 4);
-    const outputTokensEstimate = Math.round(responseContent.length / 4);
+    console.log(`Successfully extracted response content, length: ${responseContent.length}`);
+    
+    // Estimate token counts from usage info if available
+    const inputTokens = data.usage?.input_tokens || Math.round((content.length + systemPrompt.length) / 4);
+    const outputTokens = data.usage?.output_tokens || Math.round(responseContent.length / 4);
     
     return new Response(
       JSON.stringify({ 
@@ -224,8 +234,8 @@ async function handleOpenAIReasoningModel(messageHistory, content, modelId, syst
         model: modelId,
         provider: 'OpenAI',
         tokens: {
-          input: inputTokensEstimate,
-          output: outputTokensEstimate
+          input: inputTokens,
+          output: outputTokens
         }
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
