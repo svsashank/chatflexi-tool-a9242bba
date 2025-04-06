@@ -13,32 +13,69 @@ export async function handleAnthropic(messageHistory: any[], content: string, mo
   console.log(`Has images: ${images.length > 0}, image count: ${images.length}`);
   
   // Format messages for Anthropic API v1 format
-  let systemMessage = systemPrompt;
-  
-  // For Claude 3, we can directly use the system message parameter
   const messages = [];
   
   // Add message history - for Anthropic, we need to alternate user/assistant
   if (messageHistory.length > 0) {
-    const formattedHistory = [];
     for (let i = 0; i < messageHistory.length; i++) {
       const msg = messageHistory[i];
-      
-      // Always use simple text format for all messages to avoid media_type issues
-      formattedHistory.push({
+      messages.push({
         role: msg.role === 'assistant' ? 'assistant' : 'user',
         content: msg.content
       });
     }
-    messages.push(...formattedHistory);
   }
   
-  // Format the current message (without images for now - Claude API issue with media_type)
-  // Always use simple text content for now until we can fix the image handling
-  messages.push({
+  // Format the current message with images if present
+  let userMessage = {
     role: 'user',
-    content: content
+    content: []
+  };
+  
+  // Add text content
+  userMessage.content.push({
+    type: "text",
+    text: content
   });
+  
+  // Add images if present
+  if (images && images.length > 0) {
+    for (let image of images) {
+      try {
+        // Handle base64 image data
+        if (image.startsWith('data:image/')) {
+          // Extract the mime type and base64 data
+          const matches = image.match(/^data:([^;]+);base64,(.+)$/);
+          if (!matches || matches.length !== 3) {
+            console.error('Invalid image data format');
+            continue;
+          }
+          
+          const mimeType = matches[1];
+          const base64Data = matches[2];
+          
+          // Add image to content array
+          userMessage.content.push({
+            type: "image",
+            source: {
+              type: "base64",
+              media_type: mimeType,
+              data: base64Data
+            }
+          });
+          
+          console.log(`Added base64 image with mime type: ${mimeType}`);
+        } else {
+          console.log('Skipping non-base64 image, URL not supported');
+        }
+      } catch (error) {
+        console.error('Error processing image:', error);
+      }
+    }
+  }
+  
+  // Replace the last user message or add a new one
+  messages.push(userMessage);
   
   console.log(`Calling Anthropic API with model ${modelId}...`);
   console.log(`Messages count: ${messages.length}`);
