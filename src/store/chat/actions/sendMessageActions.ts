@@ -1,5 +1,4 @@
 
-import { StateCreator } from 'zustand';
 import { v4 as uuidv4 } from 'uuid';
 import { ChatStore } from '../types';
 import { AIModel } from '@/types';
@@ -19,8 +18,8 @@ export const createSendMessageAction = (
     const messageId = uuidv4();
     
     // Add user message
-    set((state) => {
-      const updatedConversations = state.conversations.map((conv) => {
+    set({
+      conversations: conversations.map((conv) => {
         if (conv.id === currentConversationId) {
           return {
             ...conv,
@@ -39,12 +38,7 @@ export const createSendMessageAction = (
           };
         }
         return conv;
-      });
-      
-      return {
-        ...state,
-        conversations: updatedConversations
-      };
+      })
     });
     
     // Generate AI response
