@@ -5,7 +5,7 @@ import { ChatStore } from '../types';
 import { AIModel } from '@/types';
 
 export const createSendMessageAction = (
-  set: StateCreator<ChatStore>['setState'] | ((state: Partial<ChatStore>) => void),
+  set: (state: Partial<ChatStore>) => void,
   get: () => ChatStore
 ) => {
   return (content: string, images: string[] = []) => {
