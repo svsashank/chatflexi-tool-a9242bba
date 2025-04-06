@@ -19,12 +19,17 @@ serve(async (req) => {
   }
 
   try {
-    const { content, model, messages } = await req.json();
+    const { content, model, messages, images } = await req.json();
     
     // Prepare conversation history in the format the APIs expect
     const messageHistory = messages || [];
+    // Get any images that were attached to the message
+    const messageImages = images || [];
     
     console.log(`Request received for provider: ${model.provider}, model: ${model.id}`);
+    if (messageImages && messageImages.length > 0) {
+      console.log(`Request includes ${messageImages.length} images`);
+    }
     
     // Add a system prompt based on the conversation context
     const systemPrompt = generateSystemPrompt(messageHistory);
@@ -34,18 +39,18 @@ serve(async (req) => {
       case 'openai':
         // Check if this is an O-series reasoning model that needs special handling
         if (isOSeriesReasoningModel(model.id)) {
-          return await handleOpenAIReasoningModel(messageHistory, content, model.id, systemPrompt);
+          return await handleOpenAIReasoningModel(messageHistory, content, model.id, systemPrompt, messageImages);
         } else {
-          return await handleOpenAIStandard(messageHistory, content, model.id, systemPrompt);
+          return await handleOpenAIStandard(messageHistory, content, model.id, systemPrompt, messageImages);
         }
       case 'anthropic':
-        return await handleAnthropic(messageHistory, content, model.id, systemPrompt);
+        return await handleAnthropic(messageHistory, content, model.id, systemPrompt, messageImages);
       case 'google':
-        return await handleGoogle(messageHistory, content, model.id, systemPrompt);
+        return await handleGoogle(messageHistory, content, model.id, systemPrompt, messageImages);
       case 'xai':
-        return await handleXAI(messageHistory, content, model.id, systemPrompt);
+        return await handleXAI(messageHistory, content, model.id, systemPrompt, messageImages);
       case 'krutrim':
-        return await handleKrutrim(messageHistory, content, model.id, systemPrompt);
+        return await handleKrutrim(messageHistory, content, model.id, systemPrompt, messageImages);
       default:
         throw new Error(`Provider ${model.provider} not supported`);
     }

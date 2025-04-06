@@ -2,13 +2,14 @@
 import { corsHeaders } from "../utils/cors.ts";
 
 // Google (Gemini) handler
-export async function handleGoogle(messageHistory: any[], content: string, modelId: string, systemPrompt: string) {
+export async function handleGoogle(messageHistory: any[], content: string, modelId: string, systemPrompt: string, images: string[] = []) {
   const GOOGLE_API_KEY = Deno.env.get('GOOGLE_API_KEY');
   if (!GOOGLE_API_KEY) {
     throw new Error("Google API key not configured");
   }
   
   console.log(`Processing request for Google model ${modelId} with content: ${content.substring(0, 50)}...`);
+  console.log(`Has images: ${images.length > 0}, image count: ${images.length}`);
   
   // Format messages for Gemini, including system prompt
   const formattedContents = [
@@ -16,18 +17,60 @@ export async function handleGoogle(messageHistory: any[], content: string, model
     {
       role: 'user',
       parts: [{ text: `System: ${systemPrompt}` }]
-    },
-    // Add regular message history
-    ...messageHistory.map(msg => ({
-      role: msg.role,
-      parts: [{ text: msg.content }]
-    })),
-    // Add the current message
-    {
-      role: 'user',
-      parts: [{ text: content }]
     }
   ];
+  
+  // Add message history (excluding the last user message which will be handled separately)
+  for (const msg of messageHistory.slice(0, -1)) {
+    if (msg.images && msg.images.length > 0 && msg.role === 'user') {
+      const parts = [{ text: msg.content }];
+      
+      // Add each image
+      for (const imageUrl of msg.images) {
+        parts.push({
+          inlineData: {
+            mimeType: "image/jpeg", // Assume JPEG for simplicity
+            data: imageUrl.replace(/^data:image\/[^;]+;base64,/, "") // Strip the data URL prefix if present
+          }
+        });
+      }
+      
+      formattedContents.push({
+        role: msg.role,
+        parts: parts
+      });
+    } else {
+      formattedContents.push({
+        role: msg.role,
+        parts: [{ text: msg.content }]
+      });
+    }
+  }
+  
+  // Handle current message with images if present
+  if (images.length > 0) {
+    const parts = [{ text: content }];
+    
+    // Add each image
+    for (const imageUrl of images) {
+      parts.push({
+        inlineData: {
+          mimeType: "image/jpeg", // Assume JPEG for simplicity
+          data: imageUrl.replace(/^data:image\/[^;]+;base64,/, "") // Strip the data URL prefix if present
+        }
+      });
+    }
+    
+    formattedContents.push({
+      role: 'user',
+      parts: parts
+    });
+  } else {
+    formattedContents.push({
+      role: 'user',
+      parts: [{ text: content }]
+    });
+  }
 
   // Determine the correct API version and endpoint based on the model ID
   let apiEndpoint;

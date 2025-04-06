@@ -2,7 +2,7 @@
 import { corsHeaders } from "../utils/cors.ts";
 
 // Anthropic (Claude) handler
-export async function handleAnthropic(messageHistory: any[], content: string, modelId: string, systemPrompt: string) {
+export async function handleAnthropic(messageHistory: any[], content: string, modelId: string, systemPrompt: string, images: string[] = []) {
   const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
   if (!ANTHROPIC_API_KEY) {
     throw new Error("Anthropic API key not configured");
@@ -10,23 +10,88 @@ export async function handleAnthropic(messageHistory: any[], content: string, mo
   
   // Log model ID to help with debugging
   console.log(`Processing request for Anthropic model ${modelId} with content: ${content.substring(0, 50)}...`);
+  console.log(`Has images: ${images.length > 0}, image count: ${images.length}`);
   
   // Format messages for Anthropic API v1 format
-  const messages = [
-    { role: 'user', content: `<instructions>${systemPrompt}</instructions>\n\n${content}` }
-  ];
+  let systemMessage = systemPrompt;
+  
+  // For Claude 3, we can directly use the system message parameter
+  const messages = [];
   
   // Add message history - for Anthropic, we need to alternate user/assistant
   if (messageHistory.length > 0) {
     const formattedHistory = [];
     for (let i = 0; i < messageHistory.length; i++) {
       const msg = messageHistory[i];
-      formattedHistory.push({
-        role: msg.role === 'assistant' ? 'assistant' : 'user',
-        content: msg.content
+      
+      if (msg.images && msg.images.length > 0 && msg.role === 'user') {
+        // For messages with images, we need to use the content format
+        const content = [];
+        
+        // Add the text part
+        content.push({
+          type: "text",
+          text: msg.content
+        });
+        
+        // Add image URLs as image parts
+        for (const imageUrl of msg.images) {
+          content.push({
+            type: "image",
+            source: {
+              type: "url",
+              url: imageUrl,
+              media_type: "image/jpeg" // Assume JPEG for simplicity
+            }
+          });
+        }
+        
+        formattedHistory.push({
+          role: 'user',
+          content: content
+        });
+      } else {
+        // For text-only messages, use the simple format
+        formattedHistory.push({
+          role: msg.role === 'assistant' ? 'assistant' : 'user',
+          content: msg.content
+        });
+      }
+    }
+    messages.push(...formattedHistory);
+  }
+  
+  // Format the current message (which might have images)
+  if (images.length > 0) {
+    const contentArray = [];
+    
+    // Add the text part
+    contentArray.push({
+      type: "text",
+      text: content
+    });
+    
+    // Add image URLs as image parts
+    for (const imageUrl of images) {
+      contentArray.push({
+        type: "image",
+        source: {
+          type: "url",
+          url: imageUrl,
+          media_type: "image/jpeg" // Assume JPEG for simplicity
+        }
       });
     }
-    messages.unshift(...formattedHistory);
+    
+    messages.push({
+      role: 'user',
+      content: contentArray
+    });
+  } else {
+    messages.push({
+      role: 'user',
+      content: content
+    });
   }
   
   console.log(`Calling Anthropic API with model ${modelId}...`);
@@ -43,6 +108,7 @@ export async function handleAnthropic(messageHistory: any[], content: string, mo
       body: JSON.stringify({
         model: modelId,
         messages: messages,
+        system: systemPrompt,
         max_tokens: 1000,
       })
     });

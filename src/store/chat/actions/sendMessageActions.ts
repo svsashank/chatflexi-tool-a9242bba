@@ -5,7 +5,7 @@ import { toast } from '@/components/ui/use-toast';
 import { updateContextSummary } from '../utils';
 
 export const createSendMessageAction = (set: Function, get: Function) => 
-  async (content: string) => {
+  async (content: string, images: string[] = []) => {
     const currentConversationId = get().currentConversationId;
     
     if (!currentConversationId) {
@@ -18,12 +18,24 @@ export const createSendMessageAction = (set: Function, get: Function) =>
     }
     
     const selectedModel = get().selectedModel;
+    
+    // Validate if model supports images when images are provided
+    if (images.length > 0 && !selectedModel.capabilities.includes('images')) {
+      toast({
+        title: 'Error',
+        description: `${selectedModel.name} doesn't support image analysis. Please select a model with vision capabilities.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     const newMessage = {
       id: uuidv4(),
       content,
       role: 'user' as const,
       model: selectedModel,
       timestamp: new Date(),
+      images: images.length > 0 ? images : undefined,
     };
     
     let currentConversation = get().conversations.find(c => c.id === currentConversationId);
@@ -99,19 +111,25 @@ export const createSendMessageAction = (set: Function, get: Function) =>
           return;
         }
         
+        // Store message content and metadata in the database
+        const messageData: any = {
+          id: newMessage.id,
+          conversation_id: currentConversationId,
+          content: newMessage.content,
+          role: newMessage.role,
+          model_id: selectedModel.id,
+          model_provider: selectedModel.provider,
+          created_at: newMessage.timestamp.toISOString(),
+        };
+        
+        // Add images if they exist
+        if (images && images.length > 0) {
+          messageData.images = images;
+        }
+        
         const { error } = await supabase
           .from('conversation_messages')
-          .insert([
-            {
-              id: newMessage.id,
-              conversation_id: currentConversationId,
-              content: newMessage.content,
-              role: newMessage.role,
-              model_id: selectedModel.id,
-              model_provider: selectedModel.provider,
-              created_at: newMessage.timestamp.toISOString(),
-            },
-          ]);
+          .insert([messageData]);
         
         if (error) {
           console.error('Error saving message to database:', error);

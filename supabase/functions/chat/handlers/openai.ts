@@ -10,7 +10,7 @@ const oSeriesReasoningModels = [
 ];
 
 // OpenAI O-series Reasoning Models handler (o1, o1-mini, o3-mini, o1-pro)
-export async function handleOpenAIReasoningModel(messageHistory: any[], content: string, modelId: string, systemPrompt: string) {
+export async function handleOpenAIReasoningModel(messageHistory: any[], content: string, modelId: string, systemPrompt: string, images: string[] = []) {
   const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
   if (!OPENAI_API_KEY) {
     throw new Error("OpenAI API key not configured");
@@ -128,25 +128,82 @@ export async function handleOpenAIReasoningModel(messageHistory: any[], content:
 }
 
 // OpenAI (GPT) handler for standard models
-export async function handleOpenAIStandard(messageHistory: any[], content: string, modelId: string, systemPrompt: string) {
+export async function handleOpenAIStandard(messageHistory: any[], content: string, modelId: string, systemPrompt: string, images: string[] = []) {
   const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
   if (!OPENAI_API_KEY) {
     throw new Error("OpenAI API key not configured");
   }
   
   console.log(`Processing request for standard OpenAI model ${modelId} with content: ${content.substring(0, 50)}...`);
+  console.log(`Has images: ${images.length > 0}, image count: ${images.length}`);
   
-  // Format messages for OpenAI
+  // Prepare the messages for OpenAI
   const formattedMessages = [
-    { role: 'system', content: systemPrompt },
-    ...messageHistory.map(msg => ({
-      role: msg.role,
-      content: msg.content
-    })),
-    { role: 'user', content }
+    { role: 'system', content: systemPrompt }
   ];
+  
+  // Add message history (excluding the last user message which will be handled separately)
+  for (const msg of messageHistory.slice(0, -1)) {
+    if (msg.images && msg.images.length > 0) {
+      // For messages with images, we need to use the special content format
+      const content = [
+        { type: "text", text: msg.content }
+      ];
+      
+      // Add image URLs as image objects
+      for (const imageUrl of msg.images) {
+        content.push({
+          type: "image_url",
+          image_url: { url: imageUrl }
+        });
+      }
+      
+      formattedMessages.push({
+        role: msg.role,
+        content: content
+      });
+    } else {
+      // For text-only messages, use the simple format
+      formattedMessages.push({
+        role: msg.role,
+        content: msg.content
+      });
+    }
+  }
+  
+  // Handle the current message (which might have images)
+  if (images.length > 0) {
+    const contentArray = [
+      { type: "text", text: content }
+    ];
+    
+    // Add image URLs as image objects
+    for (const imageUrl of images) {
+      contentArray.push({
+        type: "image_url",
+        image_url: { url: imageUrl }
+      });
+    }
+    
+    formattedMessages.push({
+      role: 'user',
+      content: contentArray
+    });
+  } else {
+    formattedMessages.push({
+      role: 'user',
+      content: content
+    });
+  }
 
-  console.log(`Calling OpenAI API...`);
+  console.log(`Calling OpenAI API with ${formattedMessages.length} messages...`);
+  console.log(`First message role: ${formattedMessages[0].role}`);
+  console.log(`Last message role: ${formattedMessages[formattedMessages.length-1].role}`);
+  
+  if (images.length > 0) {
+    console.log('Request contains images, using vision capability');
+  }
+  
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {

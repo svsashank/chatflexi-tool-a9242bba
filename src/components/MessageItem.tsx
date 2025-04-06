@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Message } from "../types";
 import { Bot, Check, Copy, User, Zap, Cpu } from "lucide-react";
@@ -62,6 +63,21 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, showTotalCredits = f
               <span className="text-xs font-medium">
                 {message.model.name}
               </span>
+            </div>
+          )}
+
+          {/* Display attached images if any */}
+          {message.images && message.images.length > 0 && (
+            <div className="flex gap-2 mb-3 flex-wrap">
+              {message.images.map((image, index) => (
+                <div key={index} className="relative rounded-md overflow-hidden border border-border">
+                  <img 
+                    src={image} 
+                    alt={`Uploaded image ${index + 1}`} 
+                    className="max-h-60 max-w-full object-contain"
+                  />
+                </div>
+              ))}
             </div>
           )}
           

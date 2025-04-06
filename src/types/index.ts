@@ -10,6 +10,7 @@ export interface Message {
     output: number;
   };
   computeCredits?: number;
+  images?: string[]; // URLs or base64 data for images
 }
 
 export interface Conversation {

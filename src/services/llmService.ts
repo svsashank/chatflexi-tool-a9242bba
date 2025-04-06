@@ -11,7 +11,9 @@ const formatMessageHistory = (messages: Message[]) => {
     role: msg.role,
     content: msg.content,
     // Include model info for better context
-    model: msg.model.name
+    model: msg.model.name,
+    // Include images if they exist
+    images: msg.images
   }));
 };
 
@@ -31,12 +33,17 @@ export const sendMessageToLLM = async (
     // Format conversation history with better context preservation
     const messageHistory = formatMessageHistory(conversationHistory);
     
+    // Get the last message which might contain images
+    const lastMessage = conversationHistory[conversationHistory.length - 1];
+    const images = lastMessage?.images || [];
+    
     console.log('Sending message to LLM:', { 
       model: model.name, 
-      modelId: model.id, // Log the model ID for debugging
-      provider: model.provider, // Log the provider for debugging
+      modelId: model.id, 
+      provider: model.provider, 
       content: content.substring(0, 50) + (content.length > 50 ? '...' : ''),
-      messageHistoryCount: messageHistory.length 
+      messageHistoryCount: messageHistory.length,
+      imagesCount: images.length
     });
     
     // Debug log to check if the current message appears in the history
@@ -47,7 +54,8 @@ export const sendMessageToLLM = async (
     if (lastUserMessageInHistory) {
       console.log('Last user message in history:', {
         content: lastUserMessageInHistory.content.substring(0, 50) + 
-                (lastUserMessageInHistory.content.length > 50 ? '...' : '')
+                (lastUserMessageInHistory.content.length > 50 ? '...' : ''),
+        hasImages: lastUserMessageInHistory.images && lastUserMessageInHistory.images.length > 0
       });
       
       // Check if the current message is already in history
@@ -61,7 +69,8 @@ export const sendMessageToLLM = async (
       body: { 
         model,
         content,
-        messages: messageHistory
+        messages: messageHistory,
+        images: images // Pass images separately for API compatibility
       }
     });
     
