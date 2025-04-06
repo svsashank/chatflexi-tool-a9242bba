@@ -70,7 +70,7 @@ export const sendMessageToLLM = async (
         model,
         content,
         messages: messageHistory,
-        images: images // Pass images separately for API compatibility
+        images // Pass images separately for API compatibility
       }
     });
     

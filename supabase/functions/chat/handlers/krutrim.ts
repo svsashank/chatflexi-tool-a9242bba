@@ -2,7 +2,7 @@
 import { corsHeaders } from "../utils/cors.ts";
 
 // Krutrim API handler for DeepSeek-R1
-export async function handleKrutrim(messageHistory: any[], content: string, modelId: string, systemPrompt: string) {
+export async function handleKrutrim(messageHistory: any[], content: string, modelId: string, systemPrompt: string, images?: string[]) {
   const KRUTRIM_API_KEY = Deno.env.get('KRUTRIM_API_KEY');
   if (!KRUTRIM_API_KEY) {
     throw new Error("Krutrim API key not configured. Please add your Krutrim API key in the Supabase settings.");
