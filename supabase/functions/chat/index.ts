@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 
@@ -122,156 +121,57 @@ async function handleOpenAI(messageHistory, content, modelId, systemPrompt) {
     throw new Error("OpenAI API key not configured");
   }
   
-  console.log(`Processing request for OpenAI model ${modelId} with content length: ${content.length}`);
+  console.log(`Processing request for model ${modelId} with content: ${content.substring(0, 50)}...`);
   
-  // Check if this is an O-series model specific IDs
-  const oSeriesModels = ['o1', 'o1-mini', 'o1-preview', 'o1-pro', 'o3', 'o3-preview', 'o3-mini'];
-  const isOModel = oSeriesModels.includes(modelId);
-  
-  if (isOModel) {
-    console.log(`Processing O-series model: ${modelId}`);
-    
-    try {
-      // Format messages according to OpenAI's responses API format
-      const messages = [];
-      
-      // Add message history
-      messageHistory.forEach(msg => {
-        messages.push({
-          role: msg.role,
-          content: msg.content
-        });
-      });
-      
-      // Add current user message
-      messages.push({ role: 'user', content });
-      
-      // Add system prompt as the first message if provided
-      if (systemPrompt) {
-        messages.unshift({ role: 'system', content: systemPrompt });
-      }
-      
-      // Log details for debugging
-      console.log(`O-series API request for model: ${modelId}`);
-      console.log(`Messages count: ${messages.length}`);
-      
-      // Create request payload for /v1/responses endpoint
-      const requestBody = {
-        model: modelId,
-        input: messages,  // 'input' field for messages array, not 'messages'
-        reasoning: {
-          effort: "medium"
-        }
-      };
-      
-      console.log(`O-series request structure: ${JSON.stringify(Object.keys(requestBody))}`);
-      
-      // Call the responses API, not chat/completions
-      const response = await fetch('https://api.openai.com/v1/responses', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${OPENAI_API_KEY}`,
-          'OpenAI-Beta': 'o1-preview'
-        },
-        body: JSON.stringify(requestBody)
-      });
-      
-      // Log response status for debugging
-      console.log(`O-series API response status: ${response.status}`);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`OpenAI O-series API error: ${response.status}`, errorText);
-        throw new Error(`OpenAI O-series API error: ${response.status} - ${errorText}`);
-      }
-      
-      // Parse the response
-      const data = await response.json();
-      console.log(`O-series response structure: ${JSON.stringify(Object.keys(data))}`);
-      
-      // Extract content from the response
-      if (!data.output_text) {
-        console.error(`Unexpected O-series response format: ${JSON.stringify(data).substring(0, 200)}`);
-        throw new Error("Unexpected response format from O-series API");
-      }
-      
-      return new Response(
-        JSON.stringify({ 
-          content: data.output_text,
-          model: modelId,
-          provider: 'OpenAI',
-          tokens: {
-            input: data.usage_metadata?.input_tokens || 0,
-            output: data.usage_metadata?.output_tokens || 0
-          }
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    } catch (error) {
-      console.error(`Error with O-series API call: ${error.message}`);
-      throw error;
-    }
-  } else {
-    // For regular OpenAI models, use the chat completions endpoint
-    console.log(`Using standard chat completions endpoint for model ${modelId}`);
-    
-    // Format messages for OpenAI
-    const formattedMessages = [
-      { role: 'system', content: systemPrompt },
-      ...messageHistory.map(msg => ({
-        role: msg.role,
-        content: msg.content
-      })),
-      { role: 'user', content }
-    ];
+  // Format messages for OpenAI
+  const formattedMessages = [
+    { role: 'system', content: systemPrompt },
+    ...messageHistory.map(msg => ({
+      role: msg.role,
+      content: msg.content
+    })),
+    { role: 'user', content }
+  ];
 
-    console.log(`Calling OpenAI chat API for model ${modelId}...`);
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: modelId,
-        messages: formattedMessages,
-        temperature: 0.7,
-        max_tokens: 1000,
-      })
-    });
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`OpenAI API error for ${modelId}: ${response.status}`, errorText);
-      try {
-        const error = JSON.parse(errorText);
-        throw new Error(error.error?.message || `OpenAI API error: ${response.status} - ${errorText}`);
-      } catch (e) {
-        throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
-      }
-    }
-    
-    console.log(`Successfully received response from OpenAI for model ${modelId}`);
-    const data = await response.json();
-    
-    // Extract token counts
-    const inputTokens = data.usage ? data.usage.prompt_tokens : 0;
-    const outputTokens = data.usage ? data.usage.completion_tokens : 0;
-    
-    return new Response(
-      JSON.stringify({ 
-        content: data.choices[0].message.content,
-        model: modelId,
-        provider: 'OpenAI',
-        tokens: {
-          input: inputTokens,
-          output: outputTokens
-        }
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+  console.log(`Calling OpenAI API...`);
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${OPENAI_API_KEY}`
+    },
+    body: JSON.stringify({
+      model: modelId,
+      messages: formattedMessages,
+      temperature: 0.7,
+      max_tokens: 1000,
+    })
+  });
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error?.message || `OpenAI API error: ${response.status}`);
   }
+  
+  console.log(`Successfully received response from OpenAI`);
+  const data = await response.json();
+  
+  // Extract token counts
+  const inputTokens = data.usage ? data.usage.prompt_tokens : 0;
+  const outputTokens = data.usage ? data.usage.completion_tokens : 0;
+  
+  return new Response(
+    JSON.stringify({ 
+      content: data.choices[0].message.content,
+      model: modelId,
+      provider: 'OpenAI',
+      tokens: {
+        input: inputTokens,
+        output: outputTokens
+      }
+    }),
+    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  );
 }
 
 // Anthropic (Claude) handler
@@ -425,7 +325,7 @@ async function handleGoogle(messageHistory, content, modelId, systemPrompt) {
       console.error(`Google API error: ${response.status}`, errorText);
       try {
         const error = JSON.parse(errorText);
-        throw new Error(`Google API error: ${response.status}`);
+        throw new Error(error.error?.message || `Google API error: ${response.status}`);
       } catch (e) {
         throw new Error(`Google API error: ${response.status} - ${errorText}`);
       }
@@ -436,7 +336,8 @@ async function handleGoogle(messageHistory, content, modelId, systemPrompt) {
     
     // Estimate token counts (Google doesn't always provide this)
     const inputTokensEstimate = Math.round((content.length + systemPrompt.length) / 4);
-    const outputTokensEstimate = data.usage ? data.usage.promptTokenCount || inputTokensEstimate : 0;
+    const outputTokensEstimate = data.candidates && data.candidates[0] && data.candidates[0].content.parts[0] ? 
+      Math.round(data.candidates[0].content.parts[0].text.length / 4) : 0;
     
     return new Response(
       JSON.stringify({ 

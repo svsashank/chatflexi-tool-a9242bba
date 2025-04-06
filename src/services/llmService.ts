@@ -7,7 +7,6 @@ const formatMessageHistory = (messages: Message[]) => {
   // Only include the last 10 messages to avoid token limits
   const recentMessages = messages.slice(-10);
   
-  // Create a new array with deep copies to avoid reference issues
   return recentMessages.map(msg => ({
     role: msg.role,
     content: msg.content,
@@ -30,19 +29,30 @@ export const sendMessageToLLM = async (
 }> => {
   try {
     // Format conversation history with better context preservation
-    // Be careful not to include the current message in the history
-    const messageHistory = formatMessageHistory(conversationHistory.filter(msg => 
-      // Filter out the current message from history to prevent duplication
-      !(msg.role === 'user' && msg.content === content)
-    ));
+    const messageHistory = formatMessageHistory(conversationHistory);
     
     console.log('Sending message to LLM:', { 
       model: model.name, 
-      modelId: model.id,
-      provider: model.provider,
       content: content.substring(0, 50) + (content.length > 50 ? '...' : ''),
       messageHistoryCount: messageHistory.length 
     });
+    
+    // Debug log to check if the current message appears in the history
+    const lastUserMessageInHistory = messageHistory
+      .filter(msg => msg.role === 'user')
+      .pop();
+      
+    if (lastUserMessageInHistory) {
+      console.log('Last user message in history:', {
+        content: lastUserMessageInHistory.content.substring(0, 50) + 
+                (lastUserMessageInHistory.content.length > 50 ? '...' : '')
+      });
+      
+      // Check if the current message is already in history
+      if (lastUserMessageInHistory.content === content) {
+        console.warn('WARNING: Current message appears to be duplicated in history!');
+      }
+    }
     
     // Call the Supabase Edge Function
     const { data, error } = await supabase.functions.invoke('chat', {
