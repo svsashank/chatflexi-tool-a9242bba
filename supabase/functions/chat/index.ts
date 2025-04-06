@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 
@@ -121,98 +122,97 @@ async function handleOpenAI(messageHistory, content, modelId, systemPrompt) {
     throw new Error("OpenAI API key not configured");
   }
   
-  console.log(`Processing request for OpenAI model ${modelId} with content: ${content.substring(0, 50)}...`);
+  console.log(`Processing request for OpenAI model ${modelId} with content length: ${content.length}`);
   
-  // Check if this is an O-series model (o1, o1-mini, o1-pro, o3-mini, etc)
-  const isOModel = modelId.toLowerCase().includes('o1') || modelId.toLowerCase().includes('o3');
+  // Check if this is an O-series model (o1, o1-mini, etc.)
+  const isOModel = modelId.toLowerCase().includes('o');
   
   if (isOModel) {
-    // For O-series reasoning models, use the /v1/responses endpoint
-    console.log(`Using responses endpoint for O-series model: ${modelId}`);
-    
-    // Format input for O-series models following the documentation
-    const formattedInput = [
-      // First include system prompt if provided
-      ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
-      
-      // Include message history
-      ...messageHistory.map(msg => ({
-        role: msg.role,
-        content: msg.content
-      })),
-      
-      // Add the current user message
-      { role: 'user', content }
-    ];
-    
-    console.log(`Calling OpenAI responses API for O-series model ${modelId}...`);
-    console.log(`Number of input messages: ${formattedInput.length}`);
+    console.log(`Detected O-series model: ${modelId}`);
     
     try {
-      // EXACTLY follow the API reference documentation format
-      const requestBody = JSON.stringify({
-        model: modelId,
-        reasoning: { effort: "medium" },
-        input: formattedInput
+      // Format messages according to OpenAI's responses API format
+      const messages = [];
+      
+      // Include system prompt if provided
+      if (systemPrompt) {
+        messages.push({ role: 'system', content: systemPrompt });
+      }
+      
+      // Add message history
+      messageHistory.forEach(msg => {
+        messages.push({
+          role: msg.role,
+          content: msg.content
+        });
       });
       
-      console.log(`Request body for O-series model: ${requestBody.substring(0, 200)}...`);
+      // Add current user message
+      messages.push({ role: 'user', content });
       
+      // Log details for debugging
+      console.log(`O-series API request - model: ${modelId}`);
+      console.log(`Messages count: ${messages.length}`);
+      
+      // Create request payload exactly as per OpenAI documentation
+      const requestBody = {
+        model: modelId,
+        input: messages,
+        reasoning: {
+          effort: "medium"
+        }
+      };
+      
+      console.log(`O-series request structure: ${JSON.stringify(Object.keys(requestBody))}`);
+      
+      // Call the responses API
       const response = await fetch('https://api.openai.com/v1/responses', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${OPENAI_API_KEY}`
         },
-        body: requestBody
+        body: JSON.stringify(requestBody)
       });
       
-      // Log the response status
+      // Log response status for debugging
       console.log(`O-series API response status: ${response.status}`);
       
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`OpenAI API error for ${modelId}: ${response.status}`, errorText);
-        try {
-          const error = JSON.parse(errorText);
-          throw new Error(error.error?.message || `OpenAI O-series API error: ${response.status} - ${errorText}`);
-        } catch (e) {
-          throw new Error(`OpenAI O-series API error: ${response.status} - ${errorText}`);
-        }
+        console.error(`OpenAI O-series API error: ${response.status}`, errorText);
+        throw new Error(`OpenAI O-series API error: ${response.status} - ${errorText}`);
       }
       
-      console.log(`Successfully received response from OpenAI for O-series model ${modelId}`);
+      // Parse the response
       const data = await response.json();
-      
-      // Log the response structure to help with debugging
       console.log(`O-series response structure: ${JSON.stringify(Object.keys(data))}`);
       
-      // Extract the content from responses API format
-      const responseContent = data.output_text;
-      
-      // Extract token counts or estimate them
-      const inputTokens = data.usage_metadata ? data.usage_metadata.input_tokens : 0;
-      const outputTokens = data.usage_metadata ? data.usage_metadata.output_tokens : 0;
+      // Extract content from the response
+      if (!data.output_text) {
+        console.error(`Unexpected O-series response format: ${JSON.stringify(data).substring(0, 200)}`);
+        throw new Error("Unexpected response format from O-series API");
+      }
       
       return new Response(
         JSON.stringify({ 
-          content: responseContent,
+          content: data.output_text,
           model: modelId,
           provider: 'OpenAI',
           tokens: {
-            input: inputTokens,
-            output: outputTokens
+            input: data.usage_metadata?.input_tokens || 0,
+            output: data.usage_metadata?.output_tokens || 0
           }
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     } catch (error) {
-      console.error(`Error with OpenAI O-series API call: ${error.message}`);
+      console.error(`Error with O-series API call: ${error.message}`);
       throw error;
     }
   } else {
     // For regular OpenAI models, use the chat completions endpoint
-    console.log(`Processing request for OpenAI model ${modelId} with content: ${content.substring(0, 50)}...`);
+    console.log(`Using standard chat completions endpoint for model ${modelId}`);
     
     // Format messages for OpenAI
     const formattedMessages = [
@@ -273,7 +273,7 @@ async function handleOpenAI(messageHistory, content, modelId, systemPrompt) {
 }
 
 // Anthropic (Claude) handler
-function handleAnthropic(messageHistory, content, modelId, systemPrompt) {
+async function handleAnthropic(messageHistory, content, modelId, systemPrompt) {
   const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
   if (!ANTHROPIC_API_KEY) {
     throw new Error("Anthropic API key not configured");
@@ -364,7 +364,7 @@ function handleAnthropic(messageHistory, content, modelId, systemPrompt) {
 }
 
 // Google (Gemini) handler
-function handleGoogle(messageHistory, content, modelId, systemPrompt) {
+async function handleGoogle(messageHistory, content, modelId, systemPrompt) {
   const GOOGLE_API_KEY = Deno.env.get('GOOGLE_API_KEY');
   if (!GOOGLE_API_KEY) {
     throw new Error("Google API key not configured");
@@ -455,7 +455,7 @@ function handleGoogle(messageHistory, content, modelId, systemPrompt) {
 }
 
 // xAI (Grok) handler
-function handleXAI(messageHistory, content, modelId, systemPrompt) {
+async function handleXAI(messageHistory, content, modelId, systemPrompt) {
   const XAI_API_KEY = Deno.env.get('XAI_API_KEY');
   if (!XAI_API_KEY) {
     throw new Error("xAI API key not configured. Please add your xAI API key in the Supabase settings.");
@@ -554,7 +554,7 @@ function handleXAI(messageHistory, content, modelId, systemPrompt) {
 }
 
 // Krutrim API handler for DeepSeek-R1
-function handleKrutrim(messageHistory, content, modelId, systemPrompt) {
+async function handleKrutrim(messageHistory, content, modelId, systemPrompt) {
   const KRUTRIM_API_KEY = Deno.env.get('KRUTRIM_API_KEY');
   if (!KRUTRIM_API_KEY) {
     throw new Error("Krutrim API key not configured. Please add your Krutrim API key in the Supabase settings.");
