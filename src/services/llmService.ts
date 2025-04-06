@@ -38,6 +38,8 @@ export const sendMessageToLLM = async (
     
     console.log('Sending message to LLM:', { 
       model: model.name, 
+      modelId: model.id,
+      provider: model.provider,
       content: content.substring(0, 50) + (content.length > 50 ? '...' : ''),
       messageHistoryCount: messageHistory.length 
     });
