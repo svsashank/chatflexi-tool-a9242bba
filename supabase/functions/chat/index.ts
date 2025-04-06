@@ -7,6 +7,14 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// O-series reasoning models from OpenAI that require special handling
+const oSeriesReasoningModels = [
+  'o1',
+  'o1-mini',
+  'o3-mini',
+  'o1-pro',
+];
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -27,7 +35,12 @@ serve(async (req) => {
     // Format varies by provider
     switch(model.provider.toLowerCase()) {
       case 'openai':
-        return await handleOpenAI(messageHistory, content, model.id, systemPrompt);
+        // Check if this is an O-series reasoning model that needs special handling
+        if (oSeriesReasoningModels.includes(model.id)) {
+          return await handleOpenAIReasoningModel(messageHistory, content, model.id, systemPrompt);
+        } else {
+          return await handleOpenAI(messageHistory, content, model.id, systemPrompt);
+        }
       case 'anthropic':
         return await handleAnthropic(messageHistory, content, model.id, systemPrompt);
       case 'google':
@@ -114,14 +127,123 @@ function extractUserPreferences(messageHistory) {
   return preferences;
 }
 
-// OpenAI (GPT) handler
+// OpenAI O-series Reasoning Models handler (o1, o1-mini, o3-mini, o1-pro)
+async function handleOpenAIReasoningModel(messageHistory, content, modelId, systemPrompt) {
+  const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
+  if (!OPENAI_API_KEY) {
+    throw new Error("OpenAI API key not configured");
+  }
+  
+  console.log(`Processing request for OpenAI reasoning model ${modelId} with content: ${content.substring(0, 50)}...`);
+  
+  // Format input for the responses API - this is different from chat completions
+  const formattedInput = [
+    // First add the system message
+    { role: 'system', content: systemPrompt }
+  ];
+  
+  // Add message history, but skip the last user message as we'll add that separately
+  const historyWithoutLastUserMessage = messageHistory.slice(0, -1);
+  formattedInput.push(
+    ...historyWithoutLastUserMessage.map(msg => ({
+      role: msg.role,
+      content: msg.content
+    }))
+  );
+  
+  // Add the current user message
+  formattedInput.push({ role: 'user', content });
+
+  console.log(`Calling OpenAI responses API for reasoning model ${modelId}...`);
+  console.log(`Request format: ${JSON.stringify({
+    model: modelId,
+    input: formattedInput.slice(0, 2), // Only show first two messages for logging
+    reasoning: { effort: "high" }
+  }, null, 2)}`);
+  
+  try {
+    const response = await fetch('https://api.openai.com/v1/responses', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'OpenAI-Beta': 'responses=v1' // Required for the responses API
+      },
+      body: JSON.stringify({
+        model: modelId,
+        input: formattedInput,
+        reasoning: { effort: "high" } // Using high effort for best results
+      })
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      console.error(`OpenAI responses API error (${response.status}):`, error);
+      throw new Error(error.error?.message || `OpenAI responses API error: ${response.status}`);
+    }
+    
+    console.log(`Successfully received response from OpenAI reasoning model ${modelId}`);
+    const data = await response.json();
+    console.log(`Response structure: ${JSON.stringify(Object.keys(data))}`);
+    
+    // Extract content from the response format
+    let responseContent = '';
+    if (data.output) {
+      // If output is a string
+      if (typeof data.output === 'string') {
+        responseContent = data.output;
+      }
+      // If output is an array of messages
+      else if (Array.isArray(data.output) && data.output.length > 0) {
+        responseContent = data.output[0].content;
+      }
+      // If output has a text property
+      else if (data.output.text) {
+        responseContent = data.output.text;
+      }
+      // Fallback to output_text if available
+      else if (data.output_text) {
+        responseContent = data.output_text;
+      }
+    } else if (data.output_text) {
+      responseContent = data.output_text;
+    }
+    
+    if (!responseContent) {
+      console.error("Unexpected OpenAI reasoning model response format:", data);
+      throw new Error("Could not extract content from OpenAI reasoning model response");
+    }
+    
+    // Estimate token counts - the responses API doesn't return usage info the same way
+    const inputTokensEstimate = Math.round((content.length + systemPrompt.length) / 4);
+    const outputTokensEstimate = Math.round(responseContent.length / 4);
+    
+    return new Response(
+      JSON.stringify({ 
+        content: responseContent,
+        model: modelId,
+        provider: 'OpenAI',
+        tokens: {
+          input: inputTokensEstimate,
+          output: outputTokensEstimate
+        }
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  } catch (error) {
+    console.error("Error in OpenAI reasoning model API call:", error);
+    throw error;
+  }
+}
+
+// OpenAI (GPT) handler for standard models
 async function handleOpenAI(messageHistory, content, modelId, systemPrompt) {
   const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
   if (!OPENAI_API_KEY) {
     throw new Error("OpenAI API key not configured");
   }
   
-  console.log(`Processing request for model ${modelId} with content: ${content.substring(0, 50)}...`);
+  console.log(`Processing request for standard OpenAI model ${modelId} with content: ${content.substring(0, 50)}...`);
   
   // Format messages for OpenAI
   const formattedMessages = [

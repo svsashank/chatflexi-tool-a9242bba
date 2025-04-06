@@ -33,6 +33,8 @@ export const sendMessageToLLM = async (
     
     console.log('Sending message to LLM:', { 
       model: model.name, 
+      modelId: model.id, // Log the model ID for debugging
+      provider: model.provider, // Log the provider for debugging
       content: content.substring(0, 50) + (content.length > 50 ? '...' : ''),
       messageHistoryCount: messageHistory.length 
     });
@@ -99,7 +101,11 @@ const getMockResponse = (modelId: string): string => {
     'gemini-pro': "Hi there, I'm Google's Gemini Pro. I'm designed to handle a wide range of tasks including text, code, and images. How can I help you?",
     'llama-3': "Greetings! I'm Llama 3 from Meta. I'm an open model focused on helpful, harmless, and honest AI assistance. What questions do you have?",
     'mixtral-8x7b': "Hello! I'm Mixtral 8x7B developed by Mistral AI. I'm a mixture-of-experts model with strong capabilities across multiple languages and domains. How may I assist you?",
-    'deepseek-r1': "Hello! I'm DeepSeek-R1 accessed through Krutrim. I'm designed to provide thoughtful, accurate responses. What would you like to know?"
+    'deepseek-r1': "Hello! I'm DeepSeek-R1 accessed through Krutrim. I'm designed to provide thoughtful, accurate responses. What would you like to know?",
+    'o1': "Hello! I'm o1, OpenAI's reasoning model. I'm designed to provide thoughtful responses with robust reasoning. How may I help you today?",
+    'o1-mini': "Hi there! I'm o1-mini, a compact version of OpenAI's reasoning model. I can help solve problems with structured reasoning. What would you like to explore?",
+    'o3-mini': "Hello! I'm o3-mini, OpenAI's third-generation reasoning model. I can provide logical and thoughtful responses to your questions. How can I assist you?",
+    'o1-pro': "Greetings! I'm o1-pro, OpenAI's premium reasoning model. I'm designed for advanced problem-solving and detailed analysis. What would you like me to help with?"
   };
   
   return mockResponses[modelId] || "I'll help you with that request.";
