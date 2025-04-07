@@ -18,10 +18,10 @@ import {
   selectModelAction,
   generateResponseAction,
   createSendMessageAction,
-  createRegenerateMessageAction
+  createRegenerateMessageAction,
+  createGenerateImageAction
 } from './actions';
 
-import { createGenerateImageAction } from './actions/imageGenerationActions';
 import { loadUserConversationsAction } from './dataActions';
 
 // Create an initial conversation

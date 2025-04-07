@@ -1,5 +1,6 @@
+
 import React, { useState, useRef, useEffect } from "react";
-import { Send, ChevronDown, Image, X } from "lucide-react";
+import { Send, ChevronDown, Image, X, Wand2 } from "lucide-react";
 import { useChatStore } from "@/store";
 import { 
   DropdownMenu,
@@ -18,7 +19,7 @@ import ImageGenerationButton from "./ImageGenerationButton";
 const ChatInput = () => {
   const [inputValue, setInputValue] = useState("");
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
-  const { sendMessage, isLoading, selectedModel, selectModel } = useChatStore();
+  const { sendMessage, isLoading, selectedModel, selectModel, isImageGenerating } = useChatStore();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -196,6 +197,9 @@ const ChatInput = () => {
           >
             <Image size={18} />
           </Button>
+          
+          {/* Add the Image Generation Button */}
+          <ImageGenerationButton />
           
           <Button
             type="submit"

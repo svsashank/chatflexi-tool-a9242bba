@@ -29,11 +29,13 @@ const ImageGenerationButton: React.FC = () => {
     }
     
     try {
+      console.log('Starting image generation with prompt:', prompt);
       await generateImage(prompt.trim());
       toast.success('Image generation started');
       setIsDialogOpen(false);
       setPrompt('');
     } catch (error: any) {
+      console.error('Image generation failed:', error);
       toast.error(error.message || 'Failed to generate image');
     }
   };
@@ -66,6 +68,9 @@ const ImageGenerationButton: React.FC = () => {
             className="w-full"
             disabled={isImageGenerating}
           />
+          <p className="mt-2 text-xs text-muted-foreground">
+            Using {selectedModel.name} to generate an image. Be specific with your description for better results.
+          </p>
         </div>
         <DialogFooter>
           <DialogClose asChild>
