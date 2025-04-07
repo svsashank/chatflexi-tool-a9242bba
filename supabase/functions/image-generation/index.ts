@@ -2,7 +2,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 
-import { corsHeaders } from "../chat/utils/cors.ts";
+import { corsHeaders } from "./utils/cors.ts";
 import { handleOpenAIImageGeneration } from "../chat/handlers/openai.ts";
 import { handleGoogleImageGeneration } from "../chat/handlers/google.ts";
 import { handleAnthropicImageGeneration } from "../chat/handlers/anthropic.ts";

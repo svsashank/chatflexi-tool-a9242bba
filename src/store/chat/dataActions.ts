@@ -72,7 +72,8 @@ export const loadUserConversationsAction = (
       // Find the model in our constants
       const model = AI_MODELS.find(m => m.id === msg.model_id && m.provider === msg.model_provider) || DEFAULT_MODEL;
       
-      return {
+      // Create the basic message structure
+      const message = {
         id: msg.id,
         content: msg.content,
         role: msg.role as 'user' | 'assistant',
@@ -83,12 +84,18 @@ export const loadUserConversationsAction = (
           output: msg.output_tokens
         } : undefined,
         computeCredits: msg.compute_credits || undefined,
-        images: [], // Initialize with empty array since DB doesn't store images yet
-        generatedImage: msg.generated_image_url ? {
-          imageUrl: msg.generated_image_url,
-          revisedPrompt: msg.revised_prompt
-        } : undefined
+        images: [] // Initialize with empty array
       };
+      
+      // Add generated image if exists (handle potential missing fields in the DB)
+      if ('generated_image_url' in msg && msg.generated_image_url) {
+        message.generatedImage = {
+          imageUrl: msg.generated_image_url,
+          revisedPrompt: ('revised_prompt' in msg) ? msg.revised_prompt : undefined
+        };
+      }
+      
+      return message;
     });
 
     // Convert the DB conversation to app format
