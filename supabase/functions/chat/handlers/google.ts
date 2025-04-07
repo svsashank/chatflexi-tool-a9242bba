@@ -1,4 +1,3 @@
-
 import { corsHeaders } from "../utils/cors.ts";
 
 // Google (Gemini) handler
@@ -132,6 +131,57 @@ export async function handleGoogle(messageHistory: any[], content: string, model
     );
   } catch (error) {
     console.error("Error in Google API call:", error);
+    throw error;
+  }
+}
+
+// Google (Imagen) image generation handler
+export async function handleGoogleImageGeneration(prompt: string, modelId: string) {
+  const GOOGLE_API_KEY = Deno.env.get('GOOGLE_API_KEY');
+  if (!GOOGLE_API_KEY) {
+    throw new Error("Google API key not configured");
+  }
+  
+  console.log(`Processing image generation request with prompt: ${prompt.substring(0, 50)}...`);
+  
+  try {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/imagegeneration:generateImage?key=${GOOGLE_API_KEY}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        prompt: {
+          text: prompt
+        },
+        sampleCount: 1,
+        sampleImageSize: "1024x1024"
+      })
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error?.message || `Google Imagen API error: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    console.log("Successfully generated image with Google Imagen");
+    
+    if (data.images && data.images.length > 0) {
+      return new Response(
+        JSON.stringify({
+          imageUrl: data.images[0],
+          provider: 'Google',
+          model: 'imagen'
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    } else {
+      console.error("Unexpected Google Imagen response format:", data);
+      throw new Error("Unexpected response format from Google Imagen API");
+    }
+  } catch (error) {
+    console.error("Error in Google Imagen API call:", error);
     throw error;
   }
 }

@@ -140,3 +140,22 @@ export async function handleAnthropic(messageHistory: any[], content: string, mo
     throw error;
   }
 }
+
+// Anthropic Image Generation handler
+export async function handleAnthropicImageGeneration(prompt: string, modelId: string) {
+  const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
+  if (!ANTHROPIC_API_KEY) {
+    throw new Error("Anthropic API key not configured");
+  }
+  
+  console.log(`Processing image generation request with prompt: ${prompt.substring(0, 50)}...`);
+  
+  try {
+    // Note: Anthropic's Claude models don't have a dedicated image generation API
+    // We'll throw an error for now as this capability isn't available
+    throw new Error("Image generation is not supported by Anthropic models");
+  } catch (error) {
+    console.error("Error in Anthropic image generation:", error);
+    throw error;
+  }
+}

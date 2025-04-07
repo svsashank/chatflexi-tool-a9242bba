@@ -6,6 +6,7 @@ export interface ChatState {
   currentConversationId: string | null;
   selectedModel: AIModel;
   isLoading: boolean;
+  isImageGenerating: boolean;
 }
 
 export interface ChatStoreActions {
@@ -19,6 +20,7 @@ export interface ChatStoreActions {
   resetConversations: () => void;
   sendMessage: (content: string, images?: string[]) => void;
   regenerateMessage: () => Promise<void>;
+  generateImage: (prompt: string) => Promise<void>;
 }
 
 export type ChatStore = ChatState & ChatStoreActions;

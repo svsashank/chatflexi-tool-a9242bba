@@ -13,6 +13,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { AI_MODELS } from "@/constants";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import ImageGenerationButton from "./ImageGenerationButton";
 
 const ChatInput = () => {
   const [inputValue, setInputValue] = useState("");
@@ -21,12 +22,11 @@ const ChatInput = () => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Auto-resize textarea as content grows
   useEffect(() => {
     const textarea = textareaRef.current;
     if (textarea) {
       textarea.style.height = "auto";
-      const newHeight = Math.min(textarea.scrollHeight, 200); // Max height of 200px
+      const newHeight = Math.min(textarea.scrollHeight, 200);
       textarea.style.height = `${newHeight}px`;
     }
   }, [inputValue]);
@@ -34,11 +34,9 @@ const ChatInput = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if ((inputValue.trim() || uploadedImages.length > 0) && !isLoading) {
-      // Send message with content and images
       sendMessage(inputValue.trim(), uploadedImages.length > 0 ? uploadedImages : undefined);
       setInputValue("");
       setUploadedImages([]);
-      // Reset textarea height
       if (textareaRef.current) {
         textareaRef.current.style.height = "auto";
       }
@@ -56,21 +54,17 @@ const ChatInput = () => {
     const files = e.target.files;
     if (!files) return;
 
-    // Check if model supports images
     if (!selectedModel.capabilities.includes('images')) {
       toast.error(`${selectedModel.name} does not support image analysis. Please select a model with vision capabilities.`);
       return;
     }
 
-    // Process each image
     Array.from(files).forEach(file => {
-      // Check file type
       if (!file.type.startsWith('image/')) {
         toast.error(`File ${file.name} is not an image.`);
         return;
       }
 
-      // Check file size (limit to 4MB)
       if (file.size > 4 * 1024 * 1024) {
         toast.error(`Image ${file.name} exceeds 4MB limit.`);
         return;
@@ -85,7 +79,6 @@ const ChatInput = () => {
       reader.readAsDataURL(file);
     });
 
-    // Reset file input
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -101,7 +94,6 @@ const ChatInput = () => {
         onSubmit={handleSubmit} 
         className="relative flex flex-col gap-3 max-w-3xl mx-auto"
       >
-        {/* Model selector - now more prominent above the input */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -125,7 +117,7 @@ const ChatInput = () => {
           <DropdownMenuContent align="center" className="w-64 mt-1 border-primary/20">
             <DropdownMenuLabel className="text-center">Choose an AI Model</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <ScrollArea className="h-80"> {/* Set a fixed height for scrolling */}
+            <ScrollArea className="h-80">
               <div className="p-1">
                 {AI_MODELS.map((model) => (
                   <DropdownMenuItem 
@@ -154,7 +146,6 @@ const ChatInput = () => {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {/* Display uploaded images */}
         {uploadedImages.length > 0 && (
           <div className="flex flex-wrap gap-2 mt-2">
             {uploadedImages.map((image, index) => (
@@ -186,7 +177,6 @@ const ChatInput = () => {
             />
           </div>
           
-          {/* Image upload button */}
           <input 
             type="file" 
             ref={fileInputRef}

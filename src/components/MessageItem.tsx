@@ -1,7 +1,7 @@
 
 import React, { useState } from "react";
 import { Message } from "../types";
-import { Bot, Check, Copy, User, Zap, Cpu } from "lucide-react";
+import { Bot, Check, Copy, User, Zap, Cpu, Download } from "lucide-react";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
@@ -26,6 +26,16 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, showTotalCredits = f
     } catch (err) {
       toast.error("Failed to copy text");
     }
+  };
+
+  const downloadImage = (imageUrl: string) => {
+    const link = document.createElement('a');
+    link.href = imageUrl;
+    link.download = `ai-generated-image-${Date.now()}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success("Image download started");
   };
 
   const isUserMessage = message.role === "user";
@@ -78,6 +88,31 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, showTotalCredits = f
                   />
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Display generated image if available */}
+          {message.generatedImage && (
+            <div className="mb-3">
+              <div className="relative rounded-md overflow-hidden border border-border group">
+                <img 
+                  src={message.generatedImage.imageUrl} 
+                  alt="AI generated image" 
+                  className="w-full h-auto"
+                />
+                <button
+                  onClick={() => downloadImage(message.generatedImage?.imageUrl || '')}
+                  className="absolute top-2 right-2 p-1.5 rounded-md bg-background/80 hover:bg-background text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                  title="Download image"
+                >
+                  <Download size={16} />
+                </button>
+              </div>
+              {message.generatedImage.revisedPrompt && (
+                <div className="mt-2 text-sm text-muted-foreground">
+                  <span className="font-medium">Revised prompt:</span> {message.generatedImage.revisedPrompt}
+                </div>
+              )}
             </div>
           )}
           
