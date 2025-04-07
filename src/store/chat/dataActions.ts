@@ -87,11 +87,13 @@ export const loadUserConversationsAction = (
         images: [] // Initialize with empty array
       };
       
-      // Add generated image if exists - check if properties exist to fix the TypeScript error
-      if (msg.generated_image_url) {
+      // Check if the message has image generation fields
+      // TypeScript safe way to check if property exists
+      const msgAny = msg as any;
+      if (msgAny.generated_image_url) {
         message.generatedImage = {
-          imageUrl: msg.generated_image_url,
-          revisedPrompt: msg.revised_prompt
+          imageUrl: msgAny.generated_image_url,
+          revisedPrompt: msgAny.revised_prompt
         };
       }
       
