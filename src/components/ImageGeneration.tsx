@@ -36,7 +36,11 @@ const ImageGeneration: React.FC<ImageGenerationProps> = ({ onImageGenerated }) =
         return;
       }
       
+      console.log('Sending image generation request to:', selectedModel.provider);
+      
       const result = await generateImage(prompt.trim(), selectedModel);
+      
+      console.log('Image generation result:', result);
       
       setGeneratedImage(result.imageUrl);
       if (result.revisedPrompt) {

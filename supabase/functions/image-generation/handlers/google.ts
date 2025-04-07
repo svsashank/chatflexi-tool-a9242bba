@@ -35,7 +35,6 @@ export async function handleGoogleImageGeneration(prompt: string, modelId: strin
     console.log("Successfully generated image with Google Imagen");
     
     // Extract the image URL from the response based on Google's API structure
-    // Note: The actual response structure might differ, adjust accordingly
     if (data.image && data.image.url) {
       return new Response(
         JSON.stringify({

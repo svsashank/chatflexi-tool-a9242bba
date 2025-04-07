@@ -28,6 +28,8 @@ export const generateImage = async (
     
     while (attempts < maxAttempts) {
       try {
+        console.log(`Attempt ${attempts + 1}: Invoking image-generation function with provider ${model.provider}`);
+        
         const { data, error } = await supabase.functions.invoke('image-generation', {
           body: { 
             prompt,
@@ -48,8 +50,18 @@ export const generateImage = async (
         console.log('Received response from image generation API:', {
           provider: data.provider,
           model: data.model,
-          imageUrl: data.imageUrl ? 'Image URL received' : 'No image URL received'
+          imageUrl: data.imageUrl ? 'Image URL received' : 'No image URL received',
+          error: data.error
         });
+        
+        // Check if the response contains an error message from the backend
+        if (data.error) {
+          throw new Error(data.error);
+        }
+        
+        if (!data.imageUrl) {
+          throw new Error('No image URL received from the API');
+        }
         
         return {
           imageUrl: data.imageUrl,

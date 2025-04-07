@@ -10,9 +10,8 @@ export async function handleAnthropicImageGeneration(prompt: string, modelId: st
   
   console.log(`Processing image generation request with Anthropic ${modelId || 'Claude'} and prompt: ${prompt.substring(0, 50)}...`);
   
-  // Note: As of the last update, Anthropic Claude doesn't have a dedicated image generation API
+  // Note: As of the current implementation, Anthropic Claude doesn't have a dedicated image generation API
   // This function is a placeholder for when/if Anthropic releases such functionality
-  // For now, return an error indicating this isn't supported
   
   return new Response(
     JSON.stringify({
