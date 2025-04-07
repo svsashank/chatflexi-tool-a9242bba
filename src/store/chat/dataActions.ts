@@ -73,7 +73,7 @@ export const loadUserConversationsAction = (
       const model = AI_MODELS.find(m => m.id === msg.model_id && m.provider === msg.model_provider) || DEFAULT_MODEL;
       
       // Create the basic message structure
-      const message = {
+      const message: any = {
         id: msg.id,
         content: msg.content,
         role: msg.role as 'user' | 'assistant',
