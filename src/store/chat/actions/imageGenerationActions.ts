@@ -27,6 +27,9 @@ export const createGenerateImageAction = (set: Function, get: Function) => async
     // Add user message with the image generation prompt
     const userMessageId = uuidv4();
     const timestamp = new Date();
+    const userPrompt = `Generate an image: ${prompt}`;
+    
+    console.log(`Adding user message with prompt: ${userPrompt}`);
     
     set(state => ({
       conversations: state.conversations.map(conv =>
@@ -37,7 +40,7 @@ export const createGenerateImageAction = (set: Function, get: Function) => async
               ...conv.messages,
               {
                 id: userMessageId,
-                content: `Generate an image: ${prompt}`,
+                content: userPrompt,
                 role: 'user' as const,
                 model: selectedModel,
                 timestamp: timestamp
@@ -49,8 +52,10 @@ export const createGenerateImageAction = (set: Function, get: Function) => async
       )
     }));
     
-    // Generate the image
+    // Generate the image - use the original user prompt, not a revised one
     console.log(`Generating image with model: ${selectedModel.id}, provider: ${selectedModel.provider}`);
+    console.log(`Using original prompt: ${prompt}`);
+    
     const result = await generateImage(prompt, selectedModel);
     console.log('Image generation result:', result);
     
@@ -65,6 +70,12 @@ export const createGenerateImageAction = (set: Function, get: Function) => async
     const assistantMessageId = uuidv4();
     const newTimestamp = new Date();
     
+    const assistantMessageContent = result.revisedPrompt 
+      ? `I generated this image based on: "${result.revisedPrompt}"`
+      : `Here's the image I generated:`;
+      
+    console.log(`Adding assistant message with content: ${assistantMessageContent}`);
+    
     set(state => ({
       conversations: state.conversations.map(conv =>
         conv.id === currentConversationId
@@ -74,9 +85,7 @@ export const createGenerateImageAction = (set: Function, get: Function) => async
               ...conv.messages,
               {
                 id: assistantMessageId,
-                content: result.revisedPrompt 
-                  ? `I generated this image based on: "${result.revisedPrompt}"`
-                  : `Here's the image I generated:`,
+                content: assistantMessageContent,
                 role: 'assistant' as const,
                 model: selectedModel,
                 timestamp: newTimestamp,
@@ -123,7 +132,7 @@ export const createGenerateImageAction = (set: Function, get: Function) => async
             {
               id: userMessageId,
               conversation_id: currentConversationId,
-              content: `Generate an image: ${prompt}`,
+              content: userPrompt,
               role: 'user',
               model_id: selectedModel.id,
               model_provider: selectedModel.provider,
@@ -133,6 +142,8 @@ export const createGenerateImageAction = (set: Function, get: Function) => async
           
         if (userMsgError) {
           console.error('Error saving user image generation message:', userMsgError);
+        } else {
+          console.log('Successfully saved user message to database');
         }
         
         // Save the assistant message with the generated image URL and compute credits
@@ -142,9 +153,7 @@ export const createGenerateImageAction = (set: Function, get: Function) => async
             {
               id: assistantMessageId,
               conversation_id: currentConversationId,
-              content: result.revisedPrompt 
-                ? `I generated this image based on: "${result.revisedPrompt}"`
-                : `Here's the image I generated:`,
+              content: assistantMessageContent,
               role: 'assistant',
               model_id: selectedModel.id,
               model_provider: selectedModel.provider,
@@ -160,6 +169,8 @@ export const createGenerateImageAction = (set: Function, get: Function) => async
         if (assistantMsgError) {
           console.error('Error saving assistant image generation message:', assistantMsgError);
         } else {
+          console.log('Successfully saved assistant message with image to database');
+          
           // Update total user compute credits
           const { error: updateCreditsError } = await supabase.rpc(
             'update_user_compute_credits',
@@ -178,6 +189,8 @@ export const createGenerateImageAction = (set: Function, get: Function) => async
       } catch (dbError) {
         console.error('Database error:', dbError);
       }
+    } else {
+      console.warn("User not authenticated, skipping database save");
     }
   } catch (error: any) {
     console.error('Error generating image:', error);
