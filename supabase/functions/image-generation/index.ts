@@ -4,13 +4,9 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 
 import { corsHeaders } from "./utils/cors.ts";
 import { handleOpenAIImageGeneration } from "./handlers/openai.ts";
+import { handleGoogleImageGeneration } from "./handlers/google.ts";
 
-// We're creating stubs for these handlers since they're not fully implemented
-// but are referenced in the code
-const handleGoogleImageGeneration = async (prompt: string, modelId: string) => {
-  throw new Error("Google image generation not implemented yet");
-};
-
+// We're creating a stub for Anthropic handler since it's not fully implemented
 const handleAnthropicImageGeneration = async (prompt: string, modelId: string) => {
   throw new Error("Anthropic image generation not implemented yet");
 };

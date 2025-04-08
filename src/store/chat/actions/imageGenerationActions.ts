@@ -49,7 +49,13 @@ export const createGenerateImageAction = (set: Function, get: Function) => async
     }));
     
     // Generate the image
+    console.log(`Generating image with model: ${selectedModel.id}, provider: ${selectedModel.provider}`);
     const result = await generateImage(prompt, selectedModel);
+    console.log('Image generation result:', result);
+    
+    if (!result.imageUrl) {
+      throw new Error('No image URL received from the API');
+    }
     
     // Add assistant message with the generated image
     const assistantMessageId = uuidv4();
