@@ -161,10 +161,13 @@ export const createGenerateImageAction = (set: Function, get: Function) => async
           console.error('Error saving assistant image generation message:', assistantMsgError);
         } else {
           // Update total user compute credits
-          const { error: updateCreditsError } = await supabase.rpc('increment_user_credits', {
-            user_id_param: session.user.id,
-            credits_to_add: computeCredits
-          });
+          const { error: updateCreditsError } = await supabase.rpc(
+            'update_user_compute_credits',
+            { 
+              p_user_id: session.user.id,
+              p_credits: computeCredits
+            }
+          );
           
           if (updateCreditsError) {
             console.error('Error updating user compute credits:', updateCreditsError);
