@@ -24,6 +24,14 @@ export const COMPUTE_CREDITS_PER_TOKEN: Record<string, number> = {
   'grok-2-latest': 6.75,
 };
 
+// Fixed credit values for image generation by provider
+export const COMPUTE_CREDITS_FOR_IMAGE_GENERATION: Record<string, number> = {
+  'openai': 1000, // DALL-E models
+  'google': 800,  // Imagen models
+  'anthropic': 1500, // For future implementation
+  'default': 1000, // Default fallback
+};
+
 // Default value if model is not found
 const DEFAULT_CREDIT_PER_TOKEN = 1.0;
 
@@ -43,4 +51,14 @@ export const calculateComputeCredits = (
   
   // Round to 2 decimal places
   return Math.round(totalCredits * 100) / 100;
+};
+
+/**
+ * Calculate compute credits for image generation
+ */
+export const calculateImageGenerationCredits = (
+  provider: string
+): number => {
+  return COMPUTE_CREDITS_FOR_IMAGE_GENERATION[provider.toLowerCase()] || 
+         COMPUTE_CREDITS_FOR_IMAGE_GENERATION.default;
 };
