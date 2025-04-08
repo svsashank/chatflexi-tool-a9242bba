@@ -47,12 +47,8 @@ export const generateImage = async (
           continue;
         }
         
-        console.log('Received response from image generation API:', {
-          provider: data.provider,
-          model: data.model,
-          imageUrl: data.imageUrl ? 'Image URL received' : 'No image URL received',
-          error: data.error
-        });
+        // Log the full response for debugging
+        console.log('Received response from image generation API:', data);
         
         // Check if the response contains an error message from the backend
         if (data.error) {
