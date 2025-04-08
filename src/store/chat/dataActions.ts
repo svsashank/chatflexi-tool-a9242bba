@@ -69,7 +69,7 @@ export const loadUserConversationsAction = (
     
     console.log("Loaded messages from database:", messages);
     
-    // Map database messages to app format
+    // Map database messages to app format - using type assertion to handle image fields
     const mappedMessages = (messages || []).map(msg => {
       // Find the model in our constants
       const model = AI_MODELS.find(m => m.id === msg.model_id && m.provider === msg.model_provider) || DEFAULT_MODEL;
@@ -86,20 +86,19 @@ export const loadUserConversationsAction = (
           output: msg.output_tokens
         } : undefined,
         computeCredits: msg.compute_credits || undefined,
-        images: [] // Initialize with empty array
       };
       
-      // Check for image URLs in message - using type assertion since the field may not be in the type
-      const msgAny = msg as any;
-      if (msgAny.images) {
-        message.images = Array.isArray(msgAny.images) ? msgAny.images : [];
+      // Check for images array field
+      const msgWithImages = msg as any;
+      if (msgWithImages.images && Array.isArray(msgWithImages.images)) {
+        message.images = msgWithImages.images;
       }
       
-      // Check if the message has image generation fields - using type assertion
-      if (msgAny.image_url) {
+      // Check for generated image fields
+      if (msgWithImages.image_url) {
         message.generatedImage = {
-          imageUrl: msgAny.image_url,
-          revisedPrompt: msgAny.revised_prompt
+          imageUrl: msgWithImages.image_url,
+          revisedPrompt: msgWithImages.revised_prompt
         };
         console.log("Found generated image:", message.generatedImage);
       }
@@ -131,3 +130,4 @@ export const loadUserConversationsAction = (
     });
   }
 };
+

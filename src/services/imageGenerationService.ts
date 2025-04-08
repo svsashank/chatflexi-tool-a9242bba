@@ -32,7 +32,7 @@ export const generateImage = async (
         
         const { data, error } = await supabase.functions.invoke('image-generation', {
           body: { 
-            prompt, // Pass the original prompt directly
+            prompt, // Pass the original prompt directly without modifications
             provider: model.provider,
             modelId: model.id
           }

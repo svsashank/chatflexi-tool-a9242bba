@@ -52,7 +52,7 @@ export const createGenerateImageAction = (set: Function, get: Function) => async
       )
     }));
     
-    // Generate the image - use the original user prompt, not a revised one
+    // Generate the image - use the original user prompt, not a modified one
     console.log(`Generating image with model: ${selectedModel.id}, provider: ${selectedModel.provider}`);
     console.log(`Using original prompt: ${prompt}`);
     

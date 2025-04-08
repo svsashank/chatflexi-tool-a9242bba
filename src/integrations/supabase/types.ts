@@ -82,10 +82,13 @@ export type Database = {
           conversation_id: string
           created_at: string
           id: string
+          image_url: string | null
+          images: string[] | null
           input_tokens: number | null
           model_id: string | null
           model_provider: string | null
           output_tokens: number | null
+          revised_prompt: string | null
           role: string
         }
         Insert: {
@@ -94,10 +97,13 @@ export type Database = {
           conversation_id: string
           created_at?: string
           id?: string
+          image_url?: string | null
+          images?: string[] | null
           input_tokens?: number | null
           model_id?: string | null
           model_provider?: string | null
           output_tokens?: number | null
+          revised_prompt?: string | null
           role: string
         }
         Update: {
@@ -106,10 +112,13 @@ export type Database = {
           conversation_id?: string
           created_at?: string
           id?: string
+          image_url?: string | null
+          images?: string[] | null
           input_tokens?: number | null
           model_id?: string | null
           model_provider?: string | null
           output_tokens?: number | null
+          revised_prompt?: string | null
           role?: string
         }
         Relationships: [
