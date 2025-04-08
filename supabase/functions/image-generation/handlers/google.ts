@@ -10,24 +10,54 @@ export async function handleGoogleImageGeneration(prompt: string, modelId: strin
   
   console.log(`Processing image generation request with Google's ${modelId} model and prompt: ${prompt.substring(0, 50)}...`);
   
-  const apiEndpoint = "https://generativelanguage.googleapis.com/v1beta/models/imagegeneration:generateImage";
-  
   try {
-    console.log(`Sending request to Google Imagen API with key: ${GOOGLE_API_KEY.substring(0, 3)}...`);
+    // For Gemini models, we need to use the generativeLanguage API
+    // The endpoint changed based on the Gemini version
+    const isGemini = modelId.toLowerCase().includes('gemini');
+    let apiEndpoint = '';
+    let requestBody = {};
     
-    const response = await fetch(`${apiEndpoint}?key=${GOOGLE_API_KEY}`, {
+    if (isGemini) {
+      // Use the appropriate API endpoint for Gemini models
+      apiEndpoint = `https://generativelanguage.googleapis.com/v1/models/${modelId}:generateContent?key=${GOOGLE_API_KEY}`;
+      
+      requestBody = {
+        contents: [
+          {
+            parts: [
+              { text: prompt },
+              { inline_data: { mime_type: "text/plain", data: "" } } // This triggers image generation mode
+            ]
+          }
+        ],
+        generation_config: {
+          temperature: 0.4,
+          topK: 32,
+          topP: 1,
+          maxOutputTokens: 2048,
+        }
+      };
+    } else {
+      // Fall back to Imagen API for other Google models
+      apiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/imagegeneration:generateImage?key=${GOOGLE_API_KEY}`;
+      
+      requestBody = {
+        prompt: {
+          text: prompt
+        },
+        sampleCount: 1,
+        sampleImageSize: "1024x1024"
+      };
+    }
+    
+    console.log(`Sending request to Google API: ${apiEndpoint.substring(0, 80)}...`);
+    
+    const response = await fetch(apiEndpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        prompt: {
-          text: prompt
-        },
-        // Additional parameters can be added here as needed
-        sampleCount: 1,
-        sampleImageSize: "1024x1024"
-      })
+      body: JSON.stringify(requestBody)
     });
     
     // Check if the response is valid
@@ -37,46 +67,59 @@ export async function handleGoogleImageGeneration(prompt: string, modelId: strin
       
       try {
         const errorData = JSON.parse(errorText);
-        throw new Error(errorData.error?.message || `Google Imagen API error: ${response.status}`);
+        throw new Error(errorData.error?.message || `Google API error: ${response.status}`);
       } catch (parseError) {
         // If we can't parse the error as JSON, return the raw text
-        throw new Error(`Google Imagen API error (${response.status}): ${errorText.substring(0, 200)}...`);
+        throw new Error(`Google API error (${response.status}): ${errorText.substring(0, 200)}...`);
       }
     }
     
-    // Get the response text first for debugging
-    const responseText = await response.text();
-    console.log("Google Imagen API raw response:", responseText.substring(0, 200) + (responseText.length > 200 ? '...' : ''));
+    // Get the response as JSON
+    const data = await response.json();
+    console.log("Google API response structure:", JSON.stringify(data).substring(0, 300) + "...");
     
-    // Parse the response as JSON, with error handling
-    let data;
-    try {
-      data = JSON.parse(responseText);
-    } catch (parseError) {
-      console.error("Failed to parse Google Imagen API response as JSON:", parseError);
-      throw new Error("Invalid JSON response from Google Imagen API");
-    }
+    let imageUrl = null;
     
-    console.log("Successfully parsed Google Imagen response");
-    
-    // Extract the image URL from the response based on Google's API structure
-    if (data.images && data.images.length > 0) {
-      console.log("Image data found in response, returning result");
-      return new Response(
-        JSON.stringify({
-          imageUrl: data.images[0],
-          revisedPrompt: data.promptFeedback?.refinedPrompt,
-          model: modelId,
-          provider: 'Google'
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // Extract image URL based on model type
+    if (isGemini) {
+      // For Gemini models, the image is in the response content
+      if (data.candidates && data.candidates[0]?.content?.parts) {
+        const parts = data.candidates[0].content.parts;
+        for (const part of parts) {
+          if (part.inlineData?.data) {
+            imageUrl = `data:${part.inlineData.mimeType || 'image/png'};base64,${part.inlineData.data}`;
+            break;
+          }
+        }
+      }
+      
+      if (!imageUrl) {
+        console.error("Could not find image data in Gemini response:", JSON.stringify(data).substring(0, 500));
+        throw new Error("No image data found in the Gemini response");
+      }
     } else {
-      console.error("Unexpected Google Imagen response format:", JSON.stringify(data));
-      throw new Error("Could not extract image URL from Google Imagen response");
+      // For Imagen, the image URL is directly in the response
+      if (data.images && data.images.length > 0) {
+        imageUrl = data.images[0];
+      } else {
+        console.error("No images found in response:", JSON.stringify(data).substring(0, 500));
+        throw new Error("No images found in the Google Imagen response");
+      }
     }
+    
+    console.log("Successfully extracted image URL from Google API response");
+    
+    return new Response(
+      JSON.stringify({
+        imageUrl: imageUrl,
+        revisedPrompt: data.promptFeedback?.refinedPrompt || null,
+        model: modelId,
+        provider: 'Google'
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   } catch (error) {
-    console.error("Error in Google Imagen API call:", error);
+    console.error("Error in Google API call:", error);
     throw error;
   }
 }

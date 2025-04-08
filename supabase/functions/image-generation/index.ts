@@ -34,10 +34,9 @@ serve(async (req) => {
       );
     }
     
-    console.log(`Image generation request received for provider: ${provider}, prompt: ${prompt.substring(0, 50)}...`);
+    console.log(`Image generation request received for provider: ${provider}, model: ${modelId}, prompt: ${prompt.substring(0, 50)}...`);
     
     try {
-      let result;
       switch(provider.toLowerCase()) {
         case 'openai':
           return await handleOpenAIImageGeneration(prompt, modelId || 'dall-e-3');

@@ -9,7 +9,8 @@ import {
   DialogTitle, 
   DialogTrigger,
   DialogFooter,
-  DialogClose
+  DialogClose,
+  DialogDescription
 } from '@/components/ui/dialog';
 import { useChatStore } from '@/store';
 import { Wand2, Loader2 } from 'lucide-react';
@@ -59,6 +60,9 @@ const ImageGenerationButton: React.FC = () => {
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Generate an Image</DialogTitle>
+          <DialogDescription>
+            Enter a detailed prompt to generate an image using {selectedModel.name}.
+          </DialogDescription>
         </DialogHeader>
         <div className="py-4">
           <Input

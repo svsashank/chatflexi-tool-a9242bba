@@ -28,7 +28,7 @@ export const generateImage = async (
     
     while (attempts < maxAttempts) {
       try {
-        console.log(`Attempt ${attempts + 1}: Invoking image-generation function with provider ${model.provider}`);
+        console.log(`Attempt ${attempts + 1}: Invoking image-generation function with provider ${model.provider} and model ${model.id}`);
         
         const { data, error } = await supabase.functions.invoke('image-generation', {
           body: { 
