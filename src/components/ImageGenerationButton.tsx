@@ -13,7 +13,7 @@ import {
   DialogDescription
 } from '@/components/ui/dialog';
 import { useChatStore } from '@/store';
-import { Wand2, Loader2 } from 'lucide-react';
+import { Wand2, Loader2, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 const ImageGenerationButton: React.FC = () => {
@@ -22,7 +22,13 @@ const ImageGenerationButton: React.FC = () => {
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const { selectedModel, isImageGenerating, generateImage } = useChatStore();
   
+  // Check if the model supports image generation
   const hasImageGenCapability = selectedModel.capabilities.includes('imageGeneration');
+  
+  // Special handling for Gemini models
+  const isGeminiModel = selectedModel.provider === 'google' && selectedModel.id.includes('gemini');
+  const modelWarning = isGeminiModel ? 
+    "Gemini models don't directly support image generation. We'll use Google's Imagen model instead." : null;
   
   const handleGenerateImage = async () => {
     if (!prompt.trim()) {
@@ -74,6 +80,13 @@ const ImageGenerationButton: React.FC = () => {
           </DialogDescription>
         </DialogHeader>
         <div className="py-4">
+          {modelWarning && (
+            <div className="mb-4 p-2.5 bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-300 rounded-md text-sm flex items-start gap-2">
+              <AlertCircle size={16} className="mt-0.5 flex-shrink-0" />
+              <p>{modelWarning}</p>
+            </div>
+          )}
+          
           <Input
             placeholder="Enter a detailed description of the image you want to generate..."
             value={prompt}
