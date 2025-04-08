@@ -89,16 +89,17 @@ export const loadUserConversationsAction = (
         images: [] // Initialize with empty array
       };
       
-      // Check for image URLs in message
-      if (msg.images) {
-        message.images = Array.isArray(msg.images) ? msg.images : [];
+      // Check for image URLs in message - using type assertion since the field may not be in the type
+      const msgAny = msg as any;
+      if (msgAny.images) {
+        message.images = Array.isArray(msgAny.images) ? msgAny.images : [];
       }
       
-      // Check if the message has image generation fields
-      if (msg.image_url) {
+      // Check if the message has image generation fields - using type assertion
+      if (msgAny.image_url) {
         message.generatedImage = {
-          imageUrl: msg.image_url,
-          revisedPrompt: msg.revised_prompt
+          imageUrl: msgAny.image_url,
+          revisedPrompt: msgAny.revised_prompt
         };
         console.log("Found generated image:", message.generatedImage);
       }
