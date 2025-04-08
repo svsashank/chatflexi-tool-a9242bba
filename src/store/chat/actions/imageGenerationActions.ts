@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { toast } from 'sonner';
 import { generateImage } from '@/services/imageGenerationService';
 import { supabase } from '@/integrations/supabase/client';
+import { calculateImageGenerationCredits } from '@/utils/computeCredits';
 
 export const createGenerateImageAction = (set: Function, get: Function) => async (prompt: string) => {
   set({ isImageGenerating: true });
@@ -57,6 +58,9 @@ export const createGenerateImageAction = (set: Function, get: Function) => async
       throw new Error('No image URL received from the API');
     }
     
+    // Calculate compute credits for image generation
+    const computeCredits = calculateImageGenerationCredits(selectedModel.provider);
+    
     // Add assistant message with the generated image
     const assistantMessageId = uuidv4();
     const newTimestamp = new Date();
@@ -79,6 +83,11 @@ export const createGenerateImageAction = (set: Function, get: Function) => async
                 generatedImage: {
                   imageUrl: result.imageUrl,
                   revisedPrompt: result.revisedPrompt
+                },
+                computeCredits: computeCredits,
+                tokens: {
+                  input: 0,
+                  output: 0
                 }
               }
             ],
@@ -126,7 +135,7 @@ export const createGenerateImageAction = (set: Function, get: Function) => async
           console.error('Error saving user image generation message:', userMsgError);
         }
         
-        // Save the assistant message with the generated image URL
+        // Save the assistant message with the generated image URL and compute credits
         const { error: assistantMsgError } = await supabase
           .from('conversation_messages')
           .insert([
@@ -140,13 +149,28 @@ export const createGenerateImageAction = (set: Function, get: Function) => async
               model_id: selectedModel.id,
               model_provider: selectedModel.provider,
               created_at: newTimestamp.toISOString(),
-              generated_image_url: result.imageUrl,
-              revised_prompt: result.revisedPrompt
+              image_url: result.imageUrl,
+              revised_prompt: result.revisedPrompt,
+              compute_credits: computeCredits,
+              input_tokens: 0,
+              output_tokens: 0
             }
           ]);
           
         if (assistantMsgError) {
           console.error('Error saving assistant image generation message:', assistantMsgError);
+        } else {
+          // Update total user compute credits
+          const { error: updateCreditsError } = await supabase.rpc('increment_user_credits', {
+            user_id_param: session.user.id,
+            credits_to_add: computeCredits
+          });
+          
+          if (updateCreditsError) {
+            console.error('Error updating user compute credits:', updateCreditsError);
+          } else {
+            console.log(`Added ${computeCredits} image generation credits to user total`);
+          }
         }
       } catch (dbError) {
         console.error('Database error:', dbError);

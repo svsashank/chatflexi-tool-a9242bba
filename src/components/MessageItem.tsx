@@ -156,10 +156,10 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, showTotalCredits = f
         </div>
         
         <div className="mt-1 self-end flex items-center gap-2">
-          {!isUserMessage && message.computeCredits !== undefined && message.tokens && (
+          {!isUserMessage && message.computeCredits !== undefined && (
             <ComputeCredits 
               credits={message.computeCredits}
-              tokens={message.tokens}
+              tokens={message.tokens || { input: 0, output: 0 }}
               modelId={message.model.id}
             />
           )}
