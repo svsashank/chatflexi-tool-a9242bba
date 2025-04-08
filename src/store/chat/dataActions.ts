@@ -67,6 +67,8 @@ export const loadUserConversationsAction = (
       });
     }
     
+    console.log("Loaded messages from database:", messages);
+    
     // Map database messages to app format
     const mappedMessages = (messages || []).map(msg => {
       // Find the model in our constants
@@ -87,14 +89,18 @@ export const loadUserConversationsAction = (
         images: [] // Initialize with empty array
       };
       
+      // Check for image URLs in message
+      if (msg.images) {
+        message.images = Array.isArray(msg.images) ? msg.images : [];
+      }
+      
       // Check if the message has image generation fields
-      // TypeScript safe way to check if property exists
-      const msgAny = msg as any;
-      if (msgAny.generated_image_url) {
+      if (msg.image_url) {
         message.generatedImage = {
-          imageUrl: msgAny.generated_image_url,
-          revisedPrompt: msgAny.revised_prompt
+          imageUrl: msg.image_url,
+          revisedPrompt: msg.revised_prompt
         };
+        console.log("Found generated image:", message.generatedImage);
       }
       
       return message;
