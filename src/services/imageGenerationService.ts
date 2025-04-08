@@ -59,6 +59,11 @@ export const generateImage = async (
           throw new Error('No image URL received from the API');
         }
         
+        // Add an extra check for incomplete base64 data
+        if (data.imageUrl.startsWith('data:image') && data.imageUrl.length < 100) {
+          throw new Error('Invalid or incomplete image data received');
+        }
+        
         return {
           imageUrl: data.imageUrl,
           revisedPrompt: data.revisedPrompt,

@@ -19,6 +19,7 @@ import { toast } from 'sonner';
 const ImageGenerationButton: React.FC = () => {
   const [prompt, setPrompt] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const { selectedModel, isImageGenerating, generateImage } = useChatStore();
   
   const hasImageGenCapability = selectedModel.capabilities.includes('imageGeneration');
@@ -29,14 +30,22 @@ const ImageGenerationButton: React.FC = () => {
       return;
     }
     
+    setErrorDetails(null);
+    
     try {
       console.log('Starting image generation with prompt:', prompt);
+      console.log('Using model:', selectedModel.name, 'from provider:', selectedModel.provider);
+      
       await generateImage(prompt.trim());
       toast.success('Image generation started');
       setIsDialogOpen(false);
       setPrompt('');
     } catch (error: any) {
       console.error('Image generation failed:', error);
+      
+      // Store error details for debugging
+      setErrorDetails(error.message || 'Unknown error');
+      
       toast.error(error.message || 'Failed to generate image');
     }
   };
@@ -75,6 +84,14 @@ const ImageGenerationButton: React.FC = () => {
           <p className="mt-2 text-xs text-muted-foreground">
             Using {selectedModel.name} to generate an image. Be specific with your description for better results.
           </p>
+          
+          {/* Display error details if available */}
+          {errorDetails && (
+            <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-300 rounded-md text-xs">
+              <p className="font-semibold">Error details:</p>
+              <p className="whitespace-pre-wrap">{errorDetails}</p>
+            </div>
+          )}
         </div>
         <DialogFooter>
           <DialogClose asChild>

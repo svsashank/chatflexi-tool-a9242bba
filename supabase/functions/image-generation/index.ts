@@ -41,7 +41,11 @@ serve(async (req) => {
         case 'openai':
           return await handleOpenAIImageGeneration(prompt, modelId || 'dall-e-3');
         case 'google':
-          return await handleGoogleImageGeneration(prompt, modelId || 'imagen');
+          // Add more details in the log to help with debugging
+          console.log(`Calling Google handler for model ${modelId} with prompt: ${prompt.substring(0, 30)}...`);
+          const googleResponse = await handleGoogleImageGeneration(prompt, modelId || 'imagen');
+          console.log(`Google handler completed successfully`);
+          return googleResponse;
         case 'anthropic':
           return await handleAnthropicImageGeneration(prompt, modelId);
         default:

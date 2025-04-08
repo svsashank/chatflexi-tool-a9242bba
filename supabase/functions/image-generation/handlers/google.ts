@@ -21,12 +21,14 @@ export async function handleGoogleImageGeneration(prompt: string, modelId: strin
       // Use the appropriate API endpoint for Gemini models
       apiEndpoint = `https://generativelanguage.googleapis.com/v1/models/${modelId}:generateContent?key=${GOOGLE_API_KEY}`;
       
+      // Fix: Don't include empty inline_data, use a properly structured request for image generation
       requestBody = {
         contents: [
           {
             parts: [
-              { text: prompt },
-              { inline_data: { mime_type: "text/plain", data: "" } } // This triggers image generation mode
+              { 
+                text: `Generate an image based on this description: ${prompt}`
+              }
             ]
           }
         ],
@@ -51,6 +53,7 @@ export async function handleGoogleImageGeneration(prompt: string, modelId: strin
     }
     
     console.log(`Sending request to Google API: ${apiEndpoint.substring(0, 80)}...`);
+    console.log(`Request body structure: ${JSON.stringify(requestBody, null, 2).substring(0, 200)}...`);
     
     const response = await fetch(apiEndpoint, {
       method: 'POST',
@@ -76,35 +79,65 @@ export async function handleGoogleImageGeneration(prompt: string, modelId: strin
     
     // Get the response as JSON
     const data = await response.json();
-    console.log("Google API response structure:", JSON.stringify(data).substring(0, 300) + "...");
+    console.log("Google API response structure:", JSON.stringify(data, null, 2).substring(0, 500) + "...");
     
     let imageUrl = null;
+    let imageGenerated = false;
     
     // Extract image URL based on model type
     if (isGemini) {
-      // For Gemini models, the image is in the response content
       if (data.candidates && data.candidates[0]?.content?.parts) {
         const parts = data.candidates[0].content.parts;
+        
         for (const part of parts) {
-          if (part.inlineData?.data) {
+          // Log each part type to help understand the structure
+          console.log(`Part type: ${part.text ? 'text' : (part.inlineData ? 'inlineData' : 'other')}`);
+          
+          if (part.text && part.text.includes('data:image')) {
+            // Sometimes Gemini returns image as base64 in text
+            const matches = part.text.match(/data:image\/[^;]+;base64,[^"'\s]+/);
+            if (matches && matches[0]) {
+              imageUrl = matches[0];
+              imageGenerated = true;
+              console.log("Found base64 image in text response");
+              break;
+            }
+          } else if (part.inlineData?.data) {
             imageUrl = `data:${part.inlineData.mimeType || 'image/png'};base64,${part.inlineData.data}`;
+            imageGenerated = true;
+            console.log("Found image in inlineData");
             break;
           }
         }
-      }
-      
-      if (!imageUrl) {
-        console.error("Could not find image data in Gemini response:", JSON.stringify(data).substring(0, 500));
-        throw new Error("No image data found in the Gemini response");
+        
+        // If we didn't find an image in the standard places, look for text that might contain a URL or base64
+        if (!imageGenerated) {
+          // Try to find text that contains image data
+          for (const part of parts) {
+            if (part.text) {
+              console.log("Checking text content for image data:", part.text.substring(0, 100));
+            }
+          }
+          
+          throw new Error("Could not find image data in Gemini response");
+        }
+      } else {
+        console.error("Unexpected Gemini response format:", JSON.stringify(data).substring(0, 500));
+        throw new Error("Unexpected response format from Gemini API");
       }
     } else {
       // For Imagen, the image URL is directly in the response
       if (data.images && data.images.length > 0) {
         imageUrl = data.images[0];
+        imageGenerated = true;
       } else {
         console.error("No images found in response:", JSON.stringify(data).substring(0, 500));
         throw new Error("No images found in the Google Imagen response");
       }
+    }
+    
+    if (!imageGenerated || !imageUrl) {
+      throw new Error("Failed to extract image from Google API response");
     }
     
     console.log("Successfully extracted image URL from Google API response");
