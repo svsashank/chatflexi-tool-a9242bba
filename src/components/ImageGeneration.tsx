@@ -2,6 +2,8 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { Wand2, Loader2, Image as ImageIcon, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useChatStore } from '@/store';
@@ -14,6 +16,7 @@ interface ImageGenerationProps {
 
 const ImageGeneration: React.FC<ImageGenerationProps> = ({ onImageGenerated }) => {
   const [prompt, setPrompt] = useState('');
+  const [enhancePrompt, setEnhancePrompt] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [revisedPrompt, setRevisedPrompt] = useState<string | null>(null);
@@ -37,14 +40,17 @@ const ImageGeneration: React.FC<ImageGenerationProps> = ({ onImageGenerated }) =
       }
       
       console.log('Sending image generation request to:', selectedModel.provider);
+      console.log('Enhance prompt:', enhancePrompt);
       
-      const result = await generateImage(prompt.trim(), selectedModel);
+      const result = await generateImage(prompt.trim(), selectedModel, enhancePrompt);
       
       console.log('Image generation result:', result);
       
       setGeneratedImage(result.imageUrl);
-      if (result.revisedPrompt) {
+      if (result.revisedPrompt && enhancePrompt) {
         setRevisedPrompt(result.revisedPrompt);
+      } else {
+        setRevisedPrompt(null);
       }
       
       toast.success('Image successfully generated');
@@ -128,6 +134,18 @@ const ImageGeneration: React.FC<ImageGenerationProps> = ({ onImageGenerated }) =
             className="w-full"
             disabled={isGenerating || !hasImageGenCapability}
           />
+          
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="enhance-prompt-standalone"
+              checked={enhancePrompt}
+              onCheckedChange={setEnhancePrompt}
+              disabled={isGenerating}
+            />
+            <Label htmlFor="enhance-prompt-standalone">
+              Enhance prompt (AI will add details to improve the result)
+            </Label>
+          </div>
           
           <Button
             onClick={handleGenerateImage}

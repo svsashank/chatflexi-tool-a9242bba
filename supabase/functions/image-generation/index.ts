@@ -18,7 +18,7 @@ serve(async (req) => {
   }
 
   try {
-    const { prompt, provider, modelId } = await req.json();
+    const { prompt, provider, modelId, enhancePrompt = true } = await req.json();
     
     if (!prompt) {
       return new Response(
@@ -35,15 +35,16 @@ serve(async (req) => {
     }
     
     console.log(`Image generation request received for provider: ${provider}, model: ${modelId}, prompt: ${prompt.substring(0, 50)}...`);
+    console.log(`Prompt enhancement is ${enhancePrompt ? 'enabled' : 'disabled'}`);
     
     try {
       switch(provider.toLowerCase()) {
         case 'openai':
-          return await handleOpenAIImageGeneration(prompt, modelId || 'dall-e-3');
+          return await handleOpenAIImageGeneration(prompt, modelId || 'dall-e-3', enhancePrompt);
         case 'google':
           // For Google/Gemini, we'll use their Imagen model regardless of what model was selected
           console.log(`Calling Google handler for model ${modelId} with prompt: ${prompt.substring(0, 30)}...`);
-          const googleResponse = await handleGoogleImageGeneration(prompt, modelId || 'imagen');
+          const googleResponse = await handleGoogleImageGeneration(prompt, modelId || 'imagen', enhancePrompt);
           console.log(`Google handler completed successfully`);
           return googleResponse;
         case 'anthropic':

@@ -12,13 +12,15 @@ export interface GeneratedImage {
 // Generates an image using the specified model
 export const generateImage = async (
   prompt: string,
-  model: AIModel
+  model: AIModel,
+  enhancePrompt: boolean = false
 ): Promise<GeneratedImage> => {
   try {
     console.log('Sending image generation request:', { 
       model: model.name, 
       provider: model.provider, 
-      promptPreview: prompt.substring(0, 50) + (prompt.length > 50 ? '...' : '')
+      promptPreview: prompt.substring(0, 50) + (prompt.length > 50 ? '...' : ''),
+      enhancePrompt
     });
     
     // Call the Supabase Edge Function with retries for better reliability
@@ -32,9 +34,10 @@ export const generateImage = async (
         
         const { data, error } = await supabase.functions.invoke('image-generation', {
           body: { 
-            prompt, // Pass the original prompt directly without modifications
+            prompt, // Pass the original prompt directly
             provider: model.provider,
-            modelId: model.id
+            modelId: model.id,
+            enhancePrompt // Pass the enhancePrompt flag to the edge function
           }
         });
         

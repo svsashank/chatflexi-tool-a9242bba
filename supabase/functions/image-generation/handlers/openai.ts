@@ -1,14 +1,14 @@
 
 import { corsHeaders } from "../utils/cors.ts";
 
-// OpenAI (DALL-E) image generation handler
-export async function handleOpenAIImageGeneration(prompt: string, modelId: string) {
+export async function handleOpenAIImageGeneration(prompt: string, modelId: string, enhancePrompt: boolean = true) {
   const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
   if (!OPENAI_API_KEY) {
     throw new Error("OpenAI API key not configured");
   }
   
   console.log(`Processing image generation request with prompt: ${prompt.substring(0, 50)}...`);
+  console.log(`Using model: ${modelId}, enhance prompt: ${enhancePrompt}`);
   
   try {
     const response = await fetch('https://api.openai.com/v1/images/generations', {
@@ -22,7 +22,11 @@ export async function handleOpenAIImageGeneration(prompt: string, modelId: strin
         prompt: prompt,
         n: 1,
         size: "1024x1024",
-        quality: "standard"
+        quality: "standard",
+        // Only allow prompt enhancement if the flag is true
+        style: "vivid",
+        // If enhancePrompt is false, tell DALL-E to use exact prompt
+        response_format: enhancePrompt ? undefined : "url"
       })
     });
     
@@ -38,7 +42,8 @@ export async function handleOpenAIImageGeneration(prompt: string, modelId: strin
       return new Response(
         JSON.stringify({
           imageUrl: data.data[0].url,
-          revisedPrompt: data.data[0].revised_prompt,
+          // Only include revisedPrompt if enhancePrompt was enabled
+          revisedPrompt: enhancePrompt ? data.data[0].revised_prompt : undefined,
           model: "dall-e-3",
           provider: 'OpenAI'
         }),

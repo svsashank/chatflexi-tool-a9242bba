@@ -2,6 +2,8 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { 
   Dialog, 
   DialogContent, 
@@ -19,6 +21,7 @@ import { toast } from 'sonner';
 const ImageGenerationButton: React.FC = () => {
   const [prompt, setPrompt] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [enhancePrompt, setEnhancePrompt] = useState(true);
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const { selectedModel, isImageGenerating, generateImage } = useChatStore();
   
@@ -41,8 +44,9 @@ const ImageGenerationButton: React.FC = () => {
     try {
       console.log('Starting image generation with prompt:', prompt);
       console.log('Using model:', selectedModel.name, 'from provider:', selectedModel.provider);
+      console.log('Enhance prompt:', enhancePrompt);
       
-      await generateImage(prompt.trim());
+      await generateImage(prompt.trim(), enhancePrompt);
       toast.success('Image generation started');
       setIsDialogOpen(false);
       setPrompt('');
@@ -94,8 +98,22 @@ const ImageGenerationButton: React.FC = () => {
             className="w-full"
             disabled={isImageGenerating}
           />
+          
+          <div className="flex items-center space-x-2 mt-4">
+            <Switch
+              id="enhance-prompt"
+              checked={enhancePrompt}
+              onCheckedChange={setEnhancePrompt}
+            />
+            <Label htmlFor="enhance-prompt">
+              Enhance prompt (AI will add details to improve the result)
+            </Label>
+          </div>
+          
           <p className="mt-2 text-xs text-muted-foreground">
-            Using {selectedModel.name} to generate an image. Be specific with your description for better results.
+            Using {selectedModel.name} to generate an image. {enhancePrompt ? 
+              'The AI will enhance your prompt with additional details for better results.' : 
+              'Your prompt will be used exactly as written.'}
           </p>
           
           {/* Display error details if available */}
