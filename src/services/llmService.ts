@@ -13,7 +13,9 @@ const formatMessageHistory = (messages: Message[]) => {
     // Include model info for better context
     model: msg.model.name,
     // Include images if they exist
-    images: msg.images || []
+    images: msg.images || [],
+    // Include files if they exist
+    files: msg.files || []
   }));
 };
 
@@ -35,9 +37,10 @@ export const sendMessageToLLM = async (
     // Format conversation history with better context preservation
     const messageHistory = formatMessageHistory(conversationHistory);
     
-    // Get the last message which might contain images
+    // Get the last message which might contain images or files
     const lastMessage = conversationHistory[conversationHistory.length - 1];
     const images = lastMessage?.images || [];
+    const files = lastMessage?.files || [];
     
     console.log('Sending message to LLM:', { 
       model: model.name, 
@@ -45,7 +48,8 @@ export const sendMessageToLLM = async (
       provider: model.provider, 
       content: content.substring(0, 50) + (content.length > 50 ? '...' : ''),
       messageHistoryCount: messageHistory.length,
-      imagesCount: images.length
+      imagesCount: images.length,
+      filesCount: files.length
     });
     
     // Debug log to check if the current message appears in the history
@@ -57,7 +61,8 @@ export const sendMessageToLLM = async (
       console.log('Last user message in history:', {
         content: lastUserMessageInHistory.content.substring(0, 50) + 
                 (lastUserMessageInHistory.content.length > 50 ? '...' : ''),
-        hasImages: lastUserMessageInHistory.images && lastUserMessageInHistory.images.length > 0
+        hasImages: lastUserMessageInHistory.images && lastUserMessageInHistory.images.length > 0,
+        hasFiles: lastUserMessageInHistory.files && lastUserMessageInHistory.files.length > 0
       });
     }
     
@@ -73,7 +78,8 @@ export const sendMessageToLLM = async (
             model,
             content,
             messages: messageHistory,
-            images  // Pass images for API compatibility
+            images,  // Pass images for API compatibility
+            files    // Pass files for file search
           }
         });
         

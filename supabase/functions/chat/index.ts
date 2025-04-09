@@ -19,16 +19,21 @@ serve(async (req) => {
   }
 
   try {
-    const { content, model, messages, images } = await req.json();
+    const { content, model, messages, images, files } = await req.json();
     
     // Prepare conversation history in the format the APIs expect
     const messageHistory = messages || [];
     // Get any images that were attached to the message
     const messageImages = images || [];
+    // Get any files that were attached to the message
+    const messageFiles = files || [];
     
     console.log(`Request received for provider: ${model.provider}, model: ${model.id}`);
     if (messageImages && messageImages.length > 0) {
       console.log(`Request includes ${messageImages.length} images`);
+    }
+    if (messageFiles && messageFiles.length > 0) {
+      console.log(`Request includes ${messageFiles.length} files`);
     }
     
     // Add a system prompt based on the conversation context

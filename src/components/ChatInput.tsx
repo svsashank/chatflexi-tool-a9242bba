@@ -1,5 +1,6 @@
+
 import React, { useState, useRef, useEffect } from "react";
-import { Send, ChevronDown, Image, X } from "lucide-react";
+import { Send, ChevronDown, Image, X, FileText } from "lucide-react";
 import { useChatStore } from "@/store";
 import { 
   DropdownMenu,
@@ -17,9 +18,11 @@ import { toast } from "sonner";
 const ChatInput = () => {
   const [inputValue, setInputValue] = useState("");
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
   const { sendMessage, isLoading, selectedModel, selectModel } = useChatStore();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const documentInputRef = useRef<HTMLInputElement>(null);
 
   // Auto-resize textarea as content grows
   useEffect(() => {
@@ -33,11 +36,16 @@ const ChatInput = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if ((inputValue.trim() || uploadedImages.length > 0) && !isLoading) {
-      // Send message with content and images
-      sendMessage(inputValue.trim(), uploadedImages.length > 0 ? uploadedImages : undefined);
+    if ((inputValue.trim() || uploadedImages.length > 0 || uploadedFiles.length > 0) && !isLoading) {
+      // Send message with content, images and files
+      sendMessage(
+        inputValue.trim(), 
+        uploadedImages.length > 0 ? uploadedImages : undefined,
+        uploadedFiles.length > 0 ? uploadedFiles : undefined
+      );
       setInputValue("");
       setUploadedImages([]);
+      setUploadedFiles([]);
       // Reset textarea height
       if (textareaRef.current) {
         textareaRef.current.style.height = "auto";
@@ -90,9 +98,67 @@ const ChatInput = () => {
       fileInputRef.current.value = '';
     }
   };
+  
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    // Process each file
+    Array.from(files).forEach(file => {
+      // Check file size (limit to 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error(`File ${file.name} exceeds 10MB limit.`);
+        return;
+      }
+
+      // Check file type (only accept text-based files)
+      const allowedTypes = [
+        'text/plain', 'text/csv', 'text/html', 'text/css', 'text/javascript',
+        'application/json', 'application/xml', 'application/pdf',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      ];
+      
+      if (!allowedTypes.includes(file.type)) {
+        toast.error(`File type ${file.type} is not supported.`);
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        if (e.target?.result) {
+          // For text files, we can use the content directly
+          if (file.type.startsWith('text/')) {
+            setUploadedFiles(prev => [...prev, `File: ${file.name}\nContent: ${e.target?.result}`]);
+          } else {
+            // For other files, we'll just use the name and let the API handle the content
+            setUploadedFiles(prev => [...prev, `File: ${file.name} (Binary content)`]);
+          }
+          toast.success(`File ${file.name} uploaded successfully`);
+        }
+      };
+      
+      if (file.type.startsWith('text/')) {
+        reader.readAsText(file);
+      } else {
+        // For non-text files, just read as data URL for now
+        // In a production app, we would upload these files to storage
+        reader.readAsDataURL(file);
+      }
+    });
+
+    // Reset file input
+    if (documentInputRef.current) {
+      documentInputRef.current.value = '';
+    }
+  };
 
   const removeImage = (index: number) => {
     setUploadedImages(prev => prev.filter((_, i) => i !== index));
+  };
+  
+  const removeFile = (index: number) => {
+    setUploadedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
   return (
@@ -171,6 +237,28 @@ const ChatInput = () => {
             ))}
           </div>
         )}
+        
+        {/* Display uploaded files */}
+        {uploadedFiles.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-2">
+            {uploadedFiles.map((file, index) => {
+              const fileName = file.split('\n')[0].replace('File: ', '');
+              return (
+                <div key={index} className="relative flex items-center gap-1 px-3 py-2 rounded-md border border-border bg-muted/30">
+                  <FileText size={14} className="text-muted-foreground" />
+                  <span className="text-xs truncate max-w-[150px]">{fileName}</span>
+                  <button
+                    type="button"
+                    onClick={() => removeFile(index)}
+                    className="ml-1 rounded-full p-0.5 hover:bg-muted"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         <div className="flex items-end gap-2">
           <div className="relative flex-1 bg-muted/50 rounded-lg overflow-hidden">
@@ -179,14 +267,14 @@ const ChatInput = () => {
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={uploadedImages.length > 0 ? "Ask about this image..." : "Message..."}
+              placeholder={uploadedImages.length > 0 ? "Ask about this image..." : (uploadedFiles.length > 0 ? "Ask about these files..." : "Message...")}
               disabled={isLoading}
               className="w-full max-h-[200px] resize-none bg-transparent border-0 py-3 px-4 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0"
               rows={1}
             />
           </div>
           
-          {/* Image upload button */}
+          {/* File upload inputs */}
           <input 
             type="file" 
             ref={fileInputRef}
@@ -196,6 +284,16 @@ const ChatInput = () => {
             multiple
           />
           
+          <input 
+            type="file" 
+            ref={documentInputRef}
+            onChange={handleFileUpload}
+            accept=".txt,.pdf,.doc,.docx,.csv,.json,.html,.css,.js"
+            className="hidden"
+            multiple
+          />
+          
+          {/* Image upload button */}
           <Button
             type="button"
             variant="outline"
@@ -203,14 +301,28 @@ const ChatInput = () => {
             className="h-10 w-10"
             onClick={() => fileInputRef.current?.click()}
             disabled={isLoading}
+            title="Upload images"
           >
             <Image size={18} />
           </Button>
           
+          {/* Document upload button */}
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="h-10 w-10"
+            onClick={() => documentInputRef.current?.click()}
+            disabled={isLoading}
+            title="Upload document files"
+          >
+            <FileText size={18} />
+          </Button>
+          
           <Button
             type="submit"
-            disabled={(inputValue.trim() === "" && uploadedImages.length === 0) || isLoading}
-            variant={(inputValue.trim() === "" && uploadedImages.length === 0) || isLoading ? "secondary" : "default"}
+            disabled={(inputValue.trim() === "" && uploadedImages.length === 0 && uploadedFiles.length === 0) || isLoading}
+            variant={(inputValue.trim() === "" && uploadedImages.length === 0 && uploadedFiles.length === 0) || isLoading ? "secondary" : "default"}
             size="icon"
             className="h-10 w-10"
           >

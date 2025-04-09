@@ -7,7 +7,7 @@ export const createSendMessageAction = (
   set: (state: Partial<ChatStore>) => void,
   get: () => ChatStore
 ) => {
-  return (content: string, images: string[] = []) => {
+  return (content: string, images: string[] = [], files: string[] = []) => {
     const { currentConversationId, conversations, selectedModel, generateResponse } = get();
     
     if (!currentConversationId) return;
@@ -31,7 +31,8 @@ export const createSendMessageAction = (
                 role: 'user',
                 model: selectedModel, // Include selected model info
                 timestamp,
-                images // Include any attached images
+                images, // Include any attached images
+                files   // Include any attached files
               }
             ],
             updatedAt: timestamp

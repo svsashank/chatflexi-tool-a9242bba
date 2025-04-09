@@ -1,18 +1,18 @@
-
 export interface Message {
   id: string;
   content: string;
-  role: 'user' | 'assistant';
+  role: 'system' | 'assistant' | 'user';
   model: AIModel;
   timestamp: Date;
+  computeCredits?: number;
   tokens?: {
     input: number;
     output: number;
   };
-  computeCredits?: number;
-  images?: string[]; // URLs or base64 data for images
-  webSearchResults?: any[]; // Web search results from OpenAI
-  fileSearchResults?: any[]; // File search results from OpenAI
+  images?: string[];
+  files?: string[];
+  webSearchResults?: any[];
+  fileSearchResults?: any[];
 }
 
 export interface Conversation {
@@ -21,8 +21,8 @@ export interface Conversation {
   messages: Message[];
   createdAt: Date;
   updatedAt: Date;
-  contextSummary: string; // Added for improved context tracking
-  userId?: string; // Added to link conversations to users
+  contextSummary: string;
+  userId?: string;
 }
 
 export type AIModel = {

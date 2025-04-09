@@ -38,7 +38,7 @@ export async function handleOpenAIReasoningModel(messageHistory: any[], content:
 
   console.log(`Calling OpenAI responses API for reasoning model ${modelId}...`);
   
-  // Define tools properly as objects instead of strings
+  // Define tools properly as objects
   const tools = [
     {
       type: "web_search"
@@ -67,7 +67,7 @@ export async function handleOpenAIReasoningModel(messageHistory: any[], content:
         model: modelId,
         input: formattedInput,
         reasoning: { effort: "high" }, // Using high effort for best results
-        tools: tools // Fix: Use proper tool objects instead of strings
+        tools: tools
       })
     });
     
@@ -233,13 +233,41 @@ export async function handleOpenAIStandard(messageHistory: any[], content: strin
     console.log('Request contains images, using vision capability');
   }
   
-  // Define tools properly as objects instead of strings
+  // Define tools properly as objects
   const tools = [
     {
-      type: "web_search"
+      type: "function",
+      function: {
+        name: "web_search",
+        description: "Search the web for information",
+        parameters: {
+          type: "object",
+          properties: {
+            query: {
+              type: "string",
+              description: "The search query"
+            }
+          },
+          required: ["query"]
+        }
+      }
     },
     {
-      type: "file_search"
+      type: "function",
+      function: {
+        name: "file_search",
+        description: "Search through uploaded files",
+        parameters: {
+          type: "object",
+          properties: {
+            query: {
+              type: "string",
+              description: "The search query"
+            }
+          },
+          required: ["query"]
+        }
+      }
     }
   ];
   
