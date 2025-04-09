@@ -1,5 +1,4 @@
 
-
 export interface Message {
   id: string;
   content: string;
@@ -12,6 +11,7 @@ export interface Message {
   };
   computeCredits?: number;
   images?: string[]; // URLs or base64 data for images
+  generatedImages?: GeneratedImage[]; // Images generated from this message
 }
 
 export interface Conversation {
@@ -29,8 +29,16 @@ export type AIModel = {
   name: string;
   provider: string;
   description: string;
-  capabilities: Array<'text' | 'images' | 'code' | 'audio'>;
+  capabilities: Array<'text' | 'images' | 'code' | 'audio' | 'imageGeneration'>;
   avatarColor: string;
+}
+
+export interface GeneratedImage {
+  imageUrl: string;
+  prompt: string;
+  revisedPrompt?: string;
+  model: string;
+  provider: string;
 }
 
 export interface ChatState {
@@ -38,6 +46,7 @@ export interface ChatState {
   currentConversationId: string | null;
   selectedModel: AIModel;
   isLoading: boolean;
+  isImageGenerating: boolean;
 }
 
 export interface UserProfile {
