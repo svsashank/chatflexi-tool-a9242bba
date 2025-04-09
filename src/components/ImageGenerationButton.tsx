@@ -28,7 +28,12 @@ const ImageGenerationButton = () => {
     }
     
     try {
-      const generatedImage = await generateImage(prompt.trim(), enhancePrompt, referenceImage || undefined);
+      // Fix: Pass only the required arguments with the correct types
+      const generatedImage = await generateImage(
+        prompt.trim(), 
+        enhancePrompt, 
+        referenceImage || undefined
+      );
       
       // Create a message with the generated image
       const messageContent = enhancePrompt && generatedImage.revisedPrompt

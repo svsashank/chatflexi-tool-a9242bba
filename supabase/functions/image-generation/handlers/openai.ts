@@ -1,5 +1,9 @@
 
-import { corsHeaders } from "../../chat/utils/cors.ts";
+// Define corsHeaders directly in this file as well since we're no longer importing it
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
 
 export async function handleOpenAIImageGeneration(
   prompt: string, 
