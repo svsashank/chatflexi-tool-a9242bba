@@ -4,11 +4,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import { generateImage } from '@/services/imageGenerationService';
 import { calculateComputeCredits } from '@/utils/computeCredits';
+import { GeneratedImage } from '@/services/imageGenerationService';
 
-// Changed function name to match the import in index.ts
+// Export the action creator function
 export const createGenerateImageAction = (set: Function, get: Function) => {
   return {
-    generateImage: async (prompt: string, enhancePrompt: boolean = true) => {
+    generateImage: async (prompt: string, enhancePrompt: boolean = true): Promise<GeneratedImage | void> => {
       const { currentConversationId, conversations, selectedModel } = get();
       
       if (!currentConversationId) {

@@ -61,8 +61,15 @@ const useChatStore = create<ChatStore>((set, get) => {
     sendMessage: createSendMessageAction(set, get),
     regenerateMessage: createRegenerateMessageAction(set, get),
     
-    // Image generation action - properly exposing the function directly
-    generateImage: (prompt, enhancePrompt) => imageActions.generateImage(prompt, enhancePrompt)
+    // Image generation action - make the return type match the interface
+    generateImage: async (prompt, enhancePrompt) => {
+      try {
+        return await imageActions.generateImage(prompt, enhancePrompt);
+      } catch (error) {
+        console.error('Error in generateImage:', error);
+        throw error;
+      }
+    }
   };
 });
 
