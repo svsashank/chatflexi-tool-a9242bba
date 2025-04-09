@@ -40,7 +40,8 @@ export async function handleOpenAIReasoningModel(messageHistory: any[], content:
   console.log(`Request format: ${JSON.stringify({
     model: modelId,
     input: formattedInput.slice(0, 2), // Only show first two messages for logging
-    reasoning: { effort: "high" }
+    reasoning: { effort: "high" },
+    tools: ["web_search", "file_search"]
   }, null, 2)}`);
   
   try {
@@ -54,7 +55,8 @@ export async function handleOpenAIReasoningModel(messageHistory: any[], content:
       body: JSON.stringify({
         model: modelId,
         input: formattedInput,
-        reasoning: { effort: "high" } // Using high effort for best results
+        reasoning: { effort: "high" }, // Using high effort for best results
+        tools: ["web_search", "file_search"] // Enable web search and file search capabilities
       })
     });
     
@@ -71,6 +73,8 @@ export async function handleOpenAIReasoningModel(messageHistory: any[], content:
     
     // Extract content from the response format based on the structure we observed in logs
     let responseContent = '';
+    let webSearchResults = [];
+    let fileSearchResults = [];
     
     // Check for the specific format seen in the logs
     if (data.output && Array.isArray(data.output)) {
@@ -84,6 +88,16 @@ export async function handleOpenAIReasoningModel(messageHistory: any[], content:
             }
           }
           if (responseContent) break;
+        }
+      }
+      
+      // Extract web search results if available
+      for (const item of data.output) {
+        if (item.type === 'tool_result' && item.tool === 'web_search' && item.result) {
+          webSearchResults = item.result;
+        }
+        if (item.type === 'tool_result' && item.tool === 'file_search' && item.result) {
+          fileSearchResults = item.result;
         }
       }
     }
@@ -104,6 +118,8 @@ export async function handleOpenAIReasoningModel(messageHistory: any[], content:
     }
     
     console.log(`Successfully extracted response content, length: ${responseContent.length}`);
+    console.log(`Web search results: ${webSearchResults.length > 0 ? 'present' : 'not present'}`);
+    console.log(`File search results: ${fileSearchResults.length > 0 ? 'present' : 'not present'}`);
     
     // Estimate token counts from usage info if available
     const inputTokens = data.usage?.input_tokens || Math.round((content.length + systemPrompt.length) / 4);
@@ -117,7 +133,9 @@ export async function handleOpenAIReasoningModel(messageHistory: any[], content:
         tokens: {
           input: inputTokens,
           output: outputTokens
-        }
+        },
+        webSearchResults: webSearchResults,
+        fileSearchResults: fileSearchResults
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
@@ -204,6 +222,16 @@ export async function handleOpenAIStandard(messageHistory: any[], content: strin
     console.log('Request contains images, using vision capability');
   }
   
+  // Define tools for web search and file search capabilities
+  const tools = [
+    {
+      type: "web_search"
+    },
+    {
+      type: "file_search"
+    }
+  ];
+  
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -215,6 +243,8 @@ export async function handleOpenAIStandard(messageHistory: any[], content: strin
       messages: formattedMessages,
       temperature: 0.7,
       max_tokens: 1000,
+      tools: tools,
+      tool_choice: "auto"
     })
   });
   
@@ -225,20 +255,54 @@ export async function handleOpenAIStandard(messageHistory: any[], content: strin
   
   console.log(`Successfully received response from OpenAI`);
   const data = await response.json();
+  console.log(`Full response data: ${JSON.stringify(data, null, 2)}`);
   
   // Extract token counts
   const inputTokens = data.usage ? data.usage.prompt_tokens : 0;
   const outputTokens = data.usage ? data.usage.completion_tokens : 0;
   
+  // Extract content and tool results
+  let responseContent = data.choices[0].message.content || '';
+  const toolCalls = data.choices[0].message.tool_calls || [];
+  
+  // Extract web search and file search results if available
+  let webSearchResults = [];
+  let fileSearchResults = [];
+  
+  // Log tool calls for debugging
+  if (toolCalls.length > 0) {
+    console.log(`Tool calls detected: ${toolCalls.length}`);
+    for (const toolCall of toolCalls) {
+      console.log(`Tool call: ${JSON.stringify(toolCall, null, 2)}`);
+      if (toolCall.function.name === "web_search") {
+        try {
+          const args = JSON.parse(toolCall.function.arguments);
+          webSearchResults = args.results || [];
+        } catch (e) {
+          console.error("Error parsing web search results:", e);
+        }
+      } else if (toolCall.function.name === "file_search") {
+        try {
+          const args = JSON.parse(toolCall.function.arguments);
+          fileSearchResults = args.results || [];
+        } catch (e) {
+          console.error("Error parsing file search results:", e);
+        }
+      }
+    }
+  }
+  
   return new Response(
     JSON.stringify({ 
-      content: data.choices[0].message.content,
+      content: responseContent,
       model: modelId,
       provider: 'OpenAI',
       tokens: {
         input: inputTokens,
         output: outputTokens
-      }
+      },
+      webSearchResults: webSearchResults,
+      fileSearchResults: fileSearchResults
     }),
     { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
   );

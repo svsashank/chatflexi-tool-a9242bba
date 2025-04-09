@@ -27,7 +27,9 @@ export const sendMessageToLLM = async (
   tokens?: {
     input: number;
     output: number;
-  }
+  };
+  webSearchResults?: any[];
+  fileSearchResults?: any[];
 }> => {
   try {
     // Format conversation history with better context preservation
@@ -88,12 +90,16 @@ export const sendMessageToLLM = async (
           contentPreview: data.content.substring(0, 50) + (data.content.length > 50 ? '...' : ''),
           model: data.model,
           provider: data.provider,
-          tokens: data.tokens
+          tokens: data.tokens,
+          hasWebSearchResults: !!data.webSearchResults && data.webSearchResults.length > 0,
+          hasFileSearchResults: !!data.fileSearchResults && data.fileSearchResults.length > 0
         });
         
         return {
           content: data.content,
-          tokens: data.tokens
+          tokens: data.tokens,
+          webSearchResults: data.webSearchResults || [],
+          fileSearchResults: data.fileSearchResults || []
         };
       } catch (error) {
         console.error(`Attempt ${attempts + 1}: Error with ${model.provider} API:`, error);

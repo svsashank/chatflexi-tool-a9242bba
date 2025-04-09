@@ -1,5 +1,4 @@
 
-
 export interface Message {
   id: string;
   content: string;
@@ -12,6 +11,8 @@ export interface Message {
   };
   computeCredits?: number;
   images?: string[]; // URLs or base64 data for images
+  webSearchResults?: any[]; // Web search results from OpenAI
+  fileSearchResults?: any[]; // File search results from OpenAI
 }
 
 export interface Conversation {

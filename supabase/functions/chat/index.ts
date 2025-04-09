@@ -62,7 +62,9 @@ serve(async (req) => {
           content: `Error: ${handlerError.message || 'An unexpected error occurred'}`,
           model: model.id,
           provider: model.provider,
-          tokens: { input: 0, output: 0 }
+          tokens: { input: 0, output: 0 },
+          webSearchResults: [],
+          fileSearchResults: []
         }),
         { 
           status: 200,  // Return 200 even for errors to prevent client from breaking 

@@ -57,7 +57,9 @@ export const generateResponseAction = (set: Function, get: Function) => async ()
         model: selectedModel,
         timestamp: new Date(),
         tokens: tokens,
-        computeCredits: computeCredits
+        computeCredits: computeCredits,
+        webSearchResults: aiResponse.webSearchResults || [],
+        fileSearchResults: aiResponse.fileSearchResults || []
       };
 
       const updatedContextSummary = updateContextSummary(currentConversation.contextSummary, newMessage);
@@ -163,7 +165,9 @@ export const generateResponseAction = (set: Function, get: Function) => async ()
                 created_at: newMessage.timestamp.toISOString(),
                 input_tokens: tokens.input,
                 output_tokens: tokens.output,
-                compute_credits: computeCredits
+                compute_credits: computeCredits,
+                web_search_results: newMessage.webSearchResults || null,
+                file_search_results: newMessage.fileSearchResults || null
               },
             ]);
 
