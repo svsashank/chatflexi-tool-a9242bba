@@ -40,9 +40,12 @@ const ImageGenerationButton = () => {
       }
       
       // Create a message with the generated image
-      const messageContent = enhancePrompt && generatedImage.revisedPrompt
-        ? `Generated image from prompt: "${prompt}"\nEnhanced prompt: "${generatedImage.revisedPrompt}"`
-        : `Generated image from prompt: "${prompt}"`;
+      let messageContent = `Generated image from prompt: "${prompt}"`;
+      
+      // If we have a revised prompt and enhance is enabled, include it in the message
+      if (enhancePrompt && generatedImage.revisedPrompt) {
+        messageContent += `\nDALL-E's revised prompt: "${generatedImage.revisedPrompt}"`;
+      }
         
       // Send the message with the generated image
       sendMessage(messageContent, [generatedImage.imageUrl]);

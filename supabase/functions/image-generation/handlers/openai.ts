@@ -110,8 +110,8 @@ export async function handleOpenAIImageGeneration(
       return new Response(
         JSON.stringify({
           imageUrl: data.data[0].url,
-          // Only include revisedPrompt if enhancePrompt was enabled
-          revisedPrompt: enhancePrompt ? data.data[0].revised_prompt : undefined,
+          // Always include the revised prompt in the response
+          revisedPrompt: data.data[0].revised_prompt,
           model: actualModelId,
           provider: 'OpenAI'
         }),

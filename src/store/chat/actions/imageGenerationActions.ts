@@ -52,6 +52,8 @@ export const createImageGenerationActions = (
           throw new Error('Failed to generate image: Invalid response from API');
         }
         
+        console.log('Generated image:', data);
+        
         const generatedImage: GeneratedImage = {
           imageUrl: data.imageUrl,
           prompt: prompt,
@@ -59,8 +61,6 @@ export const createImageGenerationActions = (
           model: data.model || "dall-e-3",
           provider: data.provider || selectedModel.provider
         };
-        
-        console.log('Generated image:', generatedImage);
         
         return generatedImage;
       } catch (error: any) {
