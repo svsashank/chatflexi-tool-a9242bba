@@ -20,7 +20,8 @@ export interface ChatStoreActions {
   resetConversations: () => void;
   sendMessage: (content: string, images?: string[]) => void;
   regenerateMessage: () => Promise<void>;
-  generateImage: (prompt: string) => Promise<void>;
+  // Updated to match implementation with enhancePrompt parameter
+  generateImage: (prompt: string, enhancePrompt?: boolean) => Promise<void>;
 }
 
 export type ChatStore = ChatState & ChatStoreActions;

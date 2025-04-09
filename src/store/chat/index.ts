@@ -35,30 +35,35 @@ const initialConversation: Conversation = {
 };
 
 // Create the store
-const useChatStore = create<ChatStore>((set, get) => ({
-  // Initial state
-  conversations: [initialConversation],
-  currentConversationId: initialConversation.id,
-  selectedModel: DEFAULT_MODEL,
-  isLoading: false,
-  isImageGenerating: false,
+const useChatStore = create<ChatStore>((set, get) => {
+  // Get the image generation actions
+  const imageActions = createGenerateImageAction(set, get);
   
-  // Actions
-  createConversation: createConversationAction(set, get),
-  setCurrentConversation: setCurrentConversationAction(set, get),
-  deleteConversation: deleteConversationAction(set, get),
-  resetConversations: resetConversationsAction(set),
-  addMessage: addMessageAction(set, get),
-  selectModel: selectModelAction(set),
-  generateResponse: generateResponseAction(set, get),
-  loadUserConversations: loadUserConversationsAction(set),
-  
-  // Message slice actions
-  sendMessage: createSendMessageAction(set, get),
-  regenerateMessage: createRegenerateMessageAction(set, get),
-  
-  // Image generation action
-  generateImage: createGenerateImageAction(set, get)
-}));
+  return {
+    // Initial state
+    conversations: [initialConversation],
+    currentConversationId: initialConversation.id,
+    selectedModel: DEFAULT_MODEL,
+    isLoading: false,
+    isImageGenerating: false,
+    
+    // Actions
+    createConversation: createConversationAction(set, get),
+    setCurrentConversation: setCurrentConversationAction(set, get),
+    deleteConversation: deleteConversationAction(set, get),
+    resetConversations: resetConversationsAction(set),
+    addMessage: addMessageAction(set, get),
+    selectModel: selectModelAction(set),
+    generateResponse: generateResponseAction(set, get),
+    loadUserConversations: loadUserConversationsAction(set),
+    
+    // Message slice actions
+    sendMessage: createSendMessageAction(set, get),
+    regenerateMessage: createRegenerateMessageAction(set, get),
+    
+    // Image generation action - properly exposing the function directly
+    generateImage: (prompt, enhancePrompt) => imageActions.generateImage(prompt, enhancePrompt)
+  };
+});
 
 export default useChatStore;
