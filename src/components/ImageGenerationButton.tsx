@@ -28,7 +28,7 @@ const ImageGenerationButton = () => {
     }
     
     try {
-      const generatedImage = await generateImage(prompt.trim(), enhancePrompt);
+      const generatedImage = await generateImage(prompt.trim(), enhancePrompt, referenceImage || undefined);
       
       // Create a message with the generated image
       const messageContent = enhancePrompt && generatedImage.revisedPrompt
@@ -84,10 +84,14 @@ const ImageGenerationButton = () => {
 
   // Check if current model supports image generation
   const modelSupportsImageGeneration = currentConversation?.messages.length ? 
-    currentConversation.messages[currentConversation.messages.length - 1].model?.capabilities?.includes('imageGeneration') : 
-    false;
+    currentConversation.messages[0]?.model?.capabilities?.includes('imageGeneration') || false : 
+    true; // Default to true if no messages yet
 
-  if (!modelSupportsImageGeneration && currentConversation?.messages.length > 0) {
+  // If we don't have the current model's info from messages, check from the selected model
+  const { selectedModel } = useChatStore();
+  const canGenerateImages = modelSupportsImageGeneration || selectedModel.capabilities.includes('imageGeneration');
+
+  if (!canGenerateImages) {
     return (
       <div className="w-full max-w-md mx-auto mt-2 p-4 border border-yellow-200 bg-yellow-50 rounded-md text-center">
         <p className="text-sm text-yellow-700">

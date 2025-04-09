@@ -10,7 +10,11 @@ export const createImageGenerationActions = (
   get: () => ChatStore
 ) => {
   return {
-    generateImage: async (prompt: string, enhancePrompt: boolean = false): Promise<GeneratedImage> => {
+    generateImage: async (
+      prompt: string, 
+      enhancePrompt: boolean = false,
+      referenceImageUrl?: string
+    ): Promise<GeneratedImage> => {
       set({ isImageGenerating: true });
       
       try {
@@ -22,6 +26,9 @@ export const createImageGenerationActions = (
         }
         
         console.log(`Generating image with prompt: ${prompt} (enhance: ${enhancePrompt})`);
+        if (referenceImageUrl) {
+          console.log("Using reference image for variation");
+        }
         
         // Call the Supabase Edge Function for image generation
         const { data, error } = await supabase.functions.invoke('image-generation', {
@@ -29,7 +36,8 @@ export const createImageGenerationActions = (
             prompt,
             provider: selectedModel.provider,
             modelId: selectedModel.id,
-            enhancePrompt
+            enhancePrompt,
+            imageUrl: referenceImageUrl
           }
         });
         
@@ -43,7 +51,7 @@ export const createImageGenerationActions = (
           imageUrl: data.imageUrl,
           prompt: prompt,
           revisedPrompt: data.revisedPrompt,
-          model: data.model || selectedModel.id,
+          model: data.model || "dall-e-3",
           provider: data.provider || selectedModel.provider
         };
         

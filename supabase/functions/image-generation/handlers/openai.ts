@@ -3,7 +3,7 @@ import { corsHeaders } from "../../chat/utils/cors.ts";
 
 export async function handleOpenAIImageGeneration(
   prompt: string, 
-  modelId: string, 
+  modelId: string = "dall-e-3", 
   enhancePrompt: boolean = false,
   referenceImageUrl?: string
 ) {
@@ -16,8 +16,11 @@ export async function handleOpenAIImageGeneration(
   console.log(`Prompt: "${prompt.substring(0, 50)}${prompt.length > 50 ? '...' : ''}"`);
   
   try {
+    // Always use DALL-E 3 for image generation regardless of the chat model used
+    const actualModelId = "dall-e-3";
+    
     let requestBody: any = {
-      model: modelId,
+      model: actualModelId,
       prompt: prompt,
       n: 1,
       size: "1024x1024",
@@ -60,13 +63,15 @@ export async function handleOpenAIImageGeneration(
       return new Response(
         JSON.stringify({
           imageUrl: data.data[0].url,
-          model: modelId,
+          model: actualModelId,
           provider: 'OpenAI'
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     } else {
       // Standard image generation API
+      console.log(`Using DALL-E 3 API with prompt: ${prompt.substring(0, 50)}...`);
+      
       const response = await fetch('https://api.openai.com/v1/images/generations', {
         method: 'POST',
         headers: {
@@ -86,8 +91,8 @@ export async function handleOpenAIImageGeneration(
       const data = await response.json();
       console.log("Response data structure:", Object.keys(data));
       
-      // If the model is dall-e-3, it returns a revised_prompt which we can use
-      const hasRevisedPrompt = modelId === 'dall-e-3' && data.data[0].revised_prompt;
+      // DALL-E 3 always returns a revised_prompt which we can use if enhancePrompt is enabled
+      const hasRevisedPrompt = data.data[0].revised_prompt;
       
       if (hasRevisedPrompt) {
         console.log("Revised prompt received from DALL-E:", data.data[0].revised_prompt.substring(0, 50) + "...");
@@ -98,7 +103,7 @@ export async function handleOpenAIImageGeneration(
           imageUrl: data.data[0].url,
           // Only include revisedPrompt if enhancePrompt was enabled
           revisedPrompt: enhancePrompt ? data.data[0].revised_prompt : undefined,
-          model: modelId,
+          model: actualModelId,
           provider: 'OpenAI'
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
