@@ -1,7 +1,7 @@
 
 import React, { useState } from "react";
 import { Message } from "../types";
-import { Bot, Check, Copy, User, Zap, Cpu, Download } from "lucide-react";
+import { Bot, Check, Copy, User, Zap, Cpu } from "lucide-react";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
@@ -28,26 +28,7 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, showTotalCredits = f
     }
   };
 
-  const downloadImage = async (imageUrl: string) => {
-    try {
-      // Create a temporary anchor element
-      const anchor = document.createElement('a');
-      anchor.href = imageUrl;
-      anchor.download = `image-${new Date().getTime()}.jpg`;
-      document.body.appendChild(anchor);
-      anchor.click();
-      document.body.removeChild(anchor);
-      toast.success("Image download started");
-    } catch (err) {
-      toast.error("Failed to download image");
-    }
-  };
-
   const isUserMessage = message.role === "user";
-  
-  // Check if this is a generated image message
-  const isGeneratedImageMessage = message.images && message.images.length > 0 && 
-                                message.content.includes("Generated image from prompt:");
   
   return (
     <div className={`flex items-start gap-4 animate-fade-in ${isUserMessage ? "" : "group"}`}>
@@ -85,23 +66,16 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, showTotalCredits = f
             </div>
           )}
 
-          {/* Display attached images with download button */}
+          {/* Display attached images if any */}
           {message.images && message.images.length > 0 && (
             <div className="flex gap-2 mb-3 flex-wrap">
               {message.images.map((image, index) => (
-                <div key={index} className="relative rounded-md overflow-hidden border border-border group">
+                <div key={index} className="relative rounded-md overflow-hidden border border-border">
                   <img 
                     src={image} 
-                    alt={isGeneratedImageMessage ? "Generated image" : `Uploaded image ${index + 1}`} 
-                    className="max-h-80 max-w-full object-contain"
+                    alt={`Uploaded image ${index + 1}`} 
+                    className="max-h-60 max-w-full object-contain"
                   />
-                  <button
-                    onClick={() => downloadImage(image)}
-                    className="absolute top-2 right-2 p-2 rounded-md bg-background/80 opacity-0 group-hover:opacity-100 transition-opacity"
-                    title="Download image"
-                  >
-                    <Download size={16} />
-                  </button>
                 </div>
               ))}
             </div>

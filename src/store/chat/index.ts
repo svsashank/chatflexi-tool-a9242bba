@@ -18,8 +18,7 @@ import {
   selectModelAction,
   generateResponseAction,
   createSendMessageAction,
-  createRegenerateMessageAction,
-  createImageGenerationActions
+  createRegenerateMessageAction
 } from './actions';
 
 import { loadUserConversationsAction } from './dataActions';
@@ -41,7 +40,6 @@ const useChatStore = create<ChatStore>((set, get) => ({
   currentConversationId: initialConversation.id,
   selectedModel: DEFAULT_MODEL,
   isLoading: false,
-  isImageGenerating: false,
   
   // Actions
   createConversation: createConversationAction(set, get),
@@ -55,10 +53,7 @@ const useChatStore = create<ChatStore>((set, get) => ({
   
   // Message slice actions
   sendMessage: createSendMessageAction(set, get),
-  regenerateMessage: createRegenerateMessageAction(set, get),
-  
-  // Image generation actions
-  ...createImageGenerationActions(set, get)
+  regenerateMessage: createRegenerateMessageAction(set, get)
 }));
 
 export default useChatStore;

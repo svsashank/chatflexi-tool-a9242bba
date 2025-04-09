@@ -1,7 +1,7 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import { ChatStore } from '../types';
-import { AIModel, GeneratedImage } from '@/types';
+import { AIModel } from '@/types';
 
 export const createSendMessageAction = (
   set: (state: Partial<ChatStore>) => void,

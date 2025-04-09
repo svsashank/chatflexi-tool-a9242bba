@@ -5,7 +5,7 @@ export const AI_MODELS = [
     name: 'GPT-4o',
     provider: 'openai',
     description: 'OpenAI\'s most advanced model, with vision capabilities',
-    capabilities: ['text', 'images', 'code', 'imageGeneration'] as Array<'text' | 'images' | 'code' | 'imageGeneration'>,
+    capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
     avatarColor: '#10a37f', // OpenAI green
   },
   {
@@ -21,7 +21,7 @@ export const AI_MODELS = [
     name: 'GPT-4o Mini',
     provider: 'openai',
     description: 'Smaller, faster, and more cost-effective version of GPT-4o',
-    capabilities: ['text', 'images', 'code', 'imageGeneration'] as Array<'text' | 'images' | 'code' | 'imageGeneration'>,
+    capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
     avatarColor: '#10a37f', // OpenAI green
   },
   {
@@ -29,7 +29,7 @@ export const AI_MODELS = [
     name: 'GPT-3.5 Turbo',
     provider: 'openai',
     description: 'Fast and efficient text generation model',
-    capabilities: ['text', 'code', 'imageGeneration'] as Array<'text' | 'code' | 'imageGeneration'>,
+    capabilities: ['text', 'code'] as Array<'text' | 'code'>,
     avatarColor: '#10a37f', // OpenAI green
   },
   {
@@ -37,7 +37,7 @@ export const AI_MODELS = [
     name: 'GPT-4.5 Preview',
     provider: 'openai',
     description: 'Preview of OpenAI\'s 4.5 generation model with enhanced capabilities',
-    capabilities: ['text', 'images', 'code', 'imageGeneration'] as Array<'text' | 'images' | 'code' | 'imageGeneration'>,
+    capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
     avatarColor: '#10a37f', // OpenAI green
   },
   {
@@ -61,7 +61,7 @@ export const AI_MODELS = [
     name: 'o1 Pro',
     provider: 'openai',
     description: 'Enhanced version of o1 with premium capabilities',
-    capabilities: ['text', 'images', 'code', 'imageGeneration'] as Array<'text' | 'images' | 'code' | 'imageGeneration'>,
+    capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
     avatarColor: '#10a37f', // OpenAI green
   },
   {

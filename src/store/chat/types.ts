@@ -1,12 +1,11 @@
 
-import { Message, Conversation, AIModel, GeneratedImage } from '@/types';
+import { Message, Conversation, AIModel } from '@/types';
 
 export interface ChatState {
   conversations: Conversation[];
   currentConversationId: string | null;
   selectedModel: AIModel;
   isLoading: boolean;
-  isImageGenerating: boolean;
 }
 
 export interface ChatStoreActions {
@@ -20,8 +19,6 @@ export interface ChatStoreActions {
   resetConversations: () => void;
   sendMessage: (content: string, images?: string[]) => void;
   regenerateMessage: () => Promise<void>;
-  generateImage: (prompt: string, enhancePrompt: boolean, referenceImageUrl?: string) => Promise<GeneratedImage>;
-  setImageGenerating: (isGenerating: boolean) => void;
 }
 
 export type ChatStore = ChatState & ChatStoreActions;

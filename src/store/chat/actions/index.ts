@@ -5,4 +5,3 @@ export { generateResponseAction } from './responseActions';
 export { addMessageAction } from './messageActions';
 export { createSendMessageAction } from './sendMessageActions';
 export { createRegenerateMessageAction } from './regenerateActions';
-export { createImageGenerationActions } from './imageGenerationActions';
