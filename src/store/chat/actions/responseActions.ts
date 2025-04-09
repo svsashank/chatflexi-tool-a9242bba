@@ -151,25 +151,41 @@ export const generateResponseAction = (set: Function, get: Function) => async ()
             });
           }
           
+          // Check if the conversation_messages table has web_search_results and file_search_results columns
+          // If not, we'll still insert but without those fields
+          const { error: schemaError } = await supabase
+            .from('conversation_messages')
+            .select('web_search_results, file_search_results')
+            .limit(1)
+            .maybeSingle();
+            
+          const hasSearchResultsColumns = !schemaError;
+          
           // Then save the message
+          const messageInsertData = {
+            id: newMessage.id,
+            conversation_id: currentConversationId,
+            content: newMessage.content,
+            role: newMessage.role,
+            model_id: selectedModel.id,
+            model_provider: selectedModel.provider,
+            created_at: newMessage.timestamp.toISOString(),
+            input_tokens: tokens.input,
+            output_tokens: tokens.output,
+            compute_credits: computeCredits,
+          };
+          
+          // Only add these properties if the columns exist in the database
+          if (hasSearchResultsColumns) {
+            Object.assign(messageInsertData, {
+              web_search_results: newMessage.webSearchResults.length > 0 ? newMessage.webSearchResults : null,
+              file_search_results: newMessage.fileSearchResults.length > 0 ? newMessage.fileSearchResults : null
+            });
+          }
+          
           const { error } = await supabase
             .from('conversation_messages')
-            .insert([
-              {
-                id: newMessage.id,
-                conversation_id: currentConversationId,
-                content: newMessage.content,
-                role: newMessage.role,
-                model_id: selectedModel.id,
-                model_provider: selectedModel.provider,
-                created_at: newMessage.timestamp.toISOString(),
-                input_tokens: tokens.input,
-                output_tokens: tokens.output,
-                compute_credits: computeCredits,
-                web_search_results: newMessage.webSearchResults || null,
-                file_search_results: newMessage.fileSearchResults || null
-              },
-            ]);
+            .insert([messageInsertData]);
 
           if (error) {
             console.error('Error saving message to database:', error);
