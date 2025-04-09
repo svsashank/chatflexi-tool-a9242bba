@@ -1,4 +1,3 @@
-
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
@@ -40,6 +39,17 @@ export const generateResponseAction = (set: Function, get: Function) => async ()
       selectedModel,
       currentConversation.messages
     );
+    
+    if (aiResponse.content.startsWith('Error:')) {
+      console.log('Response contained error, will auto-retry in 2 seconds');
+      setTimeout(() => {
+        console.log('Auto-retrying generateResponse...');
+        set({ isLoading: true });
+        generateResponseAction(set, get)();
+      }, 2000);
+      set({ isLoading: false });
+      return;
+    }
 
     if (aiResponse) {
       // Extract token counts and calculate compute credits
@@ -279,5 +289,10 @@ export const generateResponseAction = (set: Function, get: Function) => async ()
   } catch (error) {
     console.error('Error generating response:', error);
     set({ isLoading: false });
+    toast({
+      title: 'Error',
+      description: 'Failed to generate response. Please try again.',
+      variant: 'destructive',
+    });
   }
 };

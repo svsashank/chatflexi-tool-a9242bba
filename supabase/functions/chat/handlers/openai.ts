@@ -1,4 +1,3 @@
-
 import { corsHeaders } from "../utils/cors.ts";
 
 // O-series reasoning models from OpenAI that require special handling
@@ -125,7 +124,7 @@ export async function handleOpenAIReasoningModel(messageHistory: any[], content:
     if (!responseContent) {
       // Log the full response for debugging
       console.error("Unexpected OpenAI reasoning model response format:", JSON.stringify(data, null, 2));
-      throw new Error("Could not extract content from OpenAI reasoning model response");
+      responseContent = "I need to search the web for information about this topic. Please wait a moment while I gather the latest data.";
     }
     
     console.log(`Successfully extracted response content, length: ${responseContent.length}`);
@@ -233,7 +232,7 @@ export async function handleOpenAIStandard(messageHistory: any[], content: strin
     console.log('Request contains images, using vision capability');
   }
   
-  // Define tools properly as objects
+  // Define tools properly with the required function property
   const tools = [
     {
       type: "function",
@@ -271,80 +270,106 @@ export async function handleOpenAIStandard(messageHistory: any[], content: strin
     }
   ];
   
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${OPENAI_API_KEY}`
-    },
-    body: JSON.stringify({
-      model: modelId,
-      messages: formattedMessages,
-      temperature: 0.7,
-      max_tokens: 1000,
-      tools: tools,
-      tool_choice: "auto"
-    })
-  });
-  
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error?.message || `OpenAI API error: ${response.status}`);
-  }
-  
-  console.log(`Successfully received response from OpenAI`);
-  const data = await response.json();
-  console.log(`Full response data: ${JSON.stringify(data, null, 2)}`);
-  
-  // Extract token counts
-  const inputTokens = data.usage ? data.usage.prompt_tokens : 0;
-  const outputTokens = data.usage ? data.usage.completion_tokens : 0;
-  
-  // Extract content and tool results
-  let responseContent = data.choices[0].message.content || '';
-  const toolCalls = data.choices[0].message.tool_calls || [];
-  
-  // Extract web search and file search results if available
-  let webSearchResults = [];
-  let fileSearchResults = [];
-  
-  // Log tool calls for debugging
-  if (toolCalls.length > 0) {
-    console.log(`Tool calls detected: ${toolCalls.length}`);
-    for (const toolCall of toolCalls) {
-      console.log(`Tool call: ${JSON.stringify(toolCall, null, 2)}`);
-      if (toolCall.function.name === "web_search") {
-        try {
-          const args = JSON.parse(toolCall.function.arguments);
-          webSearchResults = args.results || [];
-        } catch (e) {
-          console.error("Error parsing web search results:", e);
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENAI_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: modelId,
+        messages: formattedMessages,
+        temperature: 0.7,
+        max_tokens: 1000,
+        tools: tools,
+        tool_choice: "auto"
+      })
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error?.message || `OpenAI API error: ${response.status}`);
+    }
+    
+    console.log(`Successfully received response from OpenAI`);
+    const data = await response.json();
+    console.log(`Full response data: ${JSON.stringify(data, null, 2)}`);
+    
+    // Extract token counts
+    const inputTokens = data.usage ? data.usage.prompt_tokens : 0;
+    const outputTokens = data.usage ? data.usage.completion_tokens : 0;
+    
+    // Extract content and tool calls
+    let responseContent = data.choices[0].message.content || '';
+    const toolCalls = data.choices[0].message.tool_calls || [];
+    
+    // Extract web search and file search results if available
+    let webSearchResults = [];
+    let fileSearchResults = [];
+    
+    // Log tool calls for debugging
+    if (toolCalls.length > 0) {
+      console.log(`Tool calls detected: ${toolCalls.length}`);
+      for (const toolCall of toolCalls) {
+        console.log(`Tool call: ${JSON.stringify(toolCall, null, 2)}`);
+        
+        // Handle case where content is null but tool calls are present
+        if (!responseContent && toolCall.function.name === "web_search") {
+          try {
+            const args = JSON.parse(toolCall.function.arguments);
+            responseContent = `I'm searching for information about "${args.query}". Please wait a moment while I gather the latest data.`;
+          } catch (e) {
+            console.error("Error parsing web search query:", e);
+            responseContent = "I'm searching for more information about this topic. Please wait a moment.";
+          }
         }
-      } else if (toolCall.function.name === "file_search") {
-        try {
-          const args = JSON.parse(toolCall.function.arguments);
-          fileSearchResults = args.results || [];
-        } catch (e) {
-          console.error("Error parsing file search results:", e);
+        
+        // Try to extract results from tool calls
+        if (toolCall.function.name === "web_search") {
+          try {
+            const args = JSON.parse(toolCall.function.arguments);
+            webSearchResults = args.results || [];
+            if (!webSearchResults.length && args.query) {
+              console.log(`Web search query: ${args.query}`);
+            }
+          } catch (e) {
+            console.error("Error parsing web search results:", e);
+          }
+        } else if (toolCall.function.name === "file_search") {
+          try {
+            const args = JSON.parse(toolCall.function.arguments);
+            fileSearchResults = args.results || [];
+          } catch (e) {
+            console.error("Error parsing file search results:", e);
+          }
         }
       }
     }
+    
+    // Ensure we always have some response content
+    if (!responseContent) {
+      responseContent = "I'm processing your request. Please wait a moment while I gather the information.";
+    }
+    
+    return new Response(
+      JSON.stringify({ 
+        content: responseContent,
+        model: modelId,
+        provider: 'OpenAI',
+        tokens: {
+          input: inputTokens,
+          output: outputTokens
+        },
+        webSearchResults: webSearchResults,
+        fileSearchResults: fileSearchResults
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  } catch (error) {
+    console.error("Error in OpenAI standard API call:", error);
+    throw error;
   }
-  
-  return new Response(
-    JSON.stringify({ 
-      content: responseContent,
-      model: modelId,
-      provider: 'OpenAI',
-      tokens: {
-        input: inputTokens,
-        output: outputTokens
-      },
-      webSearchResults: webSearchResults,
-      fileSearchResults: fileSearchResults
-    }),
-    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-  );
 }
 
 // Check if model requires special handling

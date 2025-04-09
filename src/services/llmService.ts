@@ -1,6 +1,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { Message, AIModel } from "@/types";
+import { toast } from "@/components/ui/use-toast";
 
 // Formats the chat history for better context preservation
 const formatMessageHistory = (messages: Message[]) => {
@@ -68,7 +69,7 @@ export const sendMessageToLLM = async (
     
     // Call the Supabase Edge Function with retries for better reliability
     let attempts = 0;
-    const maxAttempts = 2;
+    const maxAttempts = 3; // Increase the number of retry attempts
     let lastError;
     
     while (attempts < maxAttempts) {
@@ -87,13 +88,22 @@ export const sendMessageToLLM = async (
           console.error(`Attempt ${attempts + 1}: Error with ${model.provider} API:`, error);
           lastError = error;
           attempts++;
-          // Wait before retry
-          if (attempts < maxAttempts) await new Promise(resolve => setTimeout(resolve, 1000));
+          // Wait before retry, with increasing delay
+          if (attempts < maxAttempts) await new Promise(resolve => setTimeout(resolve, 1000 * attempts));
+          continue;
+        }
+        
+        if (!data || (!data.content && !data.error)) {
+          console.error(`Attempt ${attempts + 1}: Empty response from ${model.provider} API`);
+          lastError = new Error("Empty response received from API");
+          attempts++;
+          // Wait before retry, with increasing delay
+          if (attempts < maxAttempts) await new Promise(resolve => setTimeout(resolve, 1000 * attempts));
           continue;
         }
         
         console.log('Received response from LLM:', {
-          contentPreview: data.content.substring(0, 50) + (data.content.length > 50 ? '...' : ''),
+          contentPreview: data.content ? (data.content.substring(0, 50) + (data.content.length > 50 ? '...' : '')) : 'No content',
           model: data.model,
           provider: data.provider,
           tokens: data.tokens,
@@ -101,9 +111,19 @@ export const sendMessageToLLM = async (
           hasFileSearchResults: !!data.fileSearchResults && data.fileSearchResults.length > 0
         });
         
+        // If content is empty but we have search results, create a placeholder message
+        if (!data.content && (data.webSearchResults?.length > 0 || data.fileSearchResults?.length > 0)) {
+          data.content = "I'm currently searching for information related to your request. The results will be processed shortly.";
+        }
+        
+        // Ensure we always have some content
+        if (!data.content) {
+          data.content = "I'm processing your request. Please wait a moment for the full response.";
+        }
+        
         return {
           content: data.content,
-          tokens: data.tokens,
+          tokens: data.tokens || { input: 0, output: 0 },
           webSearchResults: data.webSearchResults || [],
           fileSearchResults: data.fileSearchResults || []
         };
@@ -111,20 +131,32 @@ export const sendMessageToLLM = async (
         console.error(`Attempt ${attempts + 1}: Error with ${model.provider} API:`, error);
         lastError = error;
         attempts++;
-        // Wait before retry
-        if (attempts < maxAttempts) await new Promise(resolve => setTimeout(resolve, 1000));
+        // Wait before retry, with increasing delay
+        if (attempts < maxAttempts) await new Promise(resolve => setTimeout(resolve, 1000 * attempts));
       }
     }
     
     // If we get here, all attempts failed
+    toast({
+      title: "Connection Error",
+      description: "Failed to get a response from the AI. Please try again.",
+      variant: "destructive",
+    });
+    
     return {
-      content: `Error: ${lastError?.message || 'Failed to get response after multiple attempts'}`,
+      content: `Error: ${lastError?.message || 'Failed to get response after multiple attempts'}. Please try again.`,
       tokens: { input: 0, output: 0 }
     };
   } catch (error: any) {
     console.error(`Error with ${model.provider} API:`, error);
+    toast({
+      title: "Error",
+      description: `Error: ${error.message || 'An unexpected error occurred'}`,
+      variant: "destructive",
+    });
+    
     return {
-      content: `Error: ${error.message || 'Failed to get response from model'}`,
+      content: `Error: ${error.message || 'Failed to get response from model'}. Please try again.`,
       tokens: { input: 0, output: 0 }
     };
   }

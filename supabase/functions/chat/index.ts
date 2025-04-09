@@ -41,25 +41,39 @@ serve(async (req) => {
     
     // Format varies by provider
     try {
+      let response;
       switch(model.provider.toLowerCase()) {
         case 'openai':
           // Check if this is an O-series reasoning model that needs special handling
           if (isOSeriesReasoningModel(model.id)) {
-            return await handleOpenAIReasoningModel(messageHistory, content, model.id, systemPrompt, messageImages);
+            response = await handleOpenAIReasoningModel(messageHistory, content, model.id, systemPrompt, messageImages);
           } else {
-            return await handleOpenAIStandard(messageHistory, content, model.id, systemPrompt, messageImages);
+            response = await handleOpenAIStandard(messageHistory, content, model.id, systemPrompt, messageImages);
           }
+          break;
         case 'anthropic':
-          return await handleAnthropic(messageHistory, content, model.id, systemPrompt, messageImages);
+          response = await handleAnthropic(messageHistory, content, model.id, systemPrompt, messageImages);
+          break;
         case 'google':
-          return await handleGoogle(messageHistory, content, model.id, systemPrompt, messageImages);
+          response = await handleGoogle(messageHistory, content, model.id, systemPrompt, messageImages);
+          break;
         case 'xai':
-          return await handleXAI(messageHistory, content, model.id, systemPrompt, messageImages);
+          response = await handleXAI(messageHistory, content, model.id, systemPrompt, messageImages);
+          break;
         case 'krutrim':
-          return await handleKrutrim(messageHistory, content, model.id, systemPrompt, messageImages);
+          response = await handleKrutrim(messageHistory, content, model.id, systemPrompt, messageImages);
+          break;
         default:
           throw new Error(`Provider ${model.provider} not supported`);
       }
+      
+      // Validate that we got a proper response
+      if (response) {
+        return response;
+      } else {
+        throw new Error("Handler did not return a valid response");
+      }
+      
     } catch (handlerError) {
       console.error(`Handler error for ${model.provider}:`, handlerError);
       return new Response(
@@ -80,9 +94,14 @@ serve(async (req) => {
   } catch (error) {
     console.error(`Error in chat function:`, error);
     return new Response(
-      JSON.stringify({ error: error.message || 'An error occurred' }),
+      JSON.stringify({ 
+        content: `Sorry, an error occurred: ${error.message || 'An unexpected error occurred'}`,
+        tokens: { input: 0, output: 0 },
+        webSearchResults: [],
+        fileSearchResults: []
+      }),
       { 
-        status: 500, 
+        status: 200, // Return 200 even for errors to prevent client from breaking
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }
     );
