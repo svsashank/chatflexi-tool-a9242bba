@@ -5,7 +5,8 @@ import { toast } from '@/components/ui/use-toast';
 import { generateImage } from '@/services/imageGenerationService';
 import { calculateComputeCredits } from '@/utils/computeCredits';
 
-export const createImageGenerationActions = (set: Function, get: Function) => {
+// Changed function name to match the import in index.ts
+export const createGenerateImageAction = (set: Function, get: Function) => {
   return {
     generateImage: async (prompt: string, enhancePrompt: boolean = true) => {
       const { currentConversationId, conversations, selectedModel } = get();
@@ -230,7 +231,7 @@ export const createImageGenerationActions = (set: Function, get: Function) => {
     },
     
     setImageGenerating: (isGenerating: boolean) => {
-      set({ isImageGenerating });
+      set({ isImageGenerating: isGenerating });
     }
   };
 };

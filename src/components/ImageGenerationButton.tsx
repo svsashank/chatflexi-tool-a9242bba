@@ -46,6 +46,7 @@ const ImageGenerationButton: React.FC = () => {
       console.log('Using model:', selectedModel.name, 'from provider:', selectedModel.provider);
       console.log('Enhance prompt:', enhancePrompt);
       
+      // Fixed: Only pass prompt and enhancePrompt flag to generateImage
       await generateImage(prompt.trim(), enhancePrompt);
       toast.success('Image generation started');
       setIsDialogOpen(false);

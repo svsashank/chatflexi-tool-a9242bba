@@ -23,10 +23,8 @@ export async function handleOpenAIImageGeneration(prompt: string, modelId: strin
         n: 1,
         size: "1024x1024",
         quality: "standard",
-        // Only allow prompt enhancement if the flag is true
         style: "vivid",
-        // If enhancePrompt is false, tell DALL-E to use exact prompt
-        response_format: enhancePrompt ? undefined : "url"
+        response_format: "url"
       })
     });
     
