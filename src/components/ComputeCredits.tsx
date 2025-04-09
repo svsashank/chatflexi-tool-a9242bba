@@ -15,7 +15,6 @@ interface ComputeCreditsProps {
 const ComputeCredits: React.FC<ComputeCreditsProps> = ({ credits, tokens, modelId }) => {
   // Round credits to nearest integer
   const roundedCredits = Math.round(credits);
-  const isImageGeneration = tokens.input === 0 && tokens.output === 0;
   
   return (
     <TooltipProvider>
@@ -34,15 +33,9 @@ const ComputeCredits: React.FC<ComputeCreditsProps> = ({ credits, tokens, modelI
             </p>
             <div className="text-xs space-y-0.5">
               <p>Model: {modelId}</p>
-              {isImageGeneration ? (
-                <p>Image Generation</p>
-              ) : (
-                <>
-                  <p>Input tokens: {tokens.input.toLocaleString()}</p>
-                  <p>Output tokens: {tokens.output.toLocaleString()}</p>
-                  <p>Total tokens: {(tokens.input + tokens.output).toLocaleString()}</p>
-                </>
-              )}
+              <p>Input tokens: {tokens.input.toLocaleString()}</p>
+              <p>Output tokens: {tokens.output.toLocaleString()}</p>
+              <p>Total tokens: {(tokens.input + tokens.output).toLocaleString()}</p>
             </div>
           </div>
         </TooltipContent>

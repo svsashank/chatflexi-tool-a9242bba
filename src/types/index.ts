@@ -1,4 +1,5 @@
 
+
 export interface Message {
   id: string;
   content: string;
@@ -11,10 +12,6 @@ export interface Message {
   };
   computeCredits?: number;
   images?: string[]; // URLs or base64 data for images
-  generatedImage?: {
-    imageUrl: string;
-    revisedPrompt?: string;
-  };
 }
 
 export interface Conversation {
@@ -32,7 +29,7 @@ export type AIModel = {
   name: string;
   provider: string;
   description: string;
-  capabilities: Array<'text' | 'images' | 'code' | 'audio' | 'imageGeneration'>;
+  capabilities: Array<'text' | 'images' | 'code' | 'audio'>;
   avatarColor: string;
 }
 

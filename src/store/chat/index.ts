@@ -18,8 +18,7 @@ import {
   selectModelAction,
   generateResponseAction,
   createSendMessageAction,
-  createRegenerateMessageAction,
-  createGenerateImageAction
+  createRegenerateMessageAction
 } from './actions';
 
 import { loadUserConversationsAction } from './dataActions';
@@ -35,42 +34,26 @@ const initialConversation: Conversation = {
 };
 
 // Create the store
-const useChatStore = create<ChatStore>((set, get) => {
-  // Get the image generation actions
-  const imageActions = createGenerateImageAction(set, get);
+const useChatStore = create<ChatStore>((set, get) => ({
+  // Initial state
+  conversations: [initialConversation],
+  currentConversationId: initialConversation.id,
+  selectedModel: DEFAULT_MODEL,
+  isLoading: false,
   
-  return {
-    // Initial state
-    conversations: [initialConversation],
-    currentConversationId: initialConversation.id,
-    selectedModel: DEFAULT_MODEL,
-    isLoading: false,
-    isImageGenerating: false,
-    
-    // Actions
-    createConversation: createConversationAction(set, get),
-    setCurrentConversation: setCurrentConversationAction(set, get),
-    deleteConversation: deleteConversationAction(set, get),
-    resetConversations: resetConversationsAction(set),
-    addMessage: addMessageAction(set, get),
-    selectModel: selectModelAction(set),
-    generateResponse: generateResponseAction(set, get),
-    loadUserConversations: loadUserConversationsAction(set),
-    
-    // Message slice actions
-    sendMessage: createSendMessageAction(set, get),
-    regenerateMessage: createRegenerateMessageAction(set, get),
-    
-    // Image generation action - make the return type match the interface
-    generateImage: async (prompt, enhancePrompt) => {
-      try {
-        return await imageActions.generateImage(prompt, enhancePrompt);
-      } catch (error) {
-        console.error('Error in generateImage:', error);
-        throw error;
-      }
-    }
-  };
-});
+  // Actions
+  createConversation: createConversationAction(set, get),
+  setCurrentConversation: setCurrentConversationAction(set, get),
+  deleteConversation: deleteConversationAction(set, get),
+  resetConversations: resetConversationsAction(set),
+  addMessage: addMessageAction(set, get),
+  selectModel: selectModelAction(set),
+  generateResponse: generateResponseAction(set, get),
+  loadUserConversations: loadUserConversationsAction(set),
+  
+  // Message slice actions
+  sendMessage: createSendMessageAction(set, get),
+  regenerateMessage: createRegenerateMessageAction(set, get)
+}));
 
 export default useChatStore;

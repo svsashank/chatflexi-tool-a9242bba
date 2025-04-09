@@ -1,4 +1,3 @@
-
 // AI Models
 export const AI_MODELS = [
   {
@@ -6,7 +5,7 @@ export const AI_MODELS = [
     name: 'GPT-4o',
     provider: 'openai',
     description: 'OpenAI\'s most advanced model, with vision capabilities',
-    capabilities: ['text', 'images', 'code', 'imageGeneration'] as Array<'text' | 'images' | 'code' | 'imageGeneration'>,
+    capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
     avatarColor: '#10a37f', // OpenAI green
   },
   {
@@ -22,7 +21,7 @@ export const AI_MODELS = [
     name: 'GPT-4o Mini',
     provider: 'openai',
     description: 'Smaller, faster, and more cost-effective version of GPT-4o',
-    capabilities: ['text', 'images', 'code', 'imageGeneration'] as Array<'text' | 'images' | 'code' | 'imageGeneration'>,
+    capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
     avatarColor: '#10a37f', // OpenAI green
   },
   {
@@ -38,7 +37,7 @@ export const AI_MODELS = [
     name: 'GPT-4.5 Preview',
     provider: 'openai',
     description: 'Preview of OpenAI\'s 4.5 generation model with enhanced capabilities',
-    capabilities: ['text', 'images', 'code', 'imageGeneration'] as Array<'text' | 'images' | 'code' | 'imageGeneration'>,
+    capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
     avatarColor: '#10a37f', // OpenAI green
   },
   {
@@ -110,7 +109,7 @@ export const AI_MODELS = [
     name: 'Gemini 1.5 Pro',
     provider: 'google',
     description: 'Google\'s multimodal model with extended context window',
-    capabilities: ['text', 'images', 'code', 'imageGeneration'] as Array<'text' | 'images' | 'code' | 'imageGeneration'>,
+    capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
     avatarColor: '#4285f4', // Google blue
   },
   {
@@ -118,7 +117,7 @@ export const AI_MODELS = [
     name: 'Gemini 1.5 Flash',
     provider: 'google',
     description: 'Faster and more efficient version of Gemini 1.5',
-    capabilities: ['text', 'images', 'code', 'imageGeneration'] as Array<'text' | 'images' | 'code' | 'imageGeneration'>,
+    capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
     avatarColor: '#4285f4', // Google blue
   },
   {
@@ -134,7 +133,7 @@ export const AI_MODELS = [
     name: 'Gemini 2.0 Flash',
     provider: 'google',
     description: 'Fast version of Gemini 2.0 with balanced performance',
-    capabilities: ['text', 'images', 'code', 'imageGeneration'] as Array<'text' | 'images' | 'code' | 'imageGeneration'>,
+    capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
     avatarColor: '#4285f4', // Google blue
   },
   {
@@ -150,7 +149,7 @@ export const AI_MODELS = [
     name: 'Gemini 2.5 Pro',
     provider: 'google',
     description: 'Google\'s latest experimental flagship model with enhanced capabilities',
-    capabilities: ['text', 'images', 'code', 'imageGeneration'] as Array<'text' | 'images' | 'code' | 'imageGeneration'>,
+    capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
     avatarColor: '#4285f4', // Google blue
   },
   {

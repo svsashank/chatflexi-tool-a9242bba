@@ -2,132 +2,127 @@
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
-import { ChatStore } from './types';
 import { AI_MODELS, DEFAULT_MODEL } from '@/constants';
+import { Conversation, Message } from '@/types';
+import { ChatStore } from './types';
+import { updateContextSummary } from './utils';
 
-export const loadUserConversationsAction = (
-  set: (state: Partial<ChatStore>) => void
-) => async () => {
+export const loadUserConversationsAction = (set: Function) => async () => {
   try {
     const { data: { session } } = await supabase.auth.getSession();
     
     if (!session?.user) {
-      console.warn("User not authenticated, cannot load conversations");
+      console.log('No user session found');
       return;
     }
-
-    // Fetch conversations for the current user
-    const { data: conversations, error } = await supabase
+    
+    console.log("Loading conversations for user:", session.user.id);
+    
+    // Fetch user's conversations
+    const { data: conversations, error: conversationsError } = await supabase
       .from('conversations')
-      .select('id, title, created_at, updated_at')
-      .order('updated_at', { ascending: false })
-      .eq('user_id', session.user.id);
-
-    if (error) {
-      console.error("Error fetching conversations:", error);
-      toast({
-        title: 'Error',
-        description: 'Failed to fetch conversations',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    if (!conversations || conversations.length === 0) {
-      console.log("No conversations found, creating a new one");
-      set({
-        conversations: [{
-          id: uuidv4(),
-          title: 'New Conversation',
-          messages: [],
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          contextSummary: '',
-          userId: session.user.id
-        }],
-        currentConversationId: null
-      });
-      return;
-    }
-
-    // Fetch messages for most recent conversation
-    const mostRecentConversation = conversations[0];
-    const { data: messages, error: messagesError } = await supabase
-      .from('conversation_messages')
       .select('*')
-      .eq('conversation_id', mostRecentConversation.id)
-      .order('created_at', { ascending: true });
-
-    if (messagesError) {
-      console.error("Error fetching messages:", messagesError);
+      .eq('user_id', session.user.id)
+      .order('updated_at', { ascending: false });
+    
+    if (conversationsError) {
+      console.error('Error loading conversations:', conversationsError);
       toast({
         title: 'Error',
-        description: 'Failed to fetch messages for conversation',
+        description: 'Could not load your conversations',
         variant: 'destructive',
       });
+      return;
     }
     
-    console.log("Loaded messages from database:", messages);
+    if (!conversations || conversations.length === 0) {
+      console.log("No conversations found in database");
+      return;
+    }
     
-    // Map database messages to app format - using type assertion to handle image fields
-    const mappedMessages = (messages || []).map(msg => {
-      // Find the model in our constants
-      const model = AI_MODELS.find(m => m.id === msg.model_id && m.provider === msg.model_provider) || DEFAULT_MODEL;
-      
-      // Create the basic message structure
-      const message: any = {
-        id: msg.id,
-        content: msg.content,
-        role: msg.role as 'user' | 'assistant',
-        model: model,
-        timestamp: new Date(msg.created_at),
-        tokens: msg.input_tokens !== null && msg.output_tokens !== null ? {
-          input: msg.input_tokens,
-          output: msg.output_tokens
-        } : undefined,
-        computeCredits: msg.compute_credits || undefined,
-      };
-      
-      // Check for images array field
-      const msgWithImages = msg as any;
-      if (msgWithImages.images && Array.isArray(msgWithImages.images)) {
-        message.images = msgWithImages.images;
-      }
-      
-      // Check for generated image fields
-      if (msgWithImages.image_url) {
-        message.generatedImage = {
-          imageUrl: msgWithImages.image_url,
-          revisedPrompt: msgWithImages.revised_prompt
+    console.log(`Found ${conversations.length} conversations in database`);
+    
+    // Load all conversations with their messages
+    const loadedConversations: Conversation[] = await Promise.all(
+      conversations.map(async (conv) => {
+        // Fetch messages for this conversation
+        const { data: messages, error: messagesError } = await supabase
+          .from('conversation_messages')
+          .select('*')
+          .eq('conversation_id', conv.id)
+          .order('created_at', { ascending: true });
+          
+        if (messagesError) {
+          console.error('Error loading messages for conversation', conv.id, messagesError);
+          return {
+            id: conv.id,
+            title: conv.title,
+            messages: [],
+            createdAt: new Date(conv.created_at),
+            updatedAt: new Date(conv.updated_at),
+            contextSummary: '',
+          };
+        }
+        
+        console.log(`Loaded ${messages?.length || 0} messages for conversation ${conv.id}`);
+        
+        // Convert database messages to app Message type
+        const formattedMessages: Message[] = messages?.map(msg => {
+          // Find the model based on model_id and provider
+          const model = AI_MODELS.find(
+            m => m.id === msg.model_id && m.provider.toLowerCase() === (msg.model_provider || '').toLowerCase()
+          ) || DEFAULT_MODEL;
+          
+          return {
+            id: msg.id,
+            content: msg.content,
+            role: msg.role as 'user' | 'assistant',
+            model,
+            timestamp: new Date(msg.created_at),
+            tokens: msg.input_tokens && msg.output_tokens ? {
+              input: msg.input_tokens,
+              output: msg.output_tokens
+            } : undefined,
+            computeCredits: msg.compute_credits,
+            // The database doesn't store images, so default to empty array
+            images: []
+          };
+        }) || [];
+        
+        // Generate context summary from messages
+        let contextSummary = '';
+        formattedMessages.forEach(msg => {
+          contextSummary = updateContextSummary(contextSummary, msg);
+        });
+        
+        return {
+          id: conv.id,
+          title: conv.title,
+          messages: formattedMessages,
+          createdAt: new Date(conv.created_at),
+          updatedAt: new Date(conv.updated_at),
+          contextSummary,
         };
-        console.log("Found generated image:", message.generatedImage);
-      }
-      
-      return message;
-    });
-
-    // Convert the DB conversation to app format
-    const loadedConversations = conversations.map(conv => ({
-      id: conv.id,
-      title: conv.title,
-      messages: conv.id === mostRecentConversation.id ? mappedMessages : [],
-      createdAt: new Date(conv.created_at),
-      updatedAt: new Date(conv.updated_at),
-      contextSummary: '',
-      userId: session.user.id
-    }));
+      })
+    );
     
-    set({
-      conversations: loadedConversations,
-      currentConversationId: mostRecentConversation.id
-    });
+    console.log("Loaded conversations:", loadedConversations.length);
+    
+    // Set loaded conversations in state
+    if (loadedConversations.length > 0) {
+      set({
+        conversations: loadedConversations,
+        currentConversationId: loadedConversations[0].id,
+      });
+      console.log("Set first conversation as current:", loadedConversations[0].id);
+    }
+    
   } catch (error) {
-    console.error("Error loading user conversations:", error);
+    console.error('Error loading user conversations:', error);
     toast({
       title: 'Error',
-      description: 'Failed to load conversations',
+      description: 'Could not load your conversation history',
       variant: 'destructive',
     });
   }
 };
-
