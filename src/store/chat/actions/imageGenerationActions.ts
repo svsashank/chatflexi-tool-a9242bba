@@ -47,6 +47,11 @@ export const createImageGenerationActions = (
           throw new Error(`Failed to generate image: ${error.message}`);
         }
         
+        if (!data || !data.imageUrl) {
+          console.error('Invalid response from image generation API:', data);
+          throw new Error('Failed to generate image: Invalid response from API');
+        }
+        
         const generatedImage: GeneratedImage = {
           imageUrl: data.imageUrl,
           prompt: prompt,

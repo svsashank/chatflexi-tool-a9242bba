@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from "react";
 import { useChatStore } from "@/store";
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,11 @@ const ImageGenerationButton = () => {
         enhancePrompt, 
         referenceImage || undefined
       );
+      
+      if (!generatedImage || !generatedImage.imageUrl) {
+        toast.error("Failed to generate image: No image URL returned");
+        return;
+      }
       
       // Create a message with the generated image
       const messageContent = enhancePrompt && generatedImage.revisedPrompt

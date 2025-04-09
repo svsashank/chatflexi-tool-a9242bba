@@ -18,6 +18,7 @@ export async function handleOpenAIImageGeneration(
   
   console.log(`Processing image generation with OpenAI model ${modelId}`);
   console.log(`Prompt: "${prompt.substring(0, 50)}${prompt.length > 50 ? '...' : ''}"`);
+  console.log(`Enhance prompt: ${enhancePrompt}, Reference image: ${referenceImageUrl ? "Yes" : "No"}`);
   
   try {
     // Always use DALL-E 3 for image generation regardless of the chat model used
@@ -76,6 +77,9 @@ export async function handleOpenAIImageGeneration(
       // Standard image generation API
       console.log(`Using DALL-E 3 API with prompt: ${prompt.substring(0, 50)}...`);
       
+      // Log the full system prompt and request being sent to DALL-E
+      console.log("Full DALL-E 3 request:", JSON.stringify(requestBody, null, 2));
+      
       const response = await fetch('https://api.openai.com/v1/images/generations', {
         method: 'POST',
         headers: {
@@ -94,12 +98,13 @@ export async function handleOpenAIImageGeneration(
       console.log(`Successfully received response from OpenAI image generation`);
       const data = await response.json();
       console.log("Response data structure:", Object.keys(data));
+      console.log("Full DALL-E 3 response:", JSON.stringify(data, null, 2));
       
       // DALL-E 3 always returns a revised_prompt which we can use if enhancePrompt is enabled
       const hasRevisedPrompt = data.data[0].revised_prompt;
       
       if (hasRevisedPrompt) {
-        console.log("Revised prompt received from DALL-E:", data.data[0].revised_prompt.substring(0, 50) + "...");
+        console.log("Revised prompt received from DALL-E:", data.data[0].revised_prompt.substring(0, 100) + "...");
       }
       
       return new Response(
