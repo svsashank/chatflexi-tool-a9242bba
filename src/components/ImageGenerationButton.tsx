@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from "react";
 import { useChatStore } from "@/store";
 import { Button } from "@/components/ui/button";
@@ -28,7 +27,6 @@ const ImageGenerationButton = () => {
     }
     
     try {
-      // Fix: Pass only the required arguments with the correct types
       const generatedImage = await generateImage(
         prompt.trim(), 
         enhancePrompt, 
