@@ -1,5 +1,6 @@
+
 import React, { useState, useRef, useEffect } from "react";
-import { Send, ChevronDown, Image, X } from "lucide-react";
+import { Send, ChevronDown, Image, X, SparklesIcon } from "lucide-react";
 import { useChatStore } from "@/store";
 import { 
   DropdownMenu,
@@ -18,6 +19,7 @@ import ImageGenerationButton from "./ImageGenerationButton";
 const ChatInput = () => {
   const [inputValue, setInputValue] = useState("");
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const [showImageGen, setShowImageGen] = useState(false);
   const { sendMessage, isLoading, selectedModel, selectModel } = useChatStore();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -88,61 +90,78 @@ const ChatInput = () => {
     setUploadedImages(prev => prev.filter((_, i) => i !== index));
   };
 
+  const toggleImageGen = () => {
+    setShowImageGen(!showImageGen);
+  };
+
   return (
     <div className="p-4 border-t border-border bg-background/90 backdrop-blur-sm sticky bottom-0 z-10">
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="outline"
-            className="self-center flex items-center justify-center h-10 gap-2 px-4 rounded-lg border border-primary/20 bg-background hover:bg-accent"
-            aria-label="Select AI model"
-          >
-            <div 
-              className="w-2.5 h-2.5 rounded-full" 
-              style={{ backgroundColor: selectedModel.avatarColor }}
-            />
-            <span className="text-sm font-medium">
-              {selectedModel.name}
-              <span className="text-xs ml-1.5 text-muted-foreground hidden sm:inline">
-                ({selectedModel.provider})
+      <div className="flex items-center justify-between mb-3">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              className="self-center flex items-center justify-center h-10 gap-2 px-4 rounded-lg border border-primary/20 bg-background hover:bg-accent"
+              aria-label="Select AI model"
+            >
+              <div 
+                className="w-2.5 h-2.5 rounded-full" 
+                style={{ backgroundColor: selectedModel.avatarColor }}
+              />
+              <span className="text-sm font-medium">
+                {selectedModel.name}
+                <span className="text-xs ml-1.5 text-muted-foreground hidden sm:inline">
+                  ({selectedModel.provider})
+                </span>
               </span>
-            </span>
-            <ChevronDown size={14} />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="center" className="w-64 mt-1 border-primary/20">
-          <DropdownMenuLabel className="text-center">Choose an AI Model</DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          <ScrollArea className="h-80">
-            <div className="p-1">
-              {AI_MODELS.map((model) => (
-                <DropdownMenuItem 
-                  key={model.id}
-                  onClick={() => selectModel(model)}
-                  className="flex items-center gap-2 cursor-pointer py-2"
-                >
-                  <div 
-                    className="w-3 h-3 rounded-full mr-2" 
-                    style={{ backgroundColor: model.avatarColor }}
-                  />
-                  <div className="flex flex-col">
-                    <span className="font-medium">{model.name}</span>
-                    <span className="text-xs text-muted-foreground">{model.provider}</span>
-                  </div>
-                  {model.capabilities.includes('images') && (
-                    <span className="text-xs ml-auto px-1.5 py-0.5 bg-primary/10 text-primary rounded">Vision</span>
-                  )}
-                  {selectedModel.id === model.id && (
-                    <span className="w-2 h-2 rounded-full bg-primary ml-auto" />
-                  )}
-                </DropdownMenuItem>
-              ))}
-            </div>
-          </ScrollArea>
-        </DropdownMenuContent>
-      </DropdownMenu>
+              <ChevronDown size={14} />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="center" className="w-64 mt-1 border-primary/20">
+            <DropdownMenuLabel className="text-center">Choose an AI Model</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <ScrollArea className="h-80">
+              <div className="p-1">
+                {AI_MODELS.map((model) => (
+                  <DropdownMenuItem 
+                    key={model.id}
+                    onClick={() => selectModel(model)}
+                    className="flex items-center gap-2 cursor-pointer py-2"
+                  >
+                    <div 
+                      className="w-3 h-3 rounded-full mr-2" 
+                      style={{ backgroundColor: model.avatarColor }}
+                    />
+                    <div className="flex flex-col">
+                      <span className="font-medium">{model.name}</span>
+                      <span className="text-xs text-muted-foreground">{model.provider}</span>
+                    </div>
+                    {model.capabilities.includes('images') && (
+                      <span className="text-xs ml-auto px-1.5 py-0.5 bg-primary/10 text-primary rounded">Vision</span>
+                    )}
+                    {selectedModel.id === model.id && (
+                      <span className="w-2 h-2 rounded-full bg-primary ml-auto" />
+                    )}
+                  </DropdownMenuItem>
+                ))}
+              </div>
+            </ScrollArea>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
-      <ImageGenerationButton />
+        {/* Image Generation Toggle Button */}
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1 text-sm"
+          onClick={toggleImageGen}
+        >
+          <Image size={16} className="mr-1" />
+          {showImageGen ? "Hide Image Generation" : "Generate Image"}
+        </Button>
+      </div>
+
+      {showImageGen && <ImageGenerationButton />}
 
       {uploadedImages.length > 0 && (
         <div className="flex flex-wrap gap-2 mt-2">
