@@ -1,5 +1,6 @@
 
 import { corsHeaders } from "../utils/cors.ts";
+import { performBraveSearch } from "../utils/braveSearch.ts";
 
 // O-series reasoning models from OpenAI that require special handling
 const oSeriesReasoningModels = [
@@ -93,12 +94,21 @@ export async function handleOpenAIReasoningModel(messageHistory: any[], content:
         }
       }
       
-      // Extract web search results if available
+      // Extract web search queries and perform actual searches
       for (const item of data.output) {
-        if (item.type === 'tool_result' && item.tool === 'web_search' && item.result) {
-          webSearchResults = Array.isArray(item.result) ? item.result : [];
-          console.log("Found web search results:", JSON.stringify(webSearchResults));
+        if (item.type === 'tool_result' && item.tool === 'web_search') {
+          // Get search queries
+          let searchQuery = content;
+          if (item.input && item.input.query) {
+            searchQuery = item.input.query;
+          }
+          console.log(`Performing real web search for query: "${searchQuery}"`);
+          
+          // Use Brave Search API to get real results
+          webSearchResults = await performBraveSearch(searchQuery);
+          console.log("Got web search results from Brave:", JSON.stringify(webSearchResults, null, 2));
         }
+        
         if (item.type === 'tool_result' && item.tool === 'file_search' && item.result) {
           fileSearchResults = Array.isArray(item.result) ? item.result : [];
           console.log("Found file search results:", JSON.stringify(fileSearchResults));
@@ -321,17 +331,9 @@ export async function handleOpenAIStandard(messageHistory: any[], content: strin
             
             if (!searchQuery) continue;
             
-            // For now, just log the search query - in a real implementation,
-            // we would call an actual search API here
-            console.log(`Would perform web search for: ${searchQuery}`);
-            
-            // Return empty results for now - would be replaced with actual search API call
-            webSearchResults = [];
-            
-            // In a real implementation, we would have actual search results here
-            // This is a placeholder for what an actual implementation would do
-            console.log("Note: This implementation does not include a real search API integration.");
-            console.log("To implement actual web search, you would need to integrate with a search API service.");
+            // Perform real search with Brave API
+            webSearchResults = await performBraveSearch(searchQuery);
+            console.log(`Received ${webSearchResults.length} search results from Brave`);
           }
           
           // Process file search tool call
@@ -341,8 +343,7 @@ export async function handleOpenAIStandard(messageHistory: any[], content: strin
             
             if (!searchQuery) continue;
             
-            // For now, just log the search query - in a real implementation, 
-            // we would search through the user's files
+            // For now, we return empty file search results
             console.log(`Would perform file search for: ${searchQuery}`);
             fileSearchResults = [];
           }
