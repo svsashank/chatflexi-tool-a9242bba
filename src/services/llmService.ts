@@ -53,6 +53,16 @@ export const sendMessageToLLM = async (
       filesCount: files.length
     });
     
+    // Debug log for files
+    if (files && files.length > 0) {
+      console.log('Files being sent with message:', files.length);
+      // Log a preview of the first file
+      if (files[0]) {
+        const filePreview = files[0].substring(0, 100) + '...';
+        console.log('First file preview:', filePreview);
+      }
+    }
+    
     // Debug log to check if the current message appears in the history
     const lastUserMessageInHistory = messageHistory
       .filter(msg => msg.role === 'user')

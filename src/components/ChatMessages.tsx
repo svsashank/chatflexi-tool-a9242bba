@@ -2,7 +2,7 @@
 import React, { useEffect, useRef } from "react";
 import { useChatStore } from "@/store";
 import MessageItem from "./MessageItem";
-import { User, Hexagon, Search } from "lucide-react";
+import { User, Hexagon, Search, FileText } from "lucide-react";
 
 const ChatMessages = () => {
   const { conversations, currentConversationId, isLoading } = useChatStore();
@@ -91,6 +91,12 @@ const ChatMessages = () => {
                 <div className="ml-12 mt-1 flex items-center text-xs text-muted-foreground">
                   <Search size={12} className="mr-1" />
                   <span>Web search was used to supplement this response</span>
+                </div>
+              )}
+              {message.role === 'assistant' && message.fileSearchResults && message.fileSearchResults.length > 0 && (
+                <div className="ml-12 mt-1 flex items-center text-xs text-muted-foreground">
+                  <FileText size={12} className="mr-1" />
+                  <span>File analysis was used to generate this response</span>
                 </div>
               )}
             </div>

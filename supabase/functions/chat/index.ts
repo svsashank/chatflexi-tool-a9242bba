@@ -35,6 +35,39 @@ serve(async (req) => {
     }
     if (messageFiles && messageFiles.length > 0) {
       console.log(`Request includes ${messageFiles.length} files`);
+      console.log(`First file preview: ${messageFiles[0].substring(0, 100)}...`);
+    }
+    
+    // Process files for analysis if they exist
+    let fileSearchResults = [];
+    if (messageFiles && messageFiles.length > 0) {
+      console.log(`Processing ${messageFiles.length} files for content extraction...`);
+      
+      // Create file search results from the file content
+      fileSearchResults = messageFiles.map(fileContent => {
+        try {
+          // Extract file name and content from the file string
+          const fileNameMatch = fileContent.match(/^File: (.*?)(?:\n|$)/);
+          const fileName = fileNameMatch ? fileNameMatch[1] : "Unknown file";
+          
+          // Get the content after "Content: " or use the whole string if not found
+          const contentMatch = fileContent.match(/Content: ([\s\S]*)/);
+          const content = contentMatch ? contentMatch[1] : fileContent;
+          
+          return {
+            filename: fileName,
+            content: content
+          };
+        } catch (error) {
+          console.error("Error extracting file information:", error);
+          return {
+            filename: "Error processing file",
+            content: "Could not extract file content"
+          };
+        }
+      });
+      
+      console.log(`Processed ${fileSearchResults.length} files for analysis`);
     }
     
     // Check if the query likely needs a web search
@@ -51,6 +84,21 @@ serve(async (req) => {
     
     // Add a system prompt based on the conversation context
     let systemPrompt = generateSystemPrompt(messageHistory);
+    
+    // Enhance the system prompt with file contents if they exist
+    if (fileSearchResults.length > 0) {
+      const fileContext = `
+I've analyzed the following files the user has provided:
+${fileSearchResults.map((file, index) => `
+[${index + 1}] ${file.filename}
+${file.content.substring(0, 500)}${file.content.length > 500 ? '...' : ''}
+`).join('\n')}
+
+Please analyze these files and respond to the user's query about them.`;
+      
+      systemPrompt = systemPrompt + "\n" + fileContext;
+      console.log("Enhanced system prompt with file contents for analysis");
+    }
     
     // Enhance the system prompt with search results as supplementary information
     if (webSearchResults.length > 0) {
@@ -79,22 +127,22 @@ Feel free to reference this information if it's helpful, but also draw on your b
         case 'openai':
           // Check if this is an O-series reasoning model that needs special handling
           if (isOSeriesReasoningModel(model.id)) {
-            response = await handleOpenAIReasoningModel(messageHistory, content, model.id, systemPrompt, messageImages, webSearchResults);
+            response = await handleOpenAIReasoningModel(messageHistory, content, model.id, systemPrompt, messageImages, webSearchResults, fileSearchResults);
           } else {
-            response = await handleOpenAIStandard(messageHistory, content, model.id, systemPrompt, messageImages, webSearchResults);
+            response = await handleOpenAIStandard(messageHistory, content, model.id, systemPrompt, messageImages, webSearchResults, fileSearchResults);
           }
           break;
         case 'anthropic':
-          response = await handleAnthropic(messageHistory, content, model.id, systemPrompt, messageImages);
+          response = await handleAnthropic(messageHistory, content, model.id, systemPrompt, messageImages, fileSearchResults);
           break;
         case 'google':
-          response = await handleGoogle(messageHistory, content, model.id, systemPrompt, messageImages);
+          response = await handleGoogle(messageHistory, content, model.id, systemPrompt, messageImages, fileSearchResults);
           break;
         case 'xai':
-          response = await handleXAI(messageHistory, content, model.id, systemPrompt, messageImages);
+          response = await handleXAI(messageHistory, content, model.id, systemPrompt, messageImages, fileSearchResults);
           break;
         case 'krutrim':
-          response = await handleKrutrim(messageHistory, content, model.id, systemPrompt, messageImages);
+          response = await handleKrutrim(messageHistory, content, model.id, systemPrompt, messageImages, fileSearchResults);
           break;
         default:
           throw new Error(`Provider ${model.provider} not supported`);
@@ -102,6 +150,16 @@ Feel free to reference this information if it's helpful, but also draw on your b
       
       // Validate that we got a proper response
       if (response) {
+        // Add file search results to the response
+        if (fileSearchResults.length > 0) {
+          response = new Response(
+            JSON.stringify({
+              ...JSON.parse(await response.text()),
+              fileSearchResults: fileSearchResults
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
         return response;
       } else {
         throw new Error("Handler did not return a valid response");
@@ -116,7 +174,7 @@ Feel free to reference this information if it's helpful, but also draw on your b
           provider: model.provider,
           tokens: { input: 0, output: 0 },
           webSearchResults: webSearchResults,
-          fileSearchResults: []
+          fileSearchResults: fileSearchResults
         }),
         { 
           status: 200,  // Return 200 even for errors to prevent client from breaking 
