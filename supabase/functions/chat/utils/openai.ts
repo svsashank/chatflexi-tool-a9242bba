@@ -80,3 +80,34 @@ export async function OpenAIStream(response: Response) {
     }
   });
 }
+
+// File Processing Utility
+export async function extractTextFromFile(fileContent: string): Promise<string> {
+  try {
+    // Check if this is a binary file (starts with "data:")
+    if (fileContent.startsWith('data:')) {
+      // For binary files, we can't extract text directly in an edge function
+      // Return a placeholder message
+      return "This appears to be a binary file. The AI can't directly read the contents, but you can ask questions about the file and the AI will do its best to assist based on the file name and type.";
+    }
+    
+    // Extract file name and content from the format "File: filename\nContent: content"
+    const fileNameMatch = fileContent.match(/^File: (.*?)(?:\n|$)/);
+    const fileName = fileNameMatch ? fileNameMatch[1] : "Unknown file";
+    
+    // Get the content after "Content: " or use the whole string if not found
+    const contentMatch = fileContent.match(/Content: ([\s\S]*)/);
+    let extractedContent = contentMatch ? contentMatch[1] : fileContent;
+    
+    // If it's still a binary file (indicated by the filename), provide a helpful message
+    if (fileName.endsWith('.pdf') && fileName.includes('Binary content')) {
+      return "This is a PDF file. The Edge Function cannot directly extract text from PDFs. Please consider using a PDF text extraction tool and then uploading the extracted text.";
+    }
+    
+    // Return the extracted content
+    return extractedContent;
+  } catch (error) {
+    console.error("Error extracting text from file:", error);
+    return "Error: Could not process file content. Please try uploading a plain text version of the document.";
+  }
+}

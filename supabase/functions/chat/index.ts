@@ -5,6 +5,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { corsHeaders } from "./utils/cors.ts";
 import { generateSystemPrompt } from "./utils/context.ts";
 import { performBraveSearch, shouldPerformWebSearch } from "./utils/braveSearch.ts";
+import { extractTextFromFile } from "./utils/openai.ts";
 
 // Import handlers for different model providers
 import { handleOpenAIStandard, handleOpenAIReasoningModel, isOSeriesReasoningModel } from "./handlers/openai.ts";
@@ -47,19 +48,18 @@ serve(async (req) => {
       console.log(`Processing ${messageFiles.length} files for content extraction...`);
       
       // Create file search results from the file content
-      fileSearchResults = messageFiles.map(fileContent => {
+      fileSearchResults = await Promise.all(messageFiles.map(async fileContent => {
         try {
           // Extract file name and content from the file string
           const fileNameMatch = fileContent.match(/^File: (.*?)(?:\n|$)/);
           const fileName = fileNameMatch ? fileNameMatch[1] : "Unknown file";
           
-          // Get the content after "Content: " or use the whole string if not found
-          const contentMatch = fileContent.match(/Content: ([\s\S]*)/);
-          const content = contentMatch ? contentMatch[1] : fileContent;
+          // Extract text from the file using our utility function
+          const extractedContent = await extractTextFromFile(fileContent);
           
           return {
             filename: fileName,
-            content: content
+            content: extractedContent
           };
         } catch (error) {
           console.error("Error extracting file information:", error);
@@ -68,7 +68,7 @@ serve(async (req) => {
             content: "Could not extract file content"
           };
         }
-      });
+      }));
       
       console.log(`Processed ${fileSearchResults.length} files for analysis`);
     }
