@@ -35,6 +35,13 @@ export const generateResponseAction = (set: Function, get: Function) => async ()
       return;
     }
 
+    console.log("Generating response for message:", {
+      content: lastMessage.content.substring(0, 50) + (lastMessage.content.length > 50 ? '...' : ''),
+      hasImages: lastMessage.images && lastMessage.images.length > 0,
+      hasFiles: lastMessage.files && lastMessage.files.length > 0,
+      filesCount: lastMessage.files?.length || 0
+    });
+
     const aiResponse = await sendMessageToLLM(
       lastMessage.content,
       selectedModel,

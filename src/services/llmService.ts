@@ -53,6 +53,11 @@ export const sendMessageToLLM = async (
       filesCount: files.length
     });
     
+    if (files.length > 0) {
+      console.log(`Sending ${files.length} files to LLM. First file preview:`, 
+        files[0].substring(0, 100) + (files[0].length > 100 ? '...' : ''));
+    }
+    
     // Debug log to check if the current message appears in the history
     const lastUserMessageInHistory = messageHistory
       .filter(msg => msg.role === 'user')
@@ -80,7 +85,7 @@ export const sendMessageToLLM = async (
             content,
             messages: messageHistory,
             images,  // Pass images for API compatibility
-            files    // Pass files for file search
+            files    // Pass files for file processing
           }
         });
         

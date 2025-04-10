@@ -39,9 +39,16 @@ const ChatInput = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if ((inputValue.trim() || uploadedImages.length > 0 || uploadedFiles.length > 0) && !isLoading && !processingFile) {
+      // Construct message content - if there's no input but files are present, create a default prompt
+      let messageContent = inputValue.trim();
+      
+      if (!messageContent && uploadedFiles.length > 0) {
+        messageContent = "Please analyze and summarize the content of these document(s)";
+      }
+      
       // Send message with content, images and files
       sendMessage(
-        inputValue.trim(), 
+        messageContent, 
         uploadedImages.length > 0 ? uploadedImages : undefined,
         uploadedFiles.length > 0 ? uploadedFiles : undefined
       );
@@ -105,31 +112,58 @@ const ChatInput = () => {
     const files = e.target.files;
     if (!files) return;
 
+    setProcessingFile(true);
+    toast.info("Processing documents. Please wait...");
+
     // Process each file
+    let successCount = 0;
+    let failCount = 0;
+
     for (const file of Array.from(files)) {
       // Check file size (limit to 10MB)
       if (file.size > 10 * 1024 * 1024) {
         toast.error(`File ${file.name} exceeds 10MB limit.`);
+        failCount++;
         continue;
       }
 
       // Handle different file types
       try {
-        setProcessingFile(true);
-        
         if (file.type === 'application/pdf') {
           toast.info(`Extracting text from PDF: ${file.name}...`);
           
           try {
-            const pdfText = await extractTextFromPDF(file);
-            setUploadedFiles(prev => [
-              ...prev, 
-              `File: ${file.name}\nContent: ${pdfText.substring(0, 100000)}${pdfText.length > 100000 ? '...(content truncated)' : ''}`
-            ]);
-            toast.success(`Successfully extracted text from ${file.name}`);
+            // Use retries for PDF extraction
+            let pdfText = "";
+            let attempts = 0;
+            const maxAttempts = 3;
+            
+            while (attempts < maxAttempts) {
+              try {
+                attempts++;
+                pdfText = await extractTextFromPDF(file);
+                break; // If successful, exit the retry loop
+              } catch (pdfError) {
+                console.error(`PDF extraction attempt ${attempts} failed:`, pdfError);
+                if (attempts >= maxAttempts) throw pdfError;
+                // Wait before retrying
+                await new Promise(resolve => setTimeout(resolve, 1000));
+              }
+            }
+            
+            if (pdfText.trim()) {
+              const fileContent = `File: ${file.name}\nContent: ${pdfText.substring(0, 100000)}${pdfText.length > 100000 ? '...(content truncated)' : ''}`;
+              setUploadedFiles(prev => [...prev, fileContent]);
+              toast.success(`Successfully extracted text from ${file.name}`);
+              successCount++;
+            } else {
+              toast.error(`No text content found in ${file.name}`);
+              failCount++;
+            }
           } catch (error) {
             toast.error(`Failed to extract PDF content: ${error instanceof Error ? error.message : 'Unknown error'}`);
             console.error('PDF extraction failed:', error);
+            failCount++;
           }
         } else if (file.type.startsWith('text/')) {
           // For text files, read the content directly
@@ -139,23 +173,33 @@ const ChatInput = () => {
             `File: ${file.name}\nContent: ${textContent.substring(0, 100000)}${textContent.length > 100000 ? '...(content truncated)' : ''}`
           ]);
           toast.success(`File ${file.name} uploaded successfully`);
+          successCount++;
         } else {
           // For other file types, just use the name
           toast.warning(`File type ${file.type} content cannot be extracted. Only the filename will be used.`);
           setUploadedFiles(prev => [...prev, `File: ${file.name} (Binary content type: ${file.type})`]);
+          successCount++;
         }
       } catch (error) {
         console.error(`Error processing file ${file.name}:`, error);
         toast.error(`Error processing file ${file.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      } finally {
-        setProcessingFile(false);
+        failCount++;
       }
     }
 
-    // Reset file input
+    // Show a summary toast
+    if (successCount > 0) {
+      toast.success(`Successfully processed ${successCount} file(s)`);
+    }
+    if (failCount > 0) {
+      toast.error(`Failed to process ${failCount} file(s)`);
+    }
+
+    // Reset file input and processing state
     if (documentInputRef.current) {
       documentInputRef.current.value = '';
     }
+    setProcessingFile(false);
   };
 
   const removeImage = (index: number) => {
@@ -273,7 +317,7 @@ const ChatInput = () => {
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder={uploadedImages.length > 0 ? "Ask about this image..." : (uploadedFiles.length > 0 ? "Ask about these files..." : "Message...")}
-              disabled={isLoading}
+              disabled={isLoading || processingFile}
               className="w-full max-h-[200px] resize-none bg-transparent border-0 py-3 px-4 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0"
               rows={1}
             />
@@ -287,6 +331,7 @@ const ChatInput = () => {
             accept="image/*"
             className="hidden"
             multiple
+            disabled={isLoading || processingFile}
           />
           
           <input 
@@ -296,6 +341,7 @@ const ChatInput = () => {
             accept=".txt,.pdf,.doc,.docx,.csv,.json,.html,.css,.js"
             className="hidden"
             multiple
+            disabled={isLoading || processingFile}
           />
           
           {/* Image upload button */}
@@ -305,7 +351,7 @@ const ChatInput = () => {
             size="icon"
             className="h-10 w-10"
             onClick={() => fileInputRef.current?.click()}
-            disabled={isLoading}
+            disabled={isLoading || processingFile}
             title="Upload images"
           >
             <Image size={18} />
@@ -318,7 +364,7 @@ const ChatInput = () => {
             size="icon"
             className="h-10 w-10"
             onClick={() => documentInputRef.current?.click()}
-            disabled={isLoading}
+            disabled={isLoading || processingFile}
             title="Upload document files"
           >
             <FileText size={18} />
@@ -326,8 +372,8 @@ const ChatInput = () => {
           
           <Button
             type="submit"
-            disabled={(inputValue.trim() === "" && uploadedImages.length === 0 && uploadedFiles.length === 0) || isLoading}
-            variant={(inputValue.trim() === "" && uploadedImages.length === 0 && uploadedFiles.length === 0) || isLoading ? "secondary" : "default"}
+            disabled={(inputValue.trim() === "" && uploadedImages.length === 0 && uploadedFiles.length === 0) || isLoading || processingFile}
+            variant={(inputValue.trim() === "" && uploadedImages.length === 0 && uploadedFiles.length === 0) || isLoading || processingFile ? "secondary" : "default"}
             size="icon"
             className="h-10 w-10"
           >

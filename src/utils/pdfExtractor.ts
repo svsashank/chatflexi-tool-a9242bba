@@ -13,11 +13,13 @@ PDFJS.GlobalWorkerOptions.workerSrc = pdfjsWorkerSrc;
  */
 export const extractTextFromPDF = async (file: File): Promise<string> => {
   try {
+    console.log(`Starting PDF extraction for file: ${file.name}`);
     // Convert the file to an ArrayBuffer
     const arrayBuffer = await file.arrayBuffer();
     
     // Load the PDF document
     const pdf = await PDFJS.getDocument({ data: arrayBuffer }).promise;
+    console.log(`PDF loaded successfully. Total pages: ${pdf.numPages}`);
     
     let fullText = '';
     
@@ -30,8 +32,10 @@ export const extractTextFromPDF = async (file: File): Promise<string> => {
       );
       const pageText = textItems.join(' ');
       fullText += pageText + '\n\n';
+      console.log(`Extracted text from page ${i}/${pdf.numPages}`);
     }
     
+    console.log(`PDF extraction completed successfully. Extracted ${fullText.length} characters.`);
     return fullText;
   } catch (error) {
     console.error('PDF extraction error:', error);

@@ -1,4 +1,3 @@
-
 import { corsHeaders } from "../utils/cors.ts";
 import { performBraveSearch } from "../utils/braveSearch.ts";
 
@@ -17,7 +16,8 @@ export async function handleOpenAIReasoningModel(
   modelId: string, 
   systemPrompt: string, 
   images: string[] = [],
-  preSearchResults: any[] = []
+  preSearchResults: any[] = [],
+  files: string[] = []
 ) {
   const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
   if (!OPENAI_API_KEY) {
@@ -25,6 +25,29 @@ export async function handleOpenAIReasoningModel(
   }
   
   console.log(`Processing request for OpenAI reasoning model ${modelId} with content: ${content.substring(0, 50)}...`);
+  console.log(`Has files: ${files.length > 0}, file count: ${files.length}`);
+  
+  // If files are present, augment the original content with file content
+  let enhancedContent = content;
+  if (files && files.length > 0) {
+    // Extract files content and add it to the prompt
+    enhancedContent = `${content}\n\nHere are the contents of the provided files:\n\n`;
+    files.forEach((fileContent, index) => {
+      // Parse the file content
+      const fileContentStr = String(fileContent);
+      const fileNameMatch = fileContentStr.match(/^File: (.+?)$/m);
+      const fileName = fileNameMatch ? fileNameMatch[1] : `File ${index + 1}`;
+      
+      // Extract the actual content part
+      const contentMatch = fileContentStr.match(/^Content: ([\s\S]+)$/m);
+      const extractedContent = contentMatch ? contentMatch[1] : fileContentStr;
+      
+      enhancedContent += `--- ${fileName} ---\n${extractedContent}\n\n`;
+    });
+    
+    enhancedContent += `\nPlease analyze and respond to the above file content${content ? ' based on my request' : ''}.`;
+    console.log(`Enhanced content with ${files.length} file(s). New content length: ${enhancedContent.length} chars`);
+  }
   
   // Use pre-search results if available, otherwise perform search
   let webSearchResults = preSearchResults.length > 0 ? preSearchResults : [];
@@ -44,8 +67,8 @@ export async function handleOpenAIReasoningModel(
     }))
   );
   
-  // Add the current user message
-  formattedInput.push({ role: 'user', content });
+  // Add the current user message with enhanced content
+  formattedInput.push({ role: 'user', content: enhancedContent });
 
   console.log(`Calling OpenAI responses API for reasoning model ${modelId}...`);
   
@@ -214,7 +237,7 @@ Feel free to reference this information if it's helpful, but also draw on your b
     }
     
     // Estimate token counts from usage info if available
-    const inputTokens = data.usage?.input_tokens || Math.round((content.length + systemPrompt.length) / 4);
+    const inputTokens = data.usage?.input_tokens || Math.round((enhancedContent.length + systemPrompt.length) / 4);
     const outputTokens = data.usage?.output_tokens || Math.round(responseContent.length / 4);
     
     return new Response(
@@ -244,7 +267,8 @@ export async function handleOpenAIStandard(
   modelId: string, 
   systemPrompt: string, 
   images: string[] = [],
-  preSearchResults: any[] = []
+  preSearchResults: any[] = [],
+  files: string[] = []
 ) {
   const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
   if (!OPENAI_API_KEY) {
@@ -253,6 +277,29 @@ export async function handleOpenAIStandard(
   
   console.log(`Processing request for standard OpenAI model ${modelId} with content: ${content.substring(0, 50)}...`);
   console.log(`Has images: ${images.length > 0}, image count: ${images.length}`);
+  console.log(`Has files: ${files.length > 0}, file count: ${files.length}`);
+  
+  // If files are present, augment the original content with file content
+  let enhancedContent = content;
+  if (files && files.length > 0) {
+    // Extract files content and add it to the prompt
+    enhancedContent = `${content}\n\nHere are the contents of the provided files:\n\n`;
+    files.forEach((fileContent, index) => {
+      // Parse the file content
+      const fileContentStr = String(fileContent);
+      const fileNameMatch = fileContentStr.match(/^File: (.+?)$/m);
+      const fileName = fileNameMatch ? fileNameMatch[1] : `File ${index + 1}`;
+      
+      // Extract the actual content part
+      const contentMatch = fileContentStr.match(/^Content: ([\s\S]+)$/m);
+      const extractedContent = contentMatch ? contentMatch[1] : fileContentStr;
+      
+      enhancedContent += `--- ${fileName} ---\n${extractedContent}\n\n`;
+    });
+    
+    enhancedContent += `\nPlease analyze and respond to the above file content${content ? ' based on my request' : ''}.`;
+    console.log(`Enhanced content with ${files.length} file(s). New content length: ${enhancedContent.length} chars`);
+  }
   
   // Use pre-search results if available
   let webSearchResults = preSearchResults.length > 0 ? preSearchResults : [];
@@ -295,7 +342,7 @@ export async function handleOpenAIStandard(
   // Handle the current message (which might have images)
   if (images.length > 0) {
     const contentArray = [
-      { type: "text", text: content }
+      { type: "text", text: enhancedContent }
     ];
     
     // Add image URLs as image objects
@@ -313,7 +360,7 @@ export async function handleOpenAIStandard(
   } else {
     formattedMessages.push({
       role: 'user',
-      content: content
+      content: enhancedContent
     });
   }
 

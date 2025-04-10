@@ -21,6 +21,14 @@ export const createSendMessageAction = (
     const timestamp = new Date();
     const messageId = uuidv4();
     
+    // For debugging: Log what's being sent to the model
+    console.log('Sending message to model:', {
+      content,
+      imagesCount: images.length,
+      filesCount: files.length,
+      filesPreview: files.length > 0 ? files.map(f => f.substring(0, 100) + '...') : []
+    });
+    
     // Add user message
     set({
       conversations: conversations.map((conv) => {
