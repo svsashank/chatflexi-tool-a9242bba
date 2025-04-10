@@ -1,4 +1,3 @@
-
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -7,7 +6,7 @@ import { toast } from '@/components/ui/use-toast';
 
 const AuthCallback = () => {
   const navigate = useNavigate();
-  const { loadUserConversations, createConversation } = useChatStore();
+  const { loadConversationsFromDB, createConversation, clearConversations } = useChatStore();
 
   useEffect(() => {
     // Handle the OAuth callback
@@ -30,10 +29,10 @@ const AuthCallback = () => {
           console.log("Auth callback successful, loading conversations");
           try {
             // First, reset the conversation state to clear any existing unauthenticated conversations
-            useChatStore.getState().resetConversations();
+            useChatStore.getState().clearConversations();
             
             // Then load user's conversations after successful authentication
-            await loadUserConversations();
+            await loadConversationsFromDB();
             
             // Create a new conversation if none were loaded
             if (useChatStore.getState().conversations.length === 0) {
@@ -62,7 +61,7 @@ const AuthCallback = () => {
     };
 
     handleAuthCallback();
-  }, [navigate, loadUserConversations, createConversation]);
+  }, [navigate, loadConversationsFromDB, createConversation, clearConversations]);
 
   return (
     <div className="flex h-screen w-full items-center justify-center">

@@ -19,7 +19,7 @@ const ChatInput = () => {
   const [inputValue, setInputValue] = useState("");
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
-  const { sendMessage, isLoading, selectedModel, selectModel } = useChatStore();
+  const { sendMessage, isLoading, selectedModel, setSelectedModel } = useChatStore();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const documentInputRef = useRef<HTMLInputElement>(null);
@@ -196,7 +196,7 @@ const ChatInput = () => {
                 {AI_MODELS.map((model) => (
                   <DropdownMenuItem 
                     key={model.id}
-                    onClick={() => selectModel(model)}
+                    onClick={() => setSelectedModel(model)}
                     className="flex items-center gap-2 cursor-pointer py-2"
                   >
                     <div 

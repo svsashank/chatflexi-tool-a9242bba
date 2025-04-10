@@ -1,5 +1,5 @@
 
-import { ChatState } from '../types';
+import { ChatStore } from '../types';
 
 export const selectModelAction = (set: Function) => (model: any) => {
   console.log("Selecting model:", {

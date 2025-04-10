@@ -1,4 +1,3 @@
-
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
@@ -61,7 +60,7 @@ export const createConversationAction = (set: Function, get: () => ChatStore) =>
   }
 };
 
-export const setCurrentConversationAction = (set: Function, get: () => ChatStore) => (id: string) => {
+export const setCurrentConversationIdAction = (set: Function, get: () => ChatStore) => (id: string) => {
   console.log("Setting current conversation to:", id);
   // Verify the conversation exists in our state before setting it
   const conversation = get().conversations.find(conv => conv.id === id);

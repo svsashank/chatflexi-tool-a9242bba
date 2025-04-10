@@ -1,4 +1,3 @@
-
 import React, { useEffect } from "react";
 import { History, MessageSquare, Search, Plus, Trash2 } from "lucide-react";
 import { format } from "date-fns";
@@ -24,21 +23,21 @@ const ConversationHistory = () => {
   const { 
     conversations, 
     currentConversationId, 
-    setCurrentConversation,
+    setCurrentConversationId,
     createConversation,
     deleteConversation,
-    loadUserConversations
+    loadConversationsFromDB
   } = useChatStore();
 
   // If user is logged in but no conversations are loaded, load them
   useEffect(() => {
     if (user && conversations.length === 0) {
       console.log("ConversationHistory: No conversations found, loading from database");
-      loadUserConversations().catch(err => {
+      loadConversationsFromDB().catch(err => {
         console.error("Failed to load conversations:", err);
       });
     }
-  }, [user, conversations.length, loadUserConversations]);
+  }, [user, conversations.length, loadConversationsFromDB]);
 
   const filteredConversations = React.useMemo(() => {
     if (!searchQuery.trim()) return conversations;
@@ -63,7 +62,7 @@ const ConversationHistory = () => {
         return;
       }
       
-      setCurrentConversation(id);
+      setCurrentConversationId(id);
       setIsOpen(false); // Close the sheet on mobile after selection
     } catch (error) {
       console.error("Error selecting conversation:", error);

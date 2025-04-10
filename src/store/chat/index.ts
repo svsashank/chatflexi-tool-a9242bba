@@ -8,7 +8,7 @@ import { ChatStore } from './types';
 // Import all action creators
 import { 
   createConversationAction,
-  setCurrentConversationAction,
+  setCurrentConversationIdAction,
   deleteConversationAction,
   resetConversationsAction
 } from './conversationActions';
@@ -21,7 +21,7 @@ import {
   createRegenerateMessageAction
 } from './actions';
 
-import { loadUserConversationsAction } from './dataActions';
+import { loadUserConversationsAction, loadMessagesForConversationAction } from './dataActions';
 
 // Create an initial conversation
 const initialConversation: Conversation = {
@@ -43,13 +43,25 @@ const useChatStore = create<ChatStore>((set, get) => ({
   
   // Actions
   createConversation: createConversationAction(set, get),
-  setCurrentConversation: setCurrentConversationAction(set, get),
+  setCurrentConversationId: setCurrentConversationIdAction(set, get),
   deleteConversation: deleteConversationAction(set, get),
-  resetConversations: resetConversationsAction(set),
+  updateConversationTitle: async (id: string, title: string) => {
+    // Placeholder for future implementation
+    console.log("Update conversation title:", id, title);
+  },
+  clearConversations: () => {
+    // Simple implementation to clear all conversations
+    set({ conversations: [] });
+  },
   addMessage: addMessageAction(set, get),
-  selectModel: selectModelAction(set),
+  setSelectedModel: selectModelAction(set),
   generateResponse: generateResponseAction(set, get),
-  loadUserConversations: loadUserConversationsAction(set),
+  loadConversationsFromDB: loadUserConversationsAction(set),
+  loadMessagesForConversation: loadMessagesForConversationAction || (async () => {}),
+  addTestConversations: (count = 3) => {
+    // Placeholder for adding test conversations
+    console.log(`Adding ${count} test conversations`);
+  },
   
   // Message slice actions
   sendMessage: createSendMessageAction(set, get),

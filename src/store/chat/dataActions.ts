@@ -1,4 +1,3 @@
-
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
@@ -122,6 +121,42 @@ export const loadUserConversationsAction = (set: Function) => async () => {
     toast({
       title: 'Error',
       description: 'Could not load your conversation history',
+      variant: 'destructive',
+    });
+  }
+};
+
+export const loadMessagesForConversationAction = (set: Function) => async (conversationId: string) => {
+  try {
+    console.log("Loading messages for conversation:", conversationId);
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.log('No user session found');
+      return;
+    }
+    
+    // Fetch messages for this conversation
+    const { data: messages, error: messagesError } = await supabase
+      .from('conversation_messages')
+      .select('*')
+      .eq('conversation_id', conversationId)
+      .order('created_at', { ascending: true });
+      
+    if (messagesError) {
+      console.error('Error loading messages for conversation', conversationId, messagesError);
+      return;
+    }
+    
+    console.log(`Loaded ${messages?.length || 0} messages for conversation ${conversationId}`);
+    
+    // Process and update the state with loaded messages
+    // This is a placeholder implementation
+  } catch (error) {
+    console.error('Error loading messages:', error);
+    toast({
+      title: 'Error',
+      description: 'Could not load messages for this conversation',
       variant: 'destructive',
     });
   }

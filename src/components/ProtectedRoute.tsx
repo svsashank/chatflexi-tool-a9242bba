@@ -1,4 +1,3 @@
-
 import { useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -7,7 +6,7 @@ import { toast } from '@/components/ui/use-toast';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
-  const { loadUserConversations, createConversation, conversations } = useChatStore();
+  const { loadConversationsFromDB, createConversation, conversations } = useChatStore();
 
   useEffect(() => {
     if (user && !loading) {
@@ -18,7 +17,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
           // Only load conversations if we don't already have them
           if (conversations.length === 0) {
             console.log("No conversations in state, loading from database");
-            await loadUserConversations();
+            await loadConversationsFromDB();
             
             // Only create a new conversation if none were loaded
             if (conversations.length === 0) {
@@ -42,7 +41,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
       
       initConversations();
     }
-  }, [user, loading, loadUserConversations, createConversation, conversations]);
+  }, [user, loading, loadConversationsFromDB, createConversation, conversations]);
 
   if (loading) {
     return (
