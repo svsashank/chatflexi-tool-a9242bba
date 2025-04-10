@@ -17,40 +17,45 @@ PDFJS.GlobalWorkerOptions.workerSrc = "https://cdn.skypack.dev/pdfjs-dist@2.16.1
 
 // Function to extract text from a PDF page
 async function extractTextFromPage(page) {
-  const textContent = await page.getTextContent();
-  return textContent.items
-    .map(item => item.str)
-    .join(' ');
+  try {
+    const textContent = await page.getTextContent();
+    return textContent.items
+      .map(item => item.str)
+      .join(' ');
+  } catch (error) {
+    console.error('Error extracting text from page:', error);
+    return '';
+  }
 }
 
-// Function to extract images from a PDF page (basic implementation)
-async function extractImagesFromPage(page) {
-  const operatorList = await page.getOperatorList();
-  const images = [];
-  
-  // This is a simplified approach - in production you might want to use a more robust method
-  for (const op of operatorList.fnArray) {
-    if (op === PDFJS.OPS.paintImageXObject) {
-      // We found an image, but extraction is complex
-      // For now, we'll just note that images exist
-      images.push(true);
-    }
+// Function to check for images in a PDF page
+async function checkForImagesInPage(page) {
+  try {
+    const operatorList = await page.getOperatorList();
+    // Check if there are any image operators in the page
+    return operatorList.fnArray.some(op => op === PDFJS.OPS.paintImageXObject);
+  } catch (error) {
+    console.error('Error checking for images in page:', error);
+    return false;
   }
-  
-  return images.length > 0;
 }
 
 serve(async (req) => {
+  console.log("PDF extraction function called");
+  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
+    console.log("Handling CORS preflight request");
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    console.log("Processing PDF extraction request");
     const formData = await req.formData();
     const file = formData.get('file');
     
     if (!file || !(file instanceof File)) {
+      console.error("No PDF file provided in request");
       return new Response(
         JSON.stringify({ error: 'No PDF file provided' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -59,25 +64,32 @@ serve(async (req) => {
     
     // Check if the file is a PDF
     if (!file.name.toLowerCase().endsWith('.pdf') && file.type !== 'application/pdf') {
+      console.error("File is not a PDF:", file.name, file.type);
       return new Response(
         JSON.stringify({ error: 'File is not a PDF' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     
+    console.log(`Processing PDF file: ${file.name}, size: ${file.size} bytes`);
+    
     // Convert the file to an array buffer
     const arrayBuffer = await file.arrayBuffer();
     
     // Load the PDF document
+    console.log("Loading PDF document with pdf.js");
     const loadingTask = PDFJS.getDocument({ data: arrayBuffer });
     const pdf = await loadingTask.promise;
     
     const numPages = pdf.numPages;
+    console.log(`PDF has ${numPages} pages`);
+    
     let fullText = '';
     let hasImages = false;
     
     // Process each page
     for (let i = 1; i <= numPages; i++) {
+      console.log(`Processing page ${i}/${numPages}`);
       const page = await pdf.getPage(i);
       
       // Extract text
@@ -85,11 +97,14 @@ serve(async (req) => {
       fullText += pageText + '\n\n';
       
       // Check for images
-      const pageHasImages = await extractImagesFromPage(page);
+      const pageHasImages = await checkForImagesInPage(page);
       if (pageHasImages) {
         hasImages = true;
+        console.log(`Found images on page ${i}`);
       }
     }
+    
+    console.log("PDF processing complete");
     
     // Return the extracted content
     return new Response(

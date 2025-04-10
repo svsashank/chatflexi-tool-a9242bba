@@ -102,17 +102,31 @@ const ChatInput = () => {
       const formData = new FormData();
       formData.append('file', file);
       
+      console.log(`Sending PDF ${file.name} to extract-pdf function`);
+      
       const { data, error } = await supabase.functions.invoke('extract-pdf', {
         body: formData,
+        headers: {
+          'Accept': 'application/json',
+        },
       });
       
       if (error) {
+        console.error('PDF extraction error:', error);
         throw new Error(`PDF extraction failed: ${error.message}`);
       }
       
       if (!data) {
+        console.error('No data returned from PDF extraction');
         throw new Error("No data returned from PDF extraction");
       }
+      
+      console.log('PDF extraction successful:', {
+        filename: data.filename,
+        pages: data.pages,
+        textLength: data.text?.length || 0,
+        hasImages: data.images?.length > 0
+      });
       
       return `File: ${file.name}\nContent: PDF_EXTRACTION:${JSON.stringify(data)}`;
     } catch (error) {
@@ -136,9 +150,13 @@ const ChatInput = () => {
         }
 
         if (file.type === 'application/pdf') {
+          console.log(`Processing PDF file: ${file.name}`);
           const extractedContent = await processPdfFile(file);
           setUploadedFiles(prev => [...prev, extractedContent]);
-          toast.success(`PDF ${file.name} processed successfully`);
+          
+          if (!extractedContent.includes('Error:')) {
+            toast.success(`PDF ${file.name} processed successfully`);
+          }
           continue;
         }
 

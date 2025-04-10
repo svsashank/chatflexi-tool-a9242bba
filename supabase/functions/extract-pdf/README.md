@@ -7,6 +7,16 @@ This Edge Function extracts text and detects the presence of images from PDF fil
 
 No API keys are required as we're using the open-source pdf.js library.
 
+## Troubleshooting
+
+If you encounter issues with the PDF extraction, check the following:
+
+1. Make sure the PDF file is not corrupted and can be opened normally
+2. Ensure the PDF file is not too large (keep under 10MB for best results)
+3. For encrypted or password-protected PDFs, remove protection before uploading
+4. Check the logs for detailed error information
+5. Some highly formatted or scanned PDFs may not extract text correctly
+
 ## Usage
 
 This function accepts a PDF file through a FormData POST request and returns:
@@ -49,6 +59,7 @@ console.log('Extracted PDF data:', data);
 - The function has a size limit determined by Supabase Edge Functions (typically around 6MB)
 - Image extraction is limited to detecting the presence of images, not extracting the actual image data
 - Complex PDF documents may not have all text properly extracted
+- Scanned PDFs (which are essentially images) will not yield text content unless they have been OCR'd
 
 ## Future Improvements
 
@@ -56,3 +67,4 @@ In the future, we may enhance this function to:
 1. Extract actual image data from the PDFs
 2. Preserve document structure and formatting better
 3. Support additional PDF features like form fields, annotations, etc.
+4. Add OCR capabilities for scanned documents

@@ -87,7 +87,6 @@ export async function extractTextFromFile(fileContent: string): Promise<string> 
     // Check if this is a binary file (starts with "data:")
     if (fileContent.startsWith('data:')) {
       // For binary files, we can't extract text directly in an edge function
-      // Return a placeholder message
       return "This appears to be a binary file. The AI can't directly read the contents, but you can ask questions about the file and the AI will do its best to assist based on the file name and type.";
     }
     
@@ -101,25 +100,30 @@ export async function extractTextFromFile(fileContent: string): Promise<string> 
     
     // If the content starts with "PDF_EXTRACTION:" it contains pre-extracted PDF content
     if (extractedContent.startsWith("PDF_EXTRACTION:")) {
-      const pdfData = JSON.parse(extractedContent.substring(15));
-      let formattedContent = `PDF Document: ${pdfData.filename}\nPages: ${pdfData.pages}\n\nExtracted Text:\n${pdfData.text}`;
-      
-      if (pdfData.images && pdfData.images.length > 0) {
-        formattedContent += `\n\nThe document contains images that could not be directly extracted.`;
+      try {
+        const pdfData = JSON.parse(extractedContent.substring(15));
+        let formattedContent = `PDF Document: ${pdfData.filename}\nPages: ${pdfData.pages}\n\nExtracted Text:\n${pdfData.text}`;
+        
+        if (pdfData.images && pdfData.images.length > 0) {
+          formattedContent += `\n\nThe document contains images that could not be directly extracted.`;
+        }
+        
+        return formattedContent;
+      } catch (parseError) {
+        console.error("Error parsing PDF extraction data:", parseError);
+        return `Error parsing PDF data: ${parseError.message}. Original content: ${extractedContent.substring(0, 100)}...`;
       }
-      
-      return formattedContent;
     }
     
-    // If it's still a binary file (indicated by the filename), provide a helpful message
-    if (fileName.endsWith('.pdf')) {
-      return "This is a PDF file. To get better results, please use the PDF extraction feature in the client before uploading.";
+    // If it's still a PDF file but wasn't processed through our extraction
+    if (fileName.endsWith('.pdf') && extractedContent.includes('Failed to extract content')) {
+      return "This is a PDF file that couldn't be processed. Please try uploading it again or extract the text manually.";
     }
     
     // Return the extracted content
     return extractedContent;
   } catch (error) {
     console.error("Error extracting text from file:", error);
-    return "Error: Could not process file content. Please try uploading a plain text version of the document.";
+    return `Error: Could not process file content. ${error.message}`;
   }
 }
