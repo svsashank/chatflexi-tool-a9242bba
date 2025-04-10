@@ -125,14 +125,6 @@ export const sendMessageToLLM = async (
           data.content = "I'm processing your request. Please wait a moment for the full response.";
         }
         
-        // If response doesn't contain a summary of search results but has search results,
-        // add a hint about the search results
-        if (data.webSearchResults?.length > 0 && 
-            !data.content.toLowerCase().includes('search') && 
-            !data.content.toLowerCase().includes('found')) {
-          data.content += "\n\nI've also found some relevant information from web searches that might be helpful.";
-        }
-        
         return {
           content: data.content,
           tokens: data.tokens || { input: 0, output: 0 },

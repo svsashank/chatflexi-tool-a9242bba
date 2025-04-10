@@ -17,7 +17,7 @@ interface MessageItemProps {
 
 const MessageItem: React.FC<MessageItemProps> = ({ message, showTotalCredits = false }) => {
   const [copied, setCopied] = useState(false);
-  const [isWebSearchOpen, setIsWebSearchOpen] = useState(false);
+  const [isWebSearchOpen, setIsWebSearchOpen] = useState(true); // Default to open
   const [isFileSearchOpen, setIsFileSearchOpen] = useState(false);
 
   const copyToClipboard = async () => {
@@ -34,18 +34,6 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, showTotalCredits = f
   const isUserMessage = message.role === "user";
   const hasWebSearchResults = message.webSearchResults && message.webSearchResults.length > 0;
   const hasFileSearchResults = message.fileSearchResults && message.fileSearchResults.length > 0;
-  
-  // Add debugging to make sure we're capturing search results
-  if (hasWebSearchResults && !isUserMessage) {
-    console.log(`Message ${message.id} has web search results:`, message.webSearchResults);
-  }
-  
-  // Auto-open search results section when first rendering
-  React.useEffect(() => {
-    if (hasWebSearchResults && !isUserMessage) {
-      setIsWebSearchOpen(true);
-    }
-  }, [hasWebSearchResults, isUserMessage]);
   
   return (
     <div className={`flex items-start gap-4 animate-fade-in ${isUserMessage ? "" : "group"}`}>
@@ -179,20 +167,26 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, showTotalCredits = f
                 </svg>
               </CollapsibleTrigger>
               <CollapsibleContent className="mt-2 text-sm space-y-2">
-                {message.webSearchResults!.map((result, index) => (
-                  <div key={index} className="p-2 bg-background rounded border border-border">
-                    <a 
-                      href={result.url} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="font-medium text-blue-500 hover:text-blue-700 transition-colors"
-                    >
-                      {result.title}
-                    </a>
-                    <p className="text-xs text-muted-foreground break-all">{result.url}</p>
-                    <p className="text-xs mt-1">{result.snippet}</p>
+                {message.webSearchResults!.length > 0 ? (
+                  message.webSearchResults!.map((result, index) => (
+                    <div key={index} className="p-2 bg-background rounded border border-border">
+                      <a 
+                        href={result.url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="font-medium text-blue-500 hover:text-blue-700 transition-colors"
+                      >
+                        {result.title || 'Search Result'}
+                      </a>
+                      <p className="text-xs text-muted-foreground break-all">{result.url || 'No URL available'}</p>
+                      <p className="text-xs mt-1">{result.snippet || 'No snippet available'}</p>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-2 bg-background rounded border border-border text-muted-foreground">
+                    No search results available.
                   </div>
-                ))}
+                )}
               </CollapsibleContent>
             </Collapsible>
           )}
@@ -224,12 +218,18 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, showTotalCredits = f
                 </svg>
               </CollapsibleTrigger>
               <CollapsibleContent className="mt-2 text-sm space-y-2">
-                {message.fileSearchResults!.map((result, index) => (
-                  <div key={index} className="p-2 bg-background rounded border border-border">
-                    <h4 className="font-medium">{result.filename || 'File'}</h4>
-                    <p className="text-xs mt-1 whitespace-pre-wrap">{result.content || result.snippet}</p>
+                {message.fileSearchResults!.length > 0 ? (
+                  message.fileSearchResults!.map((result, index) => (
+                    <div key={index} className="p-2 bg-background rounded border border-border">
+                      <h4 className="font-medium">{result.filename || 'File'}</h4>
+                      <p className="text-xs mt-1 whitespace-pre-wrap">{result.content || result.snippet || 'No content available'}</p>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-2 bg-background rounded border border-border text-muted-foreground">
+                    No file search results available.
                   </div>
-                ))}
+                )}
               </CollapsibleContent>
             </Collapsible>
           )}

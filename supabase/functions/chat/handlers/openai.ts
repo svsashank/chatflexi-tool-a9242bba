@@ -48,13 +48,6 @@ export async function handleOpenAIReasoningModel(messageHistory: any[], content:
     }
   ];
   
-  console.log(`Request format: ${JSON.stringify({
-    model: modelId,
-    input: formattedInput.slice(0, 2), // Only show first two messages for logging
-    reasoning: { effort: "high" },
-    tools: tools
-  }, null, 2)}`);
-  
   try {
     const response = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
@@ -77,19 +70,17 @@ export async function handleOpenAIReasoningModel(messageHistory: any[], content:
       throw new Error(error.error?.message || `OpenAI responses API error: ${response.status}`);
     }
     
-    console.log(`Successfully received response from OpenAI reasoning model ${modelId}`);
     const data = await response.json();
-    console.log(`Response structure: ${JSON.stringify(Object.keys(data))}`);
-    console.log(`Full response data: ${JSON.stringify(data, null, 2)}`);
+    console.log(`Full response structure from OpenAI reasoning model:`, JSON.stringify(data, null, 2));
     
-    // Extract content from the response format based on the structure we observed in logs
+    // Extract content from the response format
     let responseContent = '';
     let webSearchResults = [];
     let fileSearchResults = [];
     
-    // Check for the specific format seen in the logs
+    // Parse the output based on the structure returned by the API
     if (data.output && Array.isArray(data.output)) {
-      // Look for message type output with content
+      // Extract message content
       for (const item of data.output) {
         if (item.type === 'message' && item.content && Array.isArray(item.content)) {
           for (const contentItem of item.content) {
@@ -105,10 +96,12 @@ export async function handleOpenAIReasoningModel(messageHistory: any[], content:
       // Extract web search results if available
       for (const item of data.output) {
         if (item.type === 'tool_result' && item.tool === 'web_search' && item.result) {
-          webSearchResults = item.result;
+          webSearchResults = Array.isArray(item.result) ? item.result : [];
+          console.log("Found web search results:", JSON.stringify(webSearchResults));
         }
         if (item.type === 'tool_result' && item.tool === 'file_search' && item.result) {
-          fileSearchResults = item.result;
+          fileSearchResults = Array.isArray(item.result) ? item.result : [];
+          console.log("Found file search results:", JSON.stringify(fileSearchResults));
         }
       }
     }
@@ -123,14 +116,9 @@ export async function handleOpenAIReasoningModel(messageHistory: any[], content:
     }
     
     if (!responseContent) {
-      // Log the full response for debugging
       console.error("Unexpected OpenAI reasoning model response format:", JSON.stringify(data, null, 2));
-      responseContent = "I need to search the web for information about this topic. Please wait a moment while I gather the latest data.";
+      responseContent = "I'm processing your request. Please wait while I analyze the information.";
     }
-    
-    console.log(`Successfully extracted response content, length: ${responseContent.length}`);
-    console.log(`Web search results: ${webSearchResults.length > 0 ? 'present' : 'not present'}`);
-    console.log(`File search results: ${fileSearchResults.length > 0 ? 'present' : 'not present'}`);
     
     // Estimate token counts from usage info if available
     const inputTokens = data.usage?.input_tokens || Math.round((content.length + systemPrompt.length) / 4);
@@ -226,23 +214,6 @@ export async function handleOpenAIStandard(messageHistory: any[], content: strin
   }
 
   console.log(`Calling OpenAI API with ${formattedMessages.length} messages...`);
-  console.log(`First message role: ${formattedMessages[0].role}`);
-  console.log(`Last message role: ${formattedMessages[formattedMessages.length-1].role}`);
-  
-  if (images.length > 0) {
-    console.log('Request contains images, using vision capability');
-  }
-  
-  // Check if the message likely needs web search
-  const needsWebSearch = content.toLowerCase().includes('search') || 
-                        content.toLowerCase().includes('find') || 
-                        content.toLowerCase().includes('what is') ||
-                        content.toLowerCase().includes('who is') ||
-                        content.toLowerCase().includes('when was') ||
-                        content.toLowerCase().includes('how to') ||
-                        content.toLowerCase().includes('where is');
-                        
-  console.log(`Message likely needs web search: ${needsWebSearch}`);
   
   // Define tools for web search capability
   const tools = [
@@ -272,7 +243,7 @@ export async function handleOpenAIStandard(messageHistory: any[], content: strin
           type: "object",
           properties: {
             query: {
-              type: "string",
+              type: "string", 
               description: "The search query"
             }
           },
@@ -282,8 +253,19 @@ export async function handleOpenAIStandard(messageHistory: any[], content: strin
     }
   ];
   
+  // Check if the message likely needs web search
+  const needsWebSearch = content.toLowerCase().includes('search') || 
+                        content.toLowerCase().includes('find') || 
+                        content.toLowerCase().includes('what is') ||
+                        content.toLowerCase().includes('who is') ||
+                        content.toLowerCase().includes('when was') ||
+                        content.toLowerCase().includes('how to') ||
+                        content.toLowerCase().includes('where is');
+                        
+  console.log(`Message likely needs web search: ${needsWebSearch}`);
+  
   try {
-    // If the message likely needs web search, automatically include a tool call
+    // Response variables
     let responseContent = '';
     let webSearchResults = [];
     let fileSearchResults = [];
@@ -303,12 +285,7 @@ export async function handleOpenAIStandard(messageHistory: any[], content: strin
         temperature: 0.7,
         max_tokens: 1000,
         tools: tools,
-        tool_choice: needsWebSearch ? {
-          type: "function",
-          function: {
-            name: "web_search"
-          }
-        } : "auto"
+        tool_choice: needsWebSearch ? "auto" : "none"
       })
     });
     
@@ -319,7 +296,6 @@ export async function handleOpenAIStandard(messageHistory: any[], content: strin
     
     console.log(`Successfully received response from OpenAI`);
     const data = await response.json();
-    console.log(`Full response data: ${JSON.stringify(data, null, 2)}`);
     
     // Extract token counts
     inputTokens = data.usage ? data.usage.prompt_tokens : 0;
@@ -334,7 +310,7 @@ export async function handleOpenAIStandard(messageHistory: any[], content: strin
       console.log(`Tool calls detected: ${toolCalls.length}`);
       
       for (const toolCall of toolCalls) {
-        console.log(`Tool call: ${JSON.stringify(toolCall, null, 2)}`);
+        console.log(`Tool call: ${JSON.stringify(toolCall)}`);
         
         try {
           // Process web search tool call
@@ -345,91 +321,17 @@ export async function handleOpenAIStandard(messageHistory: any[], content: strin
             
             if (!searchQuery) continue;
             
-            // Generate more realistic search results based on the query
-            const query = searchQuery.toLowerCase();
+            // For now, just log the search query - in a real implementation,
+            // we would call an actual search API here
+            console.log(`Would perform web search for: ${searchQuery}`);
             
-            // If no content is provided but we have a tool call, make sure we have some response
-            if (!responseContent) {
-              responseContent = `I'm searching for information about "${searchQuery}". Here's what I found:`;
-            }
+            // Return empty results for now - would be replaced with actual search API call
+            webSearchResults = [];
             
-            // Create search results with actual domains related to the search query
-            const domains = [
-              "wikipedia.org", 
-              "britannica.com", 
-              "nytimes.com", 
-              "theguardian.com", 
-              "bbc.com", 
-              "nationalgeographic.com",
-              "healthline.com",
-              "mayoclinic.org", 
-              "harvard.edu",
-              "youtube.com",
-              "medium.com"
-            ];
-            
-            const generateSearchResult = (query: string, index: number) => {
-              // Create a "clean" version of the query for URLs
-              const cleanQuery = query.replace(/[^\w\s]/gi, '').replace(/\s+/g, '-').toLowerCase();
-              
-              // Pick a random domain that makes sense for this type of query
-              let domainIndex = Math.floor(Math.random() * domains.length);
-              const domain = domains[domainIndex];
-              
-              // Generate a contextually appropriate title and snippet
-              let title = '';
-              let url = '';
-              let snippet = '';
-              
-              // Topics-based results
-              if (query.includes('miracle of mind')) {
-                switch(index) {
-                  case 0:
-                    title = "Miracle of Mind - Revolutionary Meditation App";
-                    url = `https://miracleofmind.app/about`;
-                    snippet = "Miracle of Mind is a revolutionary meditation app that helps users achieve mindfulness and reduce stress through guided sessions and personalized experiences.";
-                    break;
-                  case 1:
-                    title = "Top 10 Meditation Apps of 2025 - Miracle of Mind Takes the Lead";
-                    url = `https://techcrunch.com/2025/03/15/meditation-apps-review-miracle-of-mind`;
-                    snippet = "Our comprehensive review of meditation apps puts Miracle of Mind at the top for its innovative AI-guided meditation sessions and stress reduction techniques.";
-                    break;
-                  case 2:
-                    title = "How the Miracle of Mind App Is Changing Mental Health";
-                    url = `https://www.healthline.com/health/mental-wellness/miracle-of-mind-app-review`;
-                    snippet = "Psychologists are recommending the Miracle of Mind app for its evidence-based approach to meditation and stress management, showing remarkable results in clinical trials.";
-                    break;
-                  default:
-                    title = `Miracle of Mind: The Science Behind the App`;
-                    url = `https://www.scientificamerican.com/article/miracle-of-mind-science`;
-                    snippet = `Research shows how the techniques used in the Miracle of Mind app can measurably reduce cortisol levels and improve mental focus in just 10 minutes per day.`;
-                }
-              } else {
-                // Generic results for other queries
-                title = `${query.charAt(0).toUpperCase() + query.slice(1)} - Latest Information`;
-                url = `https://${domain}/search/${cleanQuery}`;
-                snippet = `Comprehensive information about ${query}. Find the latest research, news and developments on this topic from trusted sources.`;
-                
-                if (index === 1) {
-                  title = `Understanding ${query.charAt(0).toUpperCase() + query.slice(1)}`;
-                  url = `https://${domains[(domainIndex + 1) % domains.length]}/learn/${cleanQuery}`;
-                  snippet = `Learn about ${query} and why it matters. This resource explores key concepts, history, and practical applications related to ${query}.`;
-                } else if (index === 2) {
-                  title = `${query.charAt(0).toUpperCase() + query.slice(1)} Explained: The Complete Guide`;
-                  url = `https://${domains[(domainIndex + 2) % domains.length]}/guide/${cleanQuery}`;
-                  snippet = `Everything you need to know about ${query}, including expert analysis, common misconceptions, and answers to frequently asked questions.`;
-                }
-              }
-              
-              return {
-                title,
-                url,
-                snippet
-              };
-            };
-            
-            // Generate 3 realistic search results
-            webSearchResults = [0, 1, 2].map(i => generateSearchResult(query || searchQuery, i));
+            // In a real implementation, we would have actual search results here
+            // This is a placeholder for what an actual implementation would do
+            console.log("Note: This implementation does not include a real search API integration.");
+            console.log("To implement actual web search, you would need to integrate with a search API service.");
           }
           
           // Process file search tool call
@@ -439,129 +341,21 @@ export async function handleOpenAIStandard(messageHistory: any[], content: strin
             
             if (!searchQuery) continue;
             
-            // Create mock file search results based on the query
-            fileSearchResults = [
-              {
-                filename: `${searchQuery.split(' ')[0]}_report.pdf`,
-                content: `This document contains information relevant to your query about "${searchQuery}". Key points include historical data, current trends, and future projections.`
-              },
-              {
-                filename: `${searchQuery.split(' ')[0]}_analysis.docx`,
-                content: `Analysis of ${searchQuery} shows significant developments in recent years. The document outlines important factors to consider when evaluating this topic.`
-              }
-            ];
+            // For now, just log the search query - in a real implementation, 
+            // we would search through the user's files
+            console.log(`Would perform file search for: ${searchQuery}`);
+            fileSearchResults = [];
           }
         } catch (e) {
           console.error("Error processing tool call:", e);
         }
       }
-    } else if (needsWebSearch) {
-      // If we detected the need for web search but got no tool calls, create search results anyway
-      const searchTerms = content;
-      console.log(`Auto-generating search results for: ${searchTerms}`);
       
-      const query = searchTerms.toLowerCase();
-      
-      // Create search results with actual domains related to the search query
-      const domains = [
-        "wikipedia.org", 
-        "britannica.com", 
-        "nytimes.com", 
-        "theguardian.com", 
-        "bbc.com", 
-        "nationalgeographic.com",
-        "healthline.com",
-        "mayoclinic.org", 
-        "harvard.edu"
-      ];
-      
-      // Generate more realistic search results
-      webSearchResults = [0, 1, 2].map(i => {
-        const cleanQuery = query.replace(/[^\w\s]/gi, '').replace(/\s+/g, '-').toLowerCase();
-        const domain = domains[Math.floor(Math.random() * domains.length)];
-        
-        // Check if query is about the miracle of mind app
-        if (query.includes('miracle of mind')) {
-          switch(i) {
-            case 0:
-              return {
-                title: "Miracle of Mind - Revolutionary Meditation App",
-                url: `https://miracleofmind.app/about`,
-                snippet: "Miracle of Mind is a revolutionary meditation app that helps users achieve mindfulness and reduce stress through guided sessions and personalized experiences."
-              };
-            case 1:
-              return {
-                title: "Top 10 Meditation Apps of 2025 - Miracle of Mind Takes the Lead",
-                url: `https://techcrunch.com/2025/03/15/meditation-apps-review-miracle-of-mind`,
-                snippet: "Our comprehensive review of meditation apps puts Miracle of Mind at the top for its innovative AI-guided meditation sessions and stress reduction techniques."
-              };
-            case 2:
-              return {
-                title: "How the Miracle of Mind App Is Changing Mental Health",
-                url: `https://www.healthline.com/health/mental-wellness/miracle-of-mind-app-review`,
-                snippet: "Psychologists are recommending the Miracle of Mind app for its evidence-based approach to meditation and stress management, showing remarkable results in clinical trials."
-              };
-            default:
-              return {
-                title: `Miracle of Mind: The Science Behind the App`,
-                url: `https://www.scientificamerican.com/article/miracle-of-mind-science`,
-                snippet: `Research shows how the techniques used in the Miracle of Mind app can measurably reduce cortisol levels and improve mental focus in just 10 minutes per day.`
-              };
-          }
-        } else {
-          return {
-            title: `${i === 0 ? 'Understanding ' : ''}${query.charAt(0).toUpperCase() + query.slice(1)}${i === 1 ? ': A Complete Guide' : ''}`,
-            url: `https://${domain}/${i === 0 ? 'wiki' : i === 1 ? 'articles' : 'topics'}/${cleanQuery}`,
-            snippet: `${i === 0 ? 'Comprehensive information about' : i === 1 ? 'Learn everything about' : 'Detailed analysis of'} ${query}. ${i === 0 ? 'This resource provides accurate and up-to-date facts.' : i === 1 ? 'Find tutorials, guides and expert opinions.' : 'Includes historical context and current developments.'}`
-          };
-        }
-      });
-      
-      // If the response doesn't mention search results, add a sentence to introduce them
-      if (responseContent && !responseContent.includes("search") && !responseContent.includes("found")) {
-        responseContent = `${responseContent}\n\nI've also found some relevant information from web searches that might be helpful.`;
-      } else if (!responseContent) {
-        responseContent = `I'm searching for information about "${searchTerms}". Here's what I found:`;
+      // If we have tool calls but no response content, generate a placeholder response
+      if (!responseContent && toolCalls.length > 0) {
+        responseContent = "I need to search for information to answer your question properly. One moment while I gather that information.";
       }
     }
-    
-    // Make sure we always have some response content
-    if (!responseContent) {
-      if (webSearchResults.length > 0) {
-        responseContent = `Based on my search, I found some information that might help answer your question. Let me summarize what I found:`;
-      } else {
-        responseContent = "I'm processing your request. Let me think about that for a moment.";
-      }
-    }
-    
-    // Generate a response that actually incorporates search results if they exist
-    if (webSearchResults.length > 0 && !responseContent.toLowerCase().includes('search') && !responseContent.toLowerCase().includes('found')) {
-      // Extract key information from search results
-      const topicNames = webSearchResults.map(result => {
-        // Extract the main topic from the title
-        return result.title.split(' - ')[0].trim();
-      });
-      
-      const uniqueTopics = [...new Set(topicNames)];
-      const mainTopic = uniqueTopics[0] || 'this topic';
-      
-      // Add a paragraph that summarizes the search results
-      const summaryParagraph = `\n\nBased on my search, ${mainTopic} appears to be ${
-        webSearchResults[0].snippet.toLowerCase().includes(mainTopic.toLowerCase()) ? 
-        webSearchResults[0].snippet.toLowerCase().split(mainTopic.toLowerCase())[1].trim() : 
-        'a topic of interest with several resources available online.'
-      } ${
-        webSearchResults.length > 1 ? 
-        `Additional sources provide more context about ${uniqueTopics.length > 1 ? uniqueTopics.slice(1).join(' and ') : mainTopic}.` : 
-        ''
-      }`;
-      
-      responseContent += summaryParagraph;
-    }
-    
-    console.log(`Response content length: ${responseContent.length}`);
-    console.log(`Web search results: ${webSearchResults.length}`);
-    console.log(`File search results: ${fileSearchResults.length}`);
     
     return new Response(
       JSON.stringify({ 

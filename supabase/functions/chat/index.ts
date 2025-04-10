@@ -39,6 +39,10 @@ serve(async (req) => {
     // Add a system prompt based on the conversation context
     const systemPrompt = generateSystemPrompt(messageHistory);
     
+    // Note: This implementation doesn't include a real web search API integration.
+    // To implement actual web search, you would need to integrate with a search API service.
+    console.log("NOTE: Current implementation uses AI's knowledge or tool calling. To implement actual web search, integrate a search API.");
+    
     // Format varies by provider
     try {
       let response;
