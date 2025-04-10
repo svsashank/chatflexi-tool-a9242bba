@@ -1,4 +1,5 @@
-import { Configuration, OpenAIApi } from "openai";
+
+import { Configuration, OpenAIApi } from "https://esm.sh/openai@3.2.1";
 import { OpenAIStream } from "../../utils/openai.ts";
 
 const apiKey = Deno.env.get("OPENAI_API_KEY");

@@ -125,6 +125,10 @@ export const sendMessageToLLM = async (
           console.log('Web search results:', JSON.stringify(data.webSearchResults).substring(0, 200) + '...');
         }
         
+        if (data.fileSearchResults && data.fileSearchResults.length > 0) {
+          console.log('File search results:', JSON.stringify(data.fileSearchResults).substring(0, 200) + '...');
+        }
+        
         // If content is empty but we have search results, create a placeholder message
         if (!data.content && (data.webSearchResults?.length > 0 || data.fileSearchResults?.length > 0)) {
           data.content = "I'm currently searching for information related to your request. The results will be processed shortly.";
