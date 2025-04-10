@@ -121,11 +121,13 @@ export const loadMessagesForConversationAction = (set: Function) => async (conve
         // Add images if they exist
         if (message.images && message.images.length > 0) {
           formattedMessage.images = message.images;
+          console.log(`Found ${message.images.length} images for message ${message.id}`);
         }
         
         // Add files if they exist
         if (message.files && message.files.length > 0) {
           formattedMessage.files = message.files;
+          console.log(`Found ${message.files.length} files for message ${message.id}`);
         }
         
         // Add web search results if they exist

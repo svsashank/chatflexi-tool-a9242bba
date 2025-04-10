@@ -1,4 +1,3 @@
-
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
@@ -75,14 +74,9 @@ export const setCurrentConversationIdAction = (set: Function, get: () => ChatSto
   // Set the conversation as current
   set({ currentConversationId: id });
   
-  // Check if the conversation has messages already loaded
-  if (conversation.messages.length === 0) {
-    // If not, load messages from the database
-    console.log(`Loading messages for conversation ${id} as it has no messages loaded yet`);
-    await get().loadMessagesForConversation(id);
-  } else {
-    console.log(`Conversation ${id} already has ${conversation.messages.length} messages loaded, skipping fetch`);
-  }
+  // Always load messages when switching conversations to ensure we have the latest data
+  console.log(`Loading messages for conversation ${id}`);
+  await get().loadMessagesForConversation(id);
 };
 
 export const deleteConversationAction = (set: Function, get: () => ChatStore) => async (id: string) => {

@@ -74,6 +74,7 @@ export const generateResponseAction = (set: Function, get: Function) => async ()
         selectedModel.id
       );
       
+      // Create the new message object with all necessary data
       const newMessage = {
         id: uuidv4(),
         content: aiResponse.content,
@@ -83,7 +84,7 @@ export const generateResponseAction = (set: Function, get: Function) => async ()
         tokens: tokens,
         computeCredits: computeCredits,
         webSearchResults: aiResponse.webSearchResults || [],
-        fileSearchResults: aiResponse.fileSearchResults || []
+        fileSearchResults: aiResponse.fileSearchResults || [],
       };
 
       const updatedContextSummary = updateContextSummary(currentConversation.contextSummary, newMessage);
@@ -175,7 +176,7 @@ export const generateResponseAction = (set: Function, get: Function) => async ()
             });
           }
           
-          // Prepare the message insert data
+          // Prepare the message insert data with all available info
           const messageInsertData = {
             id: newMessage.id,
             conversation_id: currentConversationId,
@@ -202,6 +203,15 @@ export const generateResponseAction = (set: Function, get: Function) => async ()
             console.log('Adding file search results to the database');
             Object.assign(messageInsertData, {
               file_search_results: newMessage.fileSearchResults
+            });
+          }
+          
+          // If the last user message had images, include those for reference
+          const lastUserMessage = currentConversation.messages.filter(m => m.role === 'user').pop();
+          if (lastUserMessage?.images && lastUserMessage.images.length > 0) {
+            console.log('Adding reference to images from the user query');
+            Object.assign(messageInsertData, {
+              images: lastUserMessage.images
             });
           }
           

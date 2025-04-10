@@ -39,6 +39,10 @@ export const createSendMessageAction = (
             console.log(`First file content starts with: ${files[0].substring(0, 150)}...`);
           }
           
+          if (images && images.length > 0) {
+            console.log(`Adding ${images.length} images to message ${messageId}`);
+          }
+          
           return {
             ...conv,
             messages: [

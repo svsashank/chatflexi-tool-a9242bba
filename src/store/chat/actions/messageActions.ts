@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import { updateContextSummary } from '../utils';
 
-export const addMessageAction = (set: Function, get: Function) => async (content: string) => {
+export const addMessageAction = (set: Function, get: Function) => async (content: string, images: string[] = [], files: string[] = []) => {
   const currentConversationId = get().currentConversationId;
   const selectedModel = get().selectedModel;
 
@@ -23,6 +23,8 @@ export const addMessageAction = (set: Function, get: Function) => async (content
     role: 'user' as const,
     model: selectedModel,
     timestamp: new Date(),
+    images,
+    files,
   };
 
   set(state => ({
@@ -40,19 +42,30 @@ export const addMessageAction = (set: Function, get: Function) => async (content
     try {
       console.log("Saving user message to database for conversation:", currentConversationId);
       
+      // Prepare message data for the database
+      const messageData = {
+        id: newMessage.id,
+        conversation_id: currentConversationId,
+        content: newMessage.content,
+        role: newMessage.role,
+        model_id: selectedModel.id,
+        model_provider: selectedModel.provider,
+        created_at: newMessage.timestamp.toISOString(),
+      };
+
+      // Add images if present
+      if (images && images.length > 0) {
+        Object.assign(messageData, { images });
+      }
+
+      // Add files if present
+      if (files && files.length > 0) {
+        Object.assign(messageData, { files });
+      }
+
       const { error } = await supabase
         .from('conversation_messages')
-        .insert([
-          {
-            id: newMessage.id,
-            conversation_id: currentConversationId,
-            content: newMessage.content,
-            role: newMessage.role,
-            model_id: selectedModel.id,
-            model_provider: selectedModel.provider,
-            created_at: newMessage.timestamp.toISOString(),
-          },
-        ]);
+        .insert([messageData]);
 
       if (error) {
         console.error('Error saving message to database:', error);
