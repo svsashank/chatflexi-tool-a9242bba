@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { Message, AIModel, Conversation } from "@/types";
@@ -61,31 +62,13 @@ export const loadMessagesForConversationAction = (set: Function) => async (conve
       return;
     }
     
-    // First get the list of available columns in the table
-    // This query just looks at metadata, not actual data
-    const { data: columns, error: columnsError } = await supabase
-      .from('conversation_messages')
-      .select()
-      .limit(0);
-    
-    if (columnsError) {
-      console.error('Error checking table columns:', columnsError);
-    }
-    
-    // Check if search results columns exist by examining the response
-    const hasWebSearchResults = !columnsError;
-    const hasFileSearchResults = !columnsError;
-    
-    console.log(`Table has search columns: ${hasWebSearchResults ? 'Yes' : 'No'}`);
-    
-    // Now fetch the actual messages
-    let query = supabase
+    // Fetch the actual messages directly without checking columns first
+    // This avoids the 400 error when querying for specific columns that might not exist
+    const { data: messages, error } = await supabase
       .from('conversation_messages')
       .select('*')
       .eq('conversation_id', conversationId)
       .order('created_at', { ascending: true });
-    
-    const { data: messages, error } = await query;
     
     if (error) {
       console.error(`Error loading messages for conversation ${conversationId}:`, error);
@@ -132,12 +115,12 @@ export const loadMessagesForConversationAction = (set: Function) => async (conve
           formattedMessage.files = message.files;
         }
         
-        // Add search results if they exist and the columns are available
-        if (hasWebSearchResults && message.web_search_results) {
+        // Add search results if they exist
+        if (message.web_search_results) {
           formattedMessage.webSearchResults = message.web_search_results;
         }
         
-        if (hasFileSearchResults && message.file_search_results) {
+        if (message.file_search_results) {
           formattedMessage.fileSearchResults = message.file_search_results;
         }
         
