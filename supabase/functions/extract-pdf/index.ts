@@ -46,12 +46,35 @@ serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     console.log("Handling CORS preflight request");
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { 
+      status: 204,
+      headers: corsHeaders 
+    });
   }
 
   try {
     console.log("Processing PDF extraction request");
-    const formData = await req.formData();
+    
+    // Check if the request is properly formatted
+    if (!req.body) {
+      console.error("Request has no body");
+      return new Response(
+        JSON.stringify({ error: 'Invalid request: No request body' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    let formData;
+    try {
+      formData = await req.formData();
+    } catch (formError) {
+      console.error("Failed to parse form data:", formError);
+      return new Response(
+        JSON.stringify({ error: `Invalid form data: ${formError.message}` }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
     const file = formData.get('file');
     
     if (!file || !(file instanceof File)) {
@@ -114,13 +137,22 @@ serve(async (req) => {
         pages: numPages,
         filename: file.name
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { 
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
     );
   } catch (error) {
     console.error('PDF extraction error:', error);
     return new Response(
-      JSON.stringify({ error: `PDF extraction error: ${error.message || 'Unknown error'}` }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ 
+        error: `PDF extraction error: ${error.message || 'Unknown error'}`,
+        details: String(error)
+      }),
+      { 
+        status: 500, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
     );
   }
 });

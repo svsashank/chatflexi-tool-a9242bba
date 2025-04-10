@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from "react";
 import { Send, ChevronDown, Image, X, FileText } from "lucide-react";
 import { useChatStore } from "@/store";
@@ -104,35 +105,42 @@ const ChatInput = () => {
       
       console.log(`Sending PDF ${file.name} to extract-pdf function`);
       
-      const { data, error } = await supabase.functions.invoke('extract-pdf', {
+      const response = await supabase.functions.invoke('extract-pdf', {
         body: formData,
         headers: {
           'Accept': 'application/json',
         },
       });
       
-      if (error) {
-        console.error('PDF extraction error:', error);
-        throw new Error(`PDF extraction failed: ${error.message}`);
+      if (response.error) {
+        console.error('PDF extraction error:', response.error);
+        throw new Error(`PDF extraction failed: ${response.error.message || 'Unknown error'}`);
       }
       
-      if (!data) {
+      if (!response.data) {
         console.error('No data returned from PDF extraction');
         throw new Error("No data returned from PDF extraction");
       }
       
       console.log('PDF extraction successful:', {
-        filename: data.filename,
-        pages: data.pages,
-        textLength: data.text?.length || 0,
-        hasImages: data.images?.length > 0
+        filename: response.data.filename,
+        pages: response.data.pages,
+        textLength: response.data.text?.length || 0,
+        hasImages: response.data.images?.length > 0
       });
       
-      return `File: ${file.name}\nContent: PDF_EXTRACTION:${JSON.stringify(data)}`;
+      return `File: ${file.name}\nContent: PDF_EXTRACTION:${JSON.stringify(response.data)}`;
     } catch (error) {
       console.error('PDF extraction error:', error);
-      toast.error(`Failed to extract content from PDF: ${error.message || 'Unknown error'}`);
-      return `File: ${file.name}\nContent: Failed to extract content from this PDF. Error: ${error.message || 'Unknown error'}`;
+      
+      // More detailed error message for the user
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      toast.error(`Failed to extract content from PDF: ${errorMessage}`, {
+        description: "Check network connectivity and try again",
+        duration: 5000,
+      });
+      
+      return `File: ${file.name}\nContent: Failed to extract content from this PDF. Error: ${errorMessage}`;
     } finally {
       setIsProcessingPdf(false);
     }
@@ -191,7 +199,7 @@ const ChatInput = () => {
         }
       } catch (error) {
         console.error(`Error processing file ${file.name}:`, error);
-        toast.error(`Failed to process file ${file.name}: ${error.message || 'Unknown error'}`);
+        toast.error(`Failed to process file ${file.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     }
 

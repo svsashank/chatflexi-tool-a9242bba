@@ -16,6 +16,11 @@ If you encounter issues with the PDF extraction, check the following:
 3. For encrypted or password-protected PDFs, remove protection before uploading
 4. Check the logs for detailed error information
 5. Some highly formatted or scanned PDFs may not extract text correctly
+6. If you see "Failed to send a request to the Edge Function" errors:
+   - Make sure your network connection is stable
+   - Try refreshing the page and uploading again
+   - The edge function may be temporarily unavailable; try again later
+   - Check that CORS is correctly configured in the edge function
 
 ## Usage
 

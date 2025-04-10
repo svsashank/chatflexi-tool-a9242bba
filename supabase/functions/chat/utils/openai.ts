@@ -102,7 +102,13 @@ export async function extractTextFromFile(fileContent: string): Promise<string> 
     if (extractedContent.startsWith("PDF_EXTRACTION:")) {
       try {
         const pdfData = JSON.parse(extractedContent.substring(15));
-        let formattedContent = `PDF Document: ${pdfData.filename}\nPages: ${pdfData.pages}\n\nExtracted Text:\n${pdfData.text}`;
+        
+        // Validate the PDF data structure
+        if (!pdfData || typeof pdfData !== 'object') {
+          throw new Error("Invalid PDF data structure");
+        }
+        
+        let formattedContent = `PDF Document: ${pdfData.filename || 'Unknown'}\nPages: ${pdfData.pages || 'Unknown'}\n\nExtracted Text:\n${pdfData.text || 'No text could be extracted'}`;
         
         if (pdfData.images && pdfData.images.length > 0) {
           formattedContent += `\n\nThe document contains images that could not be directly extracted.`;
@@ -111,19 +117,19 @@ export async function extractTextFromFile(fileContent: string): Promise<string> 
         return formattedContent;
       } catch (parseError) {
         console.error("Error parsing PDF extraction data:", parseError);
-        return `Error parsing PDF data: ${parseError.message}. Original content: ${extractedContent.substring(0, 100)}...`;
+        return `Error parsing PDF data: ${parseError instanceof Error ? parseError.message : 'Invalid format'}. Original content may be corrupted.`;
       }
     }
     
     // If it's still a PDF file but wasn't processed through our extraction
     if (fileName.endsWith('.pdf') && extractedContent.includes('Failed to extract content')) {
-      return "This is a PDF file that couldn't be processed. Please try uploading it again or extract the text manually.";
+      return `This is a PDF file that couldn't be processed. The error was: ${extractedContent.split('Error: ')[1] || 'Unknown error'}. Try uploading it again or extract the text manually.`;
     }
     
     // Return the extracted content
     return extractedContent;
   } catch (error) {
     console.error("Error extracting text from file:", error);
-    return `Error: Could not process file content. ${error.message}`;
+    return `Error: Could not process file content. ${error instanceof Error ? error.message : 'Unknown error'}`;
   }
 }
