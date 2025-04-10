@@ -2,13 +2,43 @@
 import { corsHeaders } from "../utils/cors.ts";
 
 // Krutrim API handler for DeepSeek-R1
-export async function handleKrutrim(messageHistory: any[], content: string, modelId: string, systemPrompt: string, images?: string[]) {
+export async function handleKrutrim(messageHistory: any[], content: string, modelId: string, systemPrompt: string, images?: string[], preSearchResults: any[] = [], files: string[] = []) {
   const KRUTRIM_API_KEY = Deno.env.get('KRUTRIM_API_KEY');
   if (!KRUTRIM_API_KEY) {
     throw new Error("Krutrim API key not configured. Please add your Krutrim API key in the Supabase settings.");
   }
   
   console.log(`Processing request for Krutrim model ${modelId} with content: ${content.substring(0, 50)}...`);
+  console.log(`Has files: ${files.length > 0}, file count: ${files.length}`);
+  
+  // If files are present, augment the original content with file content
+  let enhancedContent = content;
+  if (files && files.length > 0) {
+    // Extract files content and add it to the prompt
+    enhancedContent = `${content}\n\nHere are the contents of the provided files:\n\n`;
+    files.forEach((fileContent, index) => {
+      try {
+        // Parse the file content
+        const fileContentStr = String(fileContent);
+        console.log(`Processing file ${index + 1}, content length: ${fileContentStr.length} chars`);
+        
+        const fileNameMatch = fileContentStr.match(/^File: (.+?)$/m);
+        const fileName = fileNameMatch ? fileNameMatch[1] : `File ${index + 1}`;
+        console.log(`Extracted file name: ${fileName}`);
+        
+        // Extract the actual content part
+        const contentMatch = fileContentStr.match(/^Content: ([\s\S]+)$/m);
+        const extractedContent = contentMatch ? contentMatch[1] : fileContentStr;
+        
+        enhancedContent += `--- ${fileName} ---\n${extractedContent}\n\n`;
+      } catch (error) {
+        console.error(`Error processing file ${index}:`, error);
+      }
+    });
+    
+    enhancedContent += `\nPlease analyze and respond to the above file content${content ? ' based on my request' : ''}.`;
+    console.log(`Enhanced content with ${files.length} file(s). New content length: ${enhancedContent.length} chars`);
+  }
   
   // Format messages for Krutrim API
   const formattedMessages = [
@@ -17,7 +47,7 @@ export async function handleKrutrim(messageHistory: any[], content: string, mode
       role: msg.role,
       content: msg.content
     })),
-    { role: 'user', content }
+    { role: 'user', content: enhancedContent } // Use enhanced content with file data
   ];
 
   console.log(`Calling Krutrim API with model ${modelId}...`);

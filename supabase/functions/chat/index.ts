@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 
@@ -85,16 +86,16 @@ Feel free to reference this information if it's helpful, but also draw on your b
           }
           break;
         case 'anthropic':
-          response = await handleAnthropic(messageHistory, content, model.id, systemPrompt, messageImages);
+          response = await handleAnthropic(messageHistory, content, model.id, systemPrompt, messageImages, webSearchResults, messageFiles);
           break;
         case 'google':
-          response = await handleGoogle(messageHistory, content, model.id, systemPrompt, messageImages);
+          response = await handleGoogle(messageHistory, content, model.id, systemPrompt, messageImages, webSearchResults, messageFiles);
           break;
         case 'xai':
-          response = await handleXAI(messageHistory, content, model.id, systemPrompt, messageImages);
+          response = await handleXAI(messageHistory, content, model.id, systemPrompt, messageImages, webSearchResults, messageFiles);
           break;
         case 'krutrim':
-          response = await handleKrutrim(messageHistory, content, model.id, systemPrompt, messageImages);
+          response = await handleKrutrim(messageHistory, content, model.id, systemPrompt, messageImages, webSearchResults, messageFiles);
           break;
         default:
           throw new Error(`Provider ${model.provider} not supported`);

@@ -1,8 +1,7 @@
-
 import { corsHeaders } from "../utils/cors.ts";
 
 // Anthropic (Claude) handler
-export async function handleAnthropic(messageHistory: any[], content: string, modelId: string, systemPrompt: string, images: string[] = []) {
+export async function handleAnthropic(messageHistory: any[], content: string, modelId: string, systemPrompt: string, images: string[] = [], preSearchResults: any[] = [], files: string[] = []) {
   const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
   if (!ANTHROPIC_API_KEY) {
     throw new Error("Anthropic API key not configured");
@@ -11,6 +10,36 @@ export async function handleAnthropic(messageHistory: any[], content: string, mo
   // Log model ID to help with debugging
   console.log(`Processing request for Anthropic model ${modelId} with content: ${content.substring(0, 50)}...`);
   console.log(`Has images: ${images.length > 0}, image count: ${images.length}`);
+  console.log(`Has files: ${files.length > 0}, file count: ${files.length}`);
+  
+  // If files are present, augment the original content with file content
+  let enhancedContent = content;
+  if (files && files.length > 0) {
+    // Extract files content and add it to the prompt
+    enhancedContent = `${content}\n\nHere are the contents of the provided files:\n\n`;
+    files.forEach((fileContent, index) => {
+      try {
+        // Parse the file content
+        const fileContentStr = String(fileContent);
+        console.log(`Processing file ${index + 1}, content length: ${fileContentStr.length} chars`);
+        
+        const fileNameMatch = fileContentStr.match(/^File: (.+?)$/m);
+        const fileName = fileNameMatch ? fileNameMatch[1] : `File ${index + 1}`;
+        console.log(`Extracted file name: ${fileName}`);
+        
+        // Extract the actual content part
+        const contentMatch = fileContentStr.match(/^Content: ([\s\S]+)$/m);
+        const extractedContent = contentMatch ? contentMatch[1] : fileContentStr;
+        
+        enhancedContent += `--- ${fileName} ---\n${extractedContent}\n\n`;
+      } catch (error) {
+        console.error(`Error processing file ${index}:`, error);
+      }
+    });
+    
+    enhancedContent += `\nPlease analyze and respond to the above file content${content ? ' based on my request' : ''}.`;
+    console.log(`Enhanced content with ${files.length} file(s). New content length: ${enhancedContent.length} chars`);
+  }
   
   // Format messages for Anthropic API v1 format
   const messages = [];
@@ -32,10 +61,10 @@ export async function handleAnthropic(messageHistory: any[], content: string, mo
     content: []
   };
   
-  // Add text content
+  // Add text content - use enhanced content that includes file data
   userMessage.content.push({
     type: "text",
-    text: content
+    text: enhancedContent
   });
   
   // Add images if present
