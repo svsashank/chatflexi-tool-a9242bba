@@ -99,9 +99,21 @@ export async function extractTextFromFile(fileContent: string): Promise<string> 
     const contentMatch = fileContent.match(/Content: ([\s\S]*)/);
     let extractedContent = contentMatch ? contentMatch[1] : fileContent;
     
+    // If the content starts with "PDF_EXTRACTION:" it contains pre-extracted PDF content
+    if (extractedContent.startsWith("PDF_EXTRACTION:")) {
+      const pdfData = JSON.parse(extractedContent.substring(15));
+      let formattedContent = `PDF Document: ${pdfData.filename}\nPages: ${pdfData.pages}\n\nExtracted Text:\n${pdfData.text}`;
+      
+      if (pdfData.images && pdfData.images.length > 0) {
+        formattedContent += `\n\nThe document contains ${pdfData.images.length} extracted images.`;
+      }
+      
+      return formattedContent;
+    }
+    
     // If it's still a binary file (indicated by the filename), provide a helpful message
-    if (fileName.endsWith('.pdf') && fileName.includes('Binary content')) {
-      return "This is a PDF file. The Edge Function cannot directly extract text from PDFs. Please consider using a PDF text extraction tool and then uploading the extracted text.";
+    if (fileName.endsWith('.pdf')) {
+      return "This is a PDF file. To get better results, please use the PDF extraction feature in the client before uploading.";
     }
     
     // Return the extracted content
