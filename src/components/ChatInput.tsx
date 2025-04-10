@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from "react";
 import { Send, ChevronDown, Image, X, FileText } from "lucide-react";
 import { useChatStore } from "@/store";
@@ -105,77 +104,52 @@ const ChatInput = () => {
       
       console.log(`Sending PDF ${file.name} to extract-pdf function`);
       
-      // Add error handling and retry mechanism
-      let retries = 0;
-      const maxRetries = 2;
-      let lastError = null;
+      // Improved error handling with better feedback
+      const response = await supabase.functions.invoke('extract-pdf', {
+        body: formData,
+        headers: {
+          'Accept': 'application/json',
+          // Add additional headers that might help with CORS
+          'Access-Control-Allow-Origin': '*'
+        },
+      });
       
-      while (retries <= maxRetries) {
-        try {
-          // Add a timeout to the request
-          const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Request timeout after 30 seconds')), 30000)
-          );
-          
-          const responsePromise = supabase.functions.invoke('extract-pdf', {
-            body: formData,
-            headers: {
-              'Accept': 'application/json',
-            },
-          });
-          
-          // Race between the response and the timeout
-          const response = await Promise.race([responsePromise, timeoutPromise]) as any;
-          
-          if (response.error) {
-            console.error('PDF extraction error:', response.error);
-            throw new Error(`PDF extraction failed: ${response.error.message || 'Unknown error'}`);
-          }
-          
-          if (!response.data) {
-            console.error('No data returned from PDF extraction');
-            throw new Error("No data returned from PDF extraction");
-          }
-          
-          console.log('PDF extraction successful:', {
-            filename: response.data.filename,
-            pages: response.data.pages,
-            textLength: response.data.text?.length || 0,
-            hasImages: response.data.images?.length > 0
-          });
-          
-          return `File: ${file.name}\nContent: PDF_EXTRACTION:${JSON.stringify(response.data)}`;
-        } catch (error) {
-          lastError = error;
-          retries++;
-          console.warn(`PDF extraction attempt ${retries} failed: ${error.message}`);
-          if (retries <= maxRetries) {
-            // Wait before retrying (exponential backoff)
-            await new Promise(resolve => setTimeout(resolve, retries * 1000));
-          }
-        }
+      if (response.error) {
+        console.error('PDF extraction error:', response.error);
+        throw new Error(`PDF extraction failed: ${response.error.message || 'Unknown error'}`);
       }
       
-      throw lastError || new Error("Failed to extract PDF content after multiple attempts");
+      if (!response.data) {
+        console.error('No data returned from PDF extraction');
+        throw new Error("No data returned from PDF extraction");
+      }
+      
+      console.log('PDF extraction successful:', {
+        filename: response.data.filename,
+        pages: response.data.pages,
+        textLength: response.data.text?.length || 0,
+        hasImages: response.data.images?.length > 0
+      });
+      
+      return `File: ${file.name}\nContent: PDF_EXTRACTION:${JSON.stringify(response.data)}`;
+      
     } catch (error) {
       console.error('PDF extraction error:', error);
       
-      // More detailed error message for the user
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      
-      // Check for specific error types to provide better guidance
-      let description = "Check network connectivity and try again";
+      // Provide more detailed error information
+      let errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      let description = "";
       
       if (errorMessage.includes('Failed to send a request')) {
-        description = "Network request failed. Make sure you're connected to the internet and try again.";
-      } else if (errorMessage.includes('timeout')) {
-        description = "The request took too long. The PDF might be too large or complex.";
+        description = "Network request failed. Check your internet connection and try again.";
+        errorMessage = "Network connection error";
       } else if (errorMessage.includes('CORS')) {
-        description = "Browser security prevented the request. Try a different browser or network.";
+        description = "Browser security prevented the request. The server might not be configured correctly.";
+        errorMessage = "CORS policy error";
       }
       
-      toast.error(`Failed to extract content from PDF: ${errorMessage}`, {
-        description,
+      toast.error(`PDF extraction failed: ${errorMessage}`, {
+        description: description || "Please try again later.",
         duration: 5000,
       });
       

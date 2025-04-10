@@ -1,7 +1,7 @@
 
 # PDF Extraction Edge Function
 
-This Edge Function extracts text and detects the presence of images from PDF files. It uses pdf.js, an open-source PDF library developed by Mozilla.
+This Edge Function extracts text and detects the presence of images from PDF files. It uses Mozilla's pdf.js (via CDN) for PDF parsing.
 
 ## Setup
 
@@ -20,9 +20,18 @@ If you encounter issues with the PDF extraction, check the following:
    - Make sure your network connection is stable
    - Try refreshing the page and uploading again
    - The edge function may be temporarily unavailable; try again later
-   - Check that CORS is correctly configured in the edge function
    - Try using a different browser or network connection
    - If using a VPN, try disabling it temporarily
+
+## CORS Issues
+
+If you're seeing CORS-related errors:
+
+1. The Edge Function may not have the correct CORS headers configured
+2. There might be a network issue preventing the preflight request from completing
+3. Try clearing your browser cache and cookies
+4. Disable browser extensions that might be interfering with requests
+5. Try a different browser to rule out browser-specific issues
 
 ## Network Connectivity Issues
 
