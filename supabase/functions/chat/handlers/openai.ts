@@ -19,6 +19,10 @@ export async function handleOpenAIReasoningModel(messageHistory: any[], content:
   
   console.log(`Processing request for OpenAI reasoning model ${modelId} with content: ${content.substring(0, 50)}...`);
   
+  // Check if we should perform web search
+  let shouldSearch = needsWebSearch(content);
+  console.log(`Should perform web search for query: ${shouldSearch}`);
+  
   // Format input for the responses API - this is different from chat completions
   const formattedInput = [
     // First add the system message
@@ -49,6 +53,14 @@ export async function handleOpenAIReasoningModel(messageHistory: any[], content:
     }
   ];
   
+  // If we should search, perform it directly
+  let webSearchResults = [];
+  if (shouldSearch) {
+    console.log(`Proactively performing web search for: "${content}"`);
+    webSearchResults = await performBraveSearch(content);
+    console.log(`Proactive search returned ${webSearchResults.length} results`);
+  }
+  
   try {
     const response = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
@@ -76,7 +88,6 @@ export async function handleOpenAIReasoningModel(messageHistory: any[], content:
     
     // Extract content from the response format
     let responseContent = '';
-    let webSearchResults = [];
     let fileSearchResults = [];
     
     // Parse the output based on the structure returned by the API
@@ -94,21 +105,26 @@ export async function handleOpenAIReasoningModel(messageHistory: any[], content:
         }
       }
       
-      // Extract web search queries and perform actual searches
-      for (const item of data.output) {
-        if (item.type === 'tool_result' && item.tool === 'web_search') {
-          // Get search queries
-          let searchQuery = content;
-          if (item.input && item.input.query) {
-            searchQuery = item.input.query;
+      // Extract web search queries if we haven't done a proactive search
+      if (!shouldSearch && webSearchResults.length === 0) {
+        for (const item of data.output) {
+          if (item.type === 'tool_result' && item.tool === 'web_search') {
+            // Get search queries
+            let searchQuery = content;
+            if (item.input && item.input.query) {
+              searchQuery = item.input.query;
+            }
+            console.log(`Performing web search for API-requested query: "${searchQuery}"`);
+            
+            // Use Brave Search API to get real results
+            webSearchResults = await performBraveSearch(searchQuery);
+            console.log("Got web search results from Brave:", JSON.stringify(webSearchResults, null, 2));
           }
-          console.log(`Performing real web search for query: "${searchQuery}"`);
-          
-          // Use Brave Search API to get real results
-          webSearchResults = await performBraveSearch(searchQuery);
-          console.log("Got web search results from Brave:", JSON.stringify(webSearchResults, null, 2));
         }
-        
+      }
+      
+      // Extract file search results
+      for (const item of data.output) {
         if (item.type === 'tool_result' && item.tool === 'file_search' && item.result) {
           fileSearchResults = Array.isArray(item.result) ? item.result : [];
           console.log("Found file search results:", JSON.stringify(fileSearchResults));
@@ -128,6 +144,11 @@ export async function handleOpenAIReasoningModel(messageHistory: any[], content:
     if (!responseContent) {
       console.error("Unexpected OpenAI reasoning model response format:", JSON.stringify(data, null, 2));
       responseContent = "I'm processing your request. Please wait while I analyze the information.";
+    }
+    
+    // If we have search results but no response content, create a temporary message
+    if (webSearchResults.length > 0 && !responseContent) {
+      responseContent = "I've found some information that might help answer your question. Let me analyze these search results for you.";
     }
     
     // Estimate token counts from usage info if available
@@ -163,6 +184,18 @@ export async function handleOpenAIStandard(messageHistory: any[], content: strin
   
   console.log(`Processing request for standard OpenAI model ${modelId} with content: ${content.substring(0, 50)}...`);
   console.log(`Has images: ${images.length > 0}, image count: ${images.length}`);
+  
+  // Check if the message likely needs web search
+  const shouldSearch = needsWebSearch(content);
+  console.log(`Should perform web search: ${shouldSearch}`);
+  
+  // Proactively perform web search if needed
+  let webSearchResults = [];
+  if (shouldSearch) {
+    console.log(`Proactively performing web search for: "${content}"`);
+    webSearchResults = await performBraveSearch(content);
+    console.log(`Proactive search returned ${webSearchResults.length} results`);
+  }
   
   // Prepare the messages for OpenAI
   const formattedMessages = [
@@ -263,21 +296,9 @@ export async function handleOpenAIStandard(messageHistory: any[], content: strin
     }
   ];
   
-  // Check if the message likely needs web search
-  const needsWebSearch = content.toLowerCase().includes('search') || 
-                        content.toLowerCase().includes('find') || 
-                        content.toLowerCase().includes('what is') ||
-                        content.toLowerCase().includes('who is') ||
-                        content.toLowerCase().includes('when was') ||
-                        content.toLowerCase().includes('how to') ||
-                        content.toLowerCase().includes('where is');
-                        
-  console.log(`Message likely needs web search: ${needsWebSearch}`);
-  
   try {
     // Response variables
     let responseContent = '';
-    let webSearchResults = [];
     let fileSearchResults = [];
     let inputTokens = 0;
     let outputTokens = 0;
@@ -295,7 +316,7 @@ export async function handleOpenAIStandard(messageHistory: any[], content: strin
         temperature: 0.7,
         max_tokens: 1000,
         tools: tools,
-        tool_choice: needsWebSearch ? "auto" : "none"
+        tool_choice: shouldSearch ? "auto" : "none"
       })
     });
     
@@ -323,11 +344,11 @@ export async function handleOpenAIStandard(messageHistory: any[], content: strin
         console.log(`Tool call: ${JSON.stringify(toolCall)}`);
         
         try {
-          // Process web search tool call
-          if (toolCall.function.name === "web_search") {
+          // Process web search tool call if we haven't done a proactive search
+          if (toolCall.function.name === "web_search" && !shouldSearch && webSearchResults.length === 0) {
             const args = JSON.parse(toolCall.function.arguments);
             const searchQuery = args.query || content;
-            console.log(`Web search query: ${searchQuery}`);
+            console.log(`Performing web search for tool-requested query: ${searchQuery}`);
             
             if (!searchQuery) continue;
             
@@ -358,6 +379,11 @@ export async function handleOpenAIStandard(messageHistory: any[], content: strin
       }
     }
     
+    // If we have search results but no response content, create a temporary message
+    if (webSearchResults.length > 0 && !responseContent) {
+      responseContent = "I've found some information that might help answer your question. Let me analyze these search results for you.";
+    }
+    
     return new Response(
       JSON.stringify({ 
         content: responseContent,
@@ -381,4 +407,43 @@ export async function handleOpenAIStandard(messageHistory: any[], content: strin
 // Check if model requires special handling
 export function isOSeriesReasoningModel(modelId: string): boolean {
   return oSeriesReasoningModels.includes(modelId);
+}
+
+// Check if query likely needs web search
+function needsWebSearch(query: string): boolean {
+  const lowerQuery = query.toLowerCase();
+  
+  // Check for factual questions that would benefit from search
+  if (
+    lowerQuery.includes('what is') ||
+    lowerQuery.includes('who is') || 
+    lowerQuery.includes('when was') ||
+    lowerQuery.includes('where is') ||
+    lowerQuery.includes('how to') ||
+    lowerQuery.includes('why does') ||
+    lowerQuery.includes('tell me about') ||
+    lowerQuery.includes('find information') ||
+    lowerQuery.includes('search for') ||
+    lowerQuery.includes('have you heard') ||
+    lowerQuery.includes('latest') ||
+    lowerQuery.includes('recent') ||
+    lowerQuery.includes('news about') ||
+    lowerQuery.includes('current')
+  ) {
+    return true;
+  }
+  
+  // Check for specific entities that might need web search
+  const potentialEntities = query.match(/\b[A-Z][a-z]+(?: [A-Z][a-z]+)*\b/g);
+  if (potentialEntities && potentialEntities.length > 0) {
+    return true;
+  }
+  
+  // If the query is longer than 10 words, it might be a complex question needing search
+  const wordCount = query.split(/\s+/).length;
+  if (wordCount > 10) {
+    return true;
+  }
+  
+  return false;
 }
