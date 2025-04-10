@@ -1,24 +1,23 @@
 
-import { Message, Conversation, AIModel } from '@/types';
+import { Conversation, AIModel, Message } from '@/types';
 
-export interface ChatState {
+export interface ChatStore {
   conversations: Conversation[];
   currentConversationId: string | null;
   selectedModel: AIModel;
   isLoading: boolean;
-}
-
-export interface ChatStoreActions {
+  
+  // Actions
+  setCurrentConversationId: (id: string) => void;
   createConversation: () => Promise<void>;
-  setCurrentConversation: (id: string) => void;
   deleteConversation: (id: string) => Promise<void>;
-  addMessage: (content: string) => Promise<void>;
-  selectModel: (model: AIModel) => void;
-  generateResponse: () => Promise<void>;
-  loadUserConversations: () => Promise<void>;
-  resetConversations: () => void;
+  updateConversationTitle: (id: string, title: string) => Promise<void>;
   sendMessage: (content: string, images?: string[], files?: string[]) => void;
+  generateResponse: () => Promise<void>;
   regenerateMessage: () => Promise<void>;
+  setSelectedModel: (model: AIModel) => void;
+  clearConversations: () => void;
+  loadConversationsFromDB: () => Promise<void>;
+  loadMessagesForConversation: (conversationId: string) => Promise<void>;
+  addTestConversations: (count?: number) => void;
 }
-
-export type ChatStore = ChatState & ChatStoreActions;
