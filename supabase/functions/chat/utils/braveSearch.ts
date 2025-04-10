@@ -15,7 +15,7 @@ export async function performBraveSearch(query: string, count: number = 5): Prom
   searchUrl.searchParams.append('count', count.toString());
   searchUrl.searchParams.append('search_lang', 'en');
   
-  console.log(`Performing Brave search for query: "${query}"`);
+  console.log(`Performing Brave search for query: "${query}" with API key: ${BRAVE_API_KEY.substring(0, 3)}...`);
   
   try {
     const response = await fetch(searchUrl.toString(), {
