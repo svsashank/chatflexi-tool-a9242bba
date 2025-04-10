@@ -81,6 +81,7 @@ export type Database = {
           content: string
           conversation_id: string
           created_at: string
+          file_search_results: Json | null
           id: string
           image_url: string | null
           images: string[] | null
@@ -90,12 +91,14 @@ export type Database = {
           output_tokens: number | null
           revised_prompt: string | null
           role: string
+          web_search_results: Json | null
         }
         Insert: {
           compute_credits?: number | null
           content: string
           conversation_id: string
           created_at?: string
+          file_search_results?: Json | null
           id?: string
           image_url?: string | null
           images?: string[] | null
@@ -105,12 +108,14 @@ export type Database = {
           output_tokens?: number | null
           revised_prompt?: string | null
           role: string
+          web_search_results?: Json | null
         }
         Update: {
           compute_credits?: number | null
           content?: string
           conversation_id?: string
           created_at?: string
+          file_search_results?: Json | null
           id?: string
           image_url?: string | null
           images?: string[] | null
@@ -120,6 +125,7 @@ export type Database = {
           output_tokens?: number | null
           revised_prompt?: string | null
           role?: string
+          web_search_results?: Json | null
         }
         Relationships: [
           {

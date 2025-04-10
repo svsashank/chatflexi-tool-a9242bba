@@ -141,16 +141,7 @@ export const createRegenerateMessageAction = (set: Function, get: Function) => a
             }
           }
           
-          // Check if the conversation_messages table has web_search_results and file_search_results columns
-          const { error: schemaError } = await supabase
-            .from('conversation_messages')
-            .select('web_search_results, file_search_results')
-            .limit(1)
-            .maybeSingle();
-            
-          const hasSearchResultsColumns = !schemaError;
-          
-          // Save the new message to the database
+          // Prepare the message insert data
           const messageInsertData = {
             id: newMessage.id,
             conversation_id: currentConversationId,
@@ -164,14 +155,22 @@ export const createRegenerateMessageAction = (set: Function, get: Function) => a
             compute_credits: computeCredits,
           };
           
-          // Only add these properties if the columns exist in the database
-          if (hasSearchResultsColumns) {
+          // Add search results if they exist
+          if (newMessage.webSearchResults && newMessage.webSearchResults.length > 0) {
+            console.log('Adding web search results to the database');
             Object.assign(messageInsertData, {
-              web_search_results: newMessage.webSearchResults.length > 0 ? newMessage.webSearchResults : null,
-              file_search_results: newMessage.fileSearchResults.length > 0 ? newMessage.fileSearchResults : null
+              web_search_results: newMessage.webSearchResults
             });
           }
           
+          if (newMessage.fileSearchResults && newMessage.fileSearchResults.length > 0) {
+            console.log('Adding file search results to the database');
+            Object.assign(messageInsertData, {
+              file_search_results: newMessage.fileSearchResults
+            });
+          }
+          
+          // Save the new message to the database
           const { error } = await supabase
             .from('conversation_messages')
             .insert([messageInsertData]);

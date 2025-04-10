@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { Message, AIModel, Conversation } from "@/types";
@@ -62,136 +61,96 @@ export const loadMessagesForConversationAction = (set: Function) => async (conve
       return;
     }
     
-    // First, check if the conversation_messages table has the required columns
-    // by trying a limited query that selects just those columns
-    try {
-      const { error: schemaCheckError } = await supabase
-        .from('conversation_messages')
-        .select('web_search_results, file_search_results')
-        .limit(1);
-      
-      const hasSearchResultsColumns = !schemaCheckError;
-      
-      // Now fetch the actual messages
-      let query = supabase
-        .from('conversation_messages')
-        .select('*')
-        .eq('conversation_id', conversationId)
-        .order('created_at', { ascending: true });
-      
-      const { data: messages, error } = await query;
-      
-      if (error) {
-        console.error(`Error loading messages for conversation ${conversationId}:`, error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load messages',
-          variant: 'destructive',
-        });
-        return;
-      }
-      
-      console.log(`Loaded ${messages?.length || 0} messages for conversation ${conversationId}`);
-      
-      if (messages && messages.length > 0) {
-        const formattedMessages = messages.map((message: any) => {
-          const model: AIModel = {
-            id: message.model_id || 'unknown',
-            name: message.model_id || 'unknown',
-            provider: message.model_provider || 'unknown',
-            description: '',
-            capabilities: ['text'],
-            avatarColor: '#9b87f5'
-          };
-          
-          const formattedMessage: Message = {
-            id: message.id,
-            content: message.content,
-            role: message.role,
-            model: model,
-            timestamp: new Date(message.created_at),
-            tokens: message.input_tokens && message.output_tokens
-              ? { input: message.input_tokens, output: message.output_tokens }
-              : undefined,
-            computeCredits: message.compute_credits,
-          };
-          
-          // Add search results if they exist and the columns are available
-          if (hasSearchResultsColumns) {
-            if (message.web_search_results) {
-              formattedMessage.webSearchResults = message.web_search_results;
-            }
-            
-            if (message.file_search_results) {
-              formattedMessage.fileSearchResults = message.file_search_results;
-            }
-          }
-          
-          return formattedMessage;
-        });
+    // First get the list of available columns in the table
+    // This query just looks at metadata, not actual data
+    const { data: columns, error: columnsError } = await supabase
+      .from('conversation_messages')
+      .select()
+      .limit(0);
+    
+    if (columnsError) {
+      console.error('Error checking table columns:', columnsError);
+    }
+    
+    // Check if search results columns exist by examining the response
+    const hasWebSearchResults = !columnsError;
+    const hasFileSearchResults = !columnsError;
+    
+    console.log(`Table has search columns: ${hasWebSearchResults ? 'Yes' : 'No'}`);
+    
+    // Now fetch the actual messages
+    let query = supabase
+      .from('conversation_messages')
+      .select('*')
+      .eq('conversation_id', conversationId)
+      .order('created_at', { ascending: true });
+    
+    const { data: messages, error } = await query;
+    
+    if (error) {
+      console.error(`Error loading messages for conversation ${conversationId}:`, error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load messages',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    console.log(`Loaded ${messages?.length || 0} messages for conversation ${conversationId}`);
+    
+    if (messages && messages.length > 0) {
+      const formattedMessages = messages.map((message: any) => {
+        const model: AIModel = {
+          id: message.model_id || 'unknown',
+          name: message.model_id || 'unknown',
+          provider: message.model_provider || 'unknown',
+          description: '',
+          capabilities: ['text'],
+          avatarColor: '#9b87f5'
+        };
         
-        set((state: any) => ({
-          conversations: state.conversations.map((conv: Conversation) =>
-            conv.id === conversationId
-              ? { ...conv, messages: formattedMessages }
-              : conv
-          ),
-        }));
-      }
-    } catch (schemaError) {
-      console.error("Error checking schema:", schemaError);
-      
-      // Fallback to a simplified query without the search results columns
-      const { data: messages, error } = await supabase
-        .from('conversation_messages')
-        .select('id, content, role, model_id, model_provider, created_at, input_tokens, output_tokens, compute_credits')
-        .eq('conversation_id', conversationId)
-        .order('created_at', { ascending: true });
-      
-      if (error) {
-        console.error(`Error loading messages for conversation ${conversationId}:`, error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load messages',
-          variant: 'destructive',
-        });
-        return;
-      }
-      
-      console.log(`Loaded ${messages?.length || 0} messages for conversation ${conversationId} (fallback mode)`);
-      
-      if (messages && messages.length > 0) {
-        const formattedMessages = messages.map((message: any) => {
-          const model: AIModel = {
-            id: message.model_id || 'unknown',
-            name: message.model_id || 'unknown',
-            provider: message.model_provider || 'unknown',
-            description: '',
-            capabilities: ['text'],
-            avatarColor: '#9b87f5'
-          };
-          
-          return {
-            id: message.id,
-            content: message.content,
-            role: message.role,
-            model: model,
-            timestamp: new Date(message.created_at),
-            tokens: message.input_tokens && message.output_tokens
-              ? { input: message.input_tokens, output: message.output_tokens }
-              : undefined,
-            computeCredits: message.compute_credits,
-          };
-        });
+        const formattedMessage: Message = {
+          id: message.id,
+          content: message.content,
+          role: message.role,
+          model: model,
+          timestamp: new Date(message.created_at),
+          tokens: message.input_tokens && message.output_tokens
+            ? { input: message.input_tokens, output: message.output_tokens }
+            : undefined,
+          computeCredits: message.compute_credits,
+        };
         
-        set((state: any) => ({
-          conversations: state.conversations.map((conv: Conversation) =>
-            conv.id === conversationId
-              ? { ...conv, messages: formattedMessages }
-              : conv
-          ),
-        }));
-      }
+        // Add images if they exist
+        if (message.images && message.images.length > 0) {
+          formattedMessage.images = message.images;
+        }
+        
+        // Add files if they exist
+        if (message.files && message.files.length > 0) {
+          formattedMessage.files = message.files;
+        }
+        
+        // Add search results if they exist and the columns are available
+        if (hasWebSearchResults && message.web_search_results) {
+          formattedMessage.webSearchResults = message.web_search_results;
+        }
+        
+        if (hasFileSearchResults && message.file_search_results) {
+          formattedMessage.fileSearchResults = message.file_search_results;
+        }
+        
+        return formattedMessage;
+      });
+      
+      set((state: any) => ({
+        conversations: state.conversations.map((conv: Conversation) =>
+          conv.id === conversationId
+            ? { ...conv, messages: formattedMessages }
+            : conv
+        ),
+      }));
     }
   } catch (error) {
     console.error(`Error in loadMessagesForConversation:`, error);

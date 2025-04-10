@@ -162,17 +162,7 @@ export const generateResponseAction = (set: Function, get: Function) => async ()
             });
           }
           
-          // Check if the conversation_messages table has web_search_results and file_search_results columns
-          // If not, we'll still insert but without those fields
-          const { error: schemaError } = await supabase
-            .from('conversation_messages')
-            .select('web_search_results, file_search_results')
-            .limit(1)
-            .maybeSingle();
-            
-          const hasSearchResultsColumns = !schemaError;
-          
-          // Then save the message
+          // Prepare the message insert data
           const messageInsertData = {
             id: newMessage.id,
             conversation_id: currentConversationId,
@@ -186,14 +176,23 @@ export const generateResponseAction = (set: Function, get: Function) => async ()
             compute_credits: computeCredits,
           };
           
-          // Only add these properties if the columns exist in the database
-          if (hasSearchResultsColumns) {
+          // Add web search results if they exist
+          if (newMessage.webSearchResults && newMessage.webSearchResults.length > 0) {
+            console.log('Adding web search results to the database');
             Object.assign(messageInsertData, {
-              web_search_results: newMessage.webSearchResults.length > 0 ? newMessage.webSearchResults : null,
-              file_search_results: newMessage.fileSearchResults.length > 0 ? newMessage.fileSearchResults : null
+              web_search_results: newMessage.webSearchResults
             });
           }
           
+          // Add file search results if they exist
+          if (newMessage.fileSearchResults && newMessage.fileSearchResults.length > 0) {
+            console.log('Adding file search results to the database');
+            Object.assign(messageInsertData, {
+              file_search_results: newMessage.fileSearchResults
+            });
+          }
+          
+          // Insert the message
           const { error } = await supabase
             .from('conversation_messages')
             .insert([messageInsertData]);
