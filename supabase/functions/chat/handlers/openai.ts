@@ -2,6 +2,7 @@
 import { Configuration, OpenAIApi } from "https://esm.sh/openai@3.2.1";
 import { OpenAIStream } from "../utils/openai.ts";
 import { encode } from "https://esm.sh/gpt-tokenizer@2.1.2";
+import { corsHeaders } from "../utils/cors.ts";
 
 const apiKey = Deno.env.get("OPENAI_API_KEY");
 
@@ -150,6 +151,7 @@ Please analyze these files and respond to the user's query about them.`;
       }),
       {
         headers: {
+          ...corsHeaders,
           "Content-Type": "application/json",
         },
       }
@@ -168,6 +170,7 @@ Please analyze these files and respond to the user's query about them.`;
       {
         status: 200, // Return 200 OK to prevent the client from retrying.
         headers: {
+          ...corsHeaders,
           "Content-Type": "application/json",
         },
       }
@@ -217,6 +220,7 @@ export async function handleOpenAIStream(
     const stream = OpenAIStream(response);
     return new Response(stream, {
       headers: {
+        ...corsHeaders,
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",
       },
@@ -235,6 +239,7 @@ export async function handleOpenAIStream(
       {
         status: 200, // Return 200 OK to prevent the client from retrying.
         headers: {
+          ...corsHeaders,
           "Content-Type": "application/json",
         },
       }
@@ -334,6 +339,7 @@ Please analyze these files and respond to the user's query about them.`;
       }),
       {
         headers: {
+          ...corsHeaders,
           "Content-Type": "application/json",
         },
       }
@@ -352,6 +358,7 @@ Please analyze these files and respond to the user's query about them.`;
       {
         status: 200, // Return 200 OK to prevent the client from retrying.
         headers: {
+          ...corsHeaders,
           "Content-Type": "application/json",
         },
       }

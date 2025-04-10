@@ -1,4 +1,6 @@
 
+import { corsHeaders } from "./cors.ts";
+
 // OpenAI Stream Utility
 export async function OpenAIStream(response: Response) {
   const reader = response.body?.getReader();

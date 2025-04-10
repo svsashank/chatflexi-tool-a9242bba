@@ -14,9 +14,12 @@ import { handleXAI } from "./handlers/xai.ts";
 import { handleKrutrim } from "./handlers/krutrim.ts";
 
 serve(async (req) => {
-  // Handle CORS preflight requests
+  // IMPORTANT: Always handle CORS for any request type
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { 
+      status: 204, 
+      headers: corsHeaders 
+    });
   }
 
   try {
@@ -150,17 +153,35 @@ Feel free to reference this information if it's helpful, but also draw on your b
       
       // Validate that we got a proper response
       if (response) {
-        // Add file search results to the response
-        if (fileSearchResults.length > 0) {
-          response = new Response(
-            JSON.stringify({
-              ...JSON.parse(await response.text()),
-              fileSearchResults: fileSearchResults
-            }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
+        // Get the response body as text
+        const responseBody = await response.text();
+        
+        // Parse it as JSON if it's not a stream
+        let responseData;
+        try {
+          responseData = JSON.parse(responseBody);
+        } catch (e) {
+          // This is probably a stream, so we'll return it as-is
+          // Create a new response with the original body but ensure CORS headers are added
+          return new Response(responseBody, {
+            status: response.status,
+            headers: {
+              ...corsHeaders,
+              ...Object.fromEntries(response.headers.entries())
+            }
+          });
         }
-        return response;
+        
+        // Add file search results to the JSON response
+        if (fileSearchResults.length > 0) {
+          responseData.fileSearchResults = fileSearchResults;
+        }
+        
+        // Return a new response with the JSON data and ensure CORS headers are added
+        return new Response(JSON.stringify(responseData), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
       } else {
         throw new Error("Handler did not return a valid response");
       }
