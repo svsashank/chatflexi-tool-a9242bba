@@ -31,20 +31,31 @@ export const loadUserConversationsAction = (set: Function) => async () => {
     console.log(`Loaded conversations: ${conversations.length}`);
     
     if (conversations.length > 0) {
+      const formattedConversations = conversations.map((conversation: any) => ({
+        id: conversation.id,
+        title: conversation.title || 'New Conversation',
+        messages: [],
+        createdAt: new Date(conversation.created_at),
+        updatedAt: new Date(conversation.updated_at),
+        contextSummary: conversation.context_summary || '',
+      }));
+      
       set({
-        conversations: conversations.map((conversation: any) => ({
-          id: conversation.id,
-          title: conversation.title || 'New Conversation',
-          messages: [],
-          createdAt: new Date(conversation.created_at),
-          updatedAt: new Date(conversation.updated_at),
-          contextSummary: conversation.context_summary || '',
-        })),
+        conversations: formattedConversations,
         currentConversationId: conversations[0].id,
       });
       
-      // Set first conversation as current
-      console.log(`Set first conversation as current: ${conversations[0].id}`);
+      // After setting the current conversation, load the messages for it
+      console.log(`Set first conversation as current: ${conversations[0].id}, now loading its messages`);
+      
+      // We need to load messages for the first conversation
+      // This needs to be called after the state update
+      setTimeout(() => {
+        const loadMessagesForConversation = (window as any).useChatStore?.getState()?.loadMessagesForConversation;
+        if (typeof loadMessagesForConversation === 'function') {
+          loadMessagesForConversation(conversations[0].id);
+        }
+      }, 0);
     }
   } catch (error) {
     console.error("Error in loadUserConversations:", error);
@@ -59,8 +70,11 @@ export const loadUserConversationsAction = (set: Function) => async () => {
 export const loadMessagesForConversationAction = (set: Function) => async (conversationId: string) => {
   try {
     if (!conversationId) {
+      console.log("No conversation ID provided, skipping message load");
       return;
     }
+    
+    console.log(`Loading messages for conversation ${conversationId}...`);
     
     // Fetch all messages for the conversation with all possible fields
     const { data: messages, error } = await supabase
@@ -137,6 +151,10 @@ export const loadMessagesForConversationAction = (set: Function) => async (conve
             : conv
         ),
       }));
+      
+      console.log(`Updated state with ${formattedMessages.length} messages for conversation ${conversationId}`);
+    } else {
+      console.log(`No messages found for conversation ${conversationId}`);
     }
   } catch (error) {
     console.error(`Error in loadMessagesForConversation:`, error);

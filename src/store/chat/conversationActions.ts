@@ -1,6 +1,7 @@
+
 import { v4 as uuidv4 } from 'uuid';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/components/ui/use-toast';
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/components/ui/use-toast";
 import { Conversation } from '@/types';
 import { ChatStore } from './types';
 
@@ -60,8 +61,9 @@ export const createConversationAction = (set: Function, get: () => ChatStore) =>
   }
 };
 
-export const setCurrentConversationIdAction = (set: Function, get: () => ChatStore) => (id: string) => {
+export const setCurrentConversationIdAction = (set: Function, get: () => ChatStore) => async (id: string) => {
   console.log("Setting current conversation to:", id);
+  
   // Verify the conversation exists in our state before setting it
   const conversation = get().conversations.find(conv => conv.id === id);
   if (!conversation) {
@@ -69,7 +71,18 @@ export const setCurrentConversationIdAction = (set: Function, get: () => ChatSto
     console.log("Available conversations:", get().conversations.map(c => c.id));
     return;
   }
+  
+  // Set the conversation as current
   set({ currentConversationId: id });
+  
+  // Check if the conversation has messages already loaded
+  if (conversation.messages.length === 0) {
+    // If not, load messages from the database
+    console.log(`Loading messages for conversation ${id} as it has no messages loaded yet`);
+    await get().loadMessagesForConversation(id);
+  } else {
+    console.log(`Conversation ${id} already has ${conversation.messages.length} messages loaded, skipping fetch`);
+  }
 };
 
 export const deleteConversationAction = (set: Function, get: () => ChatStore) => async (id: string) => {

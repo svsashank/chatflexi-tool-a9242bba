@@ -1,3 +1,4 @@
+
 import React, { useEffect } from "react";
 import { History, MessageSquare, Search, Plus, Trash2 } from "lucide-react";
 import { format } from "date-fns";
@@ -26,7 +27,8 @@ const ConversationHistory = () => {
     setCurrentConversationId,
     createConversation,
     deleteConversation,
-    loadConversationsFromDB
+    loadConversationsFromDB,
+    loadMessagesForConversation
   } = useChatStore();
 
   // If user is logged in but no conversations are loaded, load them
@@ -62,7 +64,12 @@ const ConversationHistory = () => {
         return;
       }
       
-      setCurrentConversationId(id);
+      // First set the current conversation ID
+      await setCurrentConversationId(id);
+      
+      // Then explicitly load messages for this conversation
+      await loadMessagesForConversation(id);
+      
       setIsOpen(false); // Close the sheet on mobile after selection
     } catch (error) {
       console.error("Error selecting conversation:", error);
