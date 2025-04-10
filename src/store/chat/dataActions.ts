@@ -1,3 +1,4 @@
+
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
@@ -150,8 +151,46 @@ export const loadMessagesForConversationAction = (set: Function) => async (conve
     
     console.log(`Loaded ${messages?.length || 0} messages for conversation ${conversationId}`);
     
-    // Process and update the state with loaded messages
-    // This is a placeholder implementation
+    if (!messages || messages.length === 0) {
+      console.log("No messages found for this conversation");
+      return;
+    }
+    
+    // Convert database messages to app Message type
+    const formattedMessages: Message[] = messages.map(msg => {
+      // Find the model based on model_id and provider
+      const model = AI_MODELS.find(
+        m => m.id === msg.model_id && m.provider.toLowerCase() === (msg.model_provider || '').toLowerCase()
+      ) || DEFAULT_MODEL;
+      
+      return {
+        id: msg.id,
+        content: msg.content,
+        role: msg.role as 'user' | 'assistant',
+        model,
+        timestamp: new Date(msg.created_at),
+        tokens: msg.input_tokens && msg.output_tokens ? {
+          input: msg.input_tokens,
+          output: msg.output_tokens
+        } : undefined,
+        computeCredits: msg.compute_credits,
+        images: msg.images || []
+      };
+    });
+    
+    // Update the conversation in the store with the loaded messages
+    set(state => {
+      const updatedConversations = state.conversations.map(conv => 
+        conv.id === conversationId 
+          ? { ...conv, messages: formattedMessages } 
+          : conv
+      );
+      
+      return { conversations: updatedConversations };
+    });
+    
+    console.log("Updated conversation with loaded messages");
+    
   } catch (error) {
     console.error('Error loading messages:', error);
     toast({

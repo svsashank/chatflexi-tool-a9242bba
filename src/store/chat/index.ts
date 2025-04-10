@@ -57,7 +57,7 @@ const useChatStore = create<ChatStore>((set, get) => ({
   setSelectedModel: selectModelAction(set),
   generateResponse: generateResponseAction(set, get),
   loadConversationsFromDB: loadUserConversationsAction(set),
-  loadMessagesForConversation: loadMessagesForConversationAction || (async () => {}),
+  loadMessagesForConversation: loadMessagesForConversationAction(set), // Fixed: properly passing set to the action creator
   addTestConversations: (count = 3) => {
     // Placeholder for adding test conversations
     console.log(`Adding ${count} test conversations`);
