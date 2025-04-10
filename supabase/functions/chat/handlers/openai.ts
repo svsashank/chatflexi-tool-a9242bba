@@ -120,16 +120,20 @@ export async function handleOpenAIReasoningModel(
             
             // If we got search results but haven't generated a response yet, make a follow-up call
             if (webSearchResults.length > 0 && !responseContent) {
-              // Generate a new system prompt with search results
+              // Generate a new system prompt with search results that emphasizes they're supplemental
               const searchContext = `
-Here are some relevant web search results about the user's query:
+I've found some potentially relevant information from the web about the user's query.
+This is supplementary context to help inform your response, but you should not be limited to only this information.
+Use your own knowledge and capabilities alongside this information to provide the best possible answer.
+
+Here are some relevant web search results:
 ${webSearchResults.map((result, index) => `
 [${index + 1}] ${result.title}
 URL: ${result.url}
 ${result.snippet}
 `).join('\n')}
 
-Use the information above to help answer the user's question. Cite the sources when appropriate.`;
+Feel free to reference this information if it's helpful, but also draw on your broader knowledge to provide a comprehensive response to the user's question.`;
               
               const enhancedSystemPrompt = systemPrompt + "\n" + searchContext;
               
@@ -435,10 +439,12 @@ export async function handleOpenAIStandard(
     if (webSearchResults.length > 0) {
       console.log("Making follow-up call with search results");
       
-      // Create a new message with search results
-      const searchResultsText = webSearchResults.map((result, index) => 
-        `[${index + 1}] ${result.title}\nURL: ${result.url}\n${result.snippet}`
-      ).join('\n\n');
+      // Create a new message with search results, emphasizing they're supplemental
+      const searchResultsText = `I've found some potentially relevant information about your query. This is supplementary context to help inform my response:\n\n${
+        webSearchResults.map((result, index) => 
+          `[${index + 1}] ${result.title}\nURL: ${result.url}\n${result.snippet}`
+        ).join('\n\n')
+      }`;
       
       const followUpMessages = [...formattedMessages];
       followUpMessages.push({
@@ -449,12 +455,12 @@ export async function handleOpenAIStandard(
       followUpMessages.push({
         role: 'function',
         name: 'web_search',
-        content: `Here are the search results for "${content}":\n\n${searchResultsText}`
+        content: searchResultsText
       });
       
       followUpMessages.push({
         role: 'user',
-        content: "Please answer my question based on these search results, citing sources when appropriate."
+        content: "Please answer my question based on both your knowledge and these search results, drawing on your own capabilities and the supplementary information provided."
       });
       
       // Make the follow-up API call

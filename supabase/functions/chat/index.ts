@@ -48,20 +48,24 @@ serve(async (req) => {
     // Add a system prompt based on the conversation context
     let systemPrompt = generateSystemPrompt(messageHistory);
     
-    // Enhance the system prompt with search results
+    // Enhance the system prompt with search results as supplementary information
     if (webSearchResults.length > 0) {
       const searchContext = `
-Here are some relevant web search results about the user's query:
+I've found some potentially relevant information from the web about the user's query. 
+This is supplementary context to help inform your response, but you should not be limited to only this information.
+Use your own knowledge and capabilities alongside this information to provide the best possible answer.
+
+Here are some relevant web search results:
 ${webSearchResults.map((result, index) => `
 [${index + 1}] ${result.title}
 URL: ${result.url}
 ${result.snippet}
 `).join('\n')}
 
-Use the information above to help answer the user's question. Cite the sources when appropriate.`;
+Feel free to reference this information if it's helpful, but also draw on your broader knowledge to provide a comprehensive response to the user's question.`;
       
       systemPrompt = systemPrompt + "\n" + searchContext;
-      console.log("Enhanced system prompt with search results");
+      console.log("Enhanced system prompt with search results as supplementary information");
     }
     
     // Format varies by provider

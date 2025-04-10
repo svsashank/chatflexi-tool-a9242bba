@@ -41,8 +41,8 @@ export function extractUserPreferences(messageHistory: any[]) {
 
 // Generate a system prompt based on conversation context
 export function generateSystemPrompt(messageHistory: any[]) {
-  // Default system prompt
-  let systemPrompt = "You are Krix, a helpful AI assistant. Be concise, clear, and maintain context from previous messages.";
+  // Default system prompt that emphasizes using supplementary information alongside the model's knowledge
+  let systemPrompt = "You are Krix, a helpful AI assistant. Be concise, clear, and maintain context from previous messages. Use your own knowledge base first and foremost, treating any supplementary information as additional context rather than the sole source of truth.";
   
   // Enhance the system prompt based on the conversation history
   if (messageHistory.length > 0) {
@@ -58,6 +58,8 @@ export function generateSystemPrompt(messageHistory: any[]) {
       systemPrompt += ` The user seems to prefer: ${userPreferences.join(', ')}.`;
     }
   }
+  
+  systemPrompt += " When given supplementary information from web searches or other sources, consider it as helpful context, but continue drawing on your own comprehensive knowledge and capabilities to provide the best possible response.";
   
   return systemPrompt;
 }
