@@ -105,38 +105,77 @@ const ChatInput = () => {
       
       console.log(`Sending PDF ${file.name} to extract-pdf function`);
       
-      const response = await supabase.functions.invoke('extract-pdf', {
-        body: formData,
-        headers: {
-          'Accept': 'application/json',
-        },
-      });
+      // Add error handling and retry mechanism
+      let retries = 0;
+      const maxRetries = 2;
+      let lastError = null;
       
-      if (response.error) {
-        console.error('PDF extraction error:', response.error);
-        throw new Error(`PDF extraction failed: ${response.error.message || 'Unknown error'}`);
+      while (retries <= maxRetries) {
+        try {
+          // Add a timeout to the request
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Request timeout after 30 seconds')), 30000)
+          );
+          
+          const responsePromise = supabase.functions.invoke('extract-pdf', {
+            body: formData,
+            headers: {
+              'Accept': 'application/json',
+            },
+          });
+          
+          // Race between the response and the timeout
+          const response = await Promise.race([responsePromise, timeoutPromise]) as any;
+          
+          if (response.error) {
+            console.error('PDF extraction error:', response.error);
+            throw new Error(`PDF extraction failed: ${response.error.message || 'Unknown error'}`);
+          }
+          
+          if (!response.data) {
+            console.error('No data returned from PDF extraction');
+            throw new Error("No data returned from PDF extraction");
+          }
+          
+          console.log('PDF extraction successful:', {
+            filename: response.data.filename,
+            pages: response.data.pages,
+            textLength: response.data.text?.length || 0,
+            hasImages: response.data.images?.length > 0
+          });
+          
+          return `File: ${file.name}\nContent: PDF_EXTRACTION:${JSON.stringify(response.data)}`;
+        } catch (error) {
+          lastError = error;
+          retries++;
+          console.warn(`PDF extraction attempt ${retries} failed: ${error.message}`);
+          if (retries <= maxRetries) {
+            // Wait before retrying (exponential backoff)
+            await new Promise(resolve => setTimeout(resolve, retries * 1000));
+          }
+        }
       }
       
-      if (!response.data) {
-        console.error('No data returned from PDF extraction');
-        throw new Error("No data returned from PDF extraction");
-      }
-      
-      console.log('PDF extraction successful:', {
-        filename: response.data.filename,
-        pages: response.data.pages,
-        textLength: response.data.text?.length || 0,
-        hasImages: response.data.images?.length > 0
-      });
-      
-      return `File: ${file.name}\nContent: PDF_EXTRACTION:${JSON.stringify(response.data)}`;
+      throw lastError || new Error("Failed to extract PDF content after multiple attempts");
     } catch (error) {
       console.error('PDF extraction error:', error);
       
       // More detailed error message for the user
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      
+      // Check for specific error types to provide better guidance
+      let description = "Check network connectivity and try again";
+      
+      if (errorMessage.includes('Failed to send a request')) {
+        description = "Network request failed. Make sure you're connected to the internet and try again.";
+      } else if (errorMessage.includes('timeout')) {
+        description = "The request took too long. The PDF might be too large or complex.";
+      } else if (errorMessage.includes('CORS')) {
+        description = "Browser security prevented the request. Try a different browser or network.";
+      }
+      
       toast.error(`Failed to extract content from PDF: ${errorMessage}`, {
-        description: "Check network connectivity and try again",
+        description,
         duration: 5000,
       });
       

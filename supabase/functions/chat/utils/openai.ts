@@ -99,9 +99,11 @@ export async function extractTextFromFile(fileContent: string): Promise<string> 
     let extractedContent = contentMatch ? contentMatch[1] : fileContent;
     
     // If the content starts with "PDF_EXTRACTION:" it contains pre-extracted PDF content
-    if (extractedContent.startsWith("PDF_EXTRACTION:")) {
+    if (extractedContent.includes("PDF_EXTRACTION:")) {
       try {
-        const pdfData = JSON.parse(extractedContent.substring(15));
+        const startIndex = extractedContent.indexOf("PDF_EXTRACTION:");
+        const pdfDataJson = extractedContent.substring(startIndex + 15);
+        const pdfData = JSON.parse(pdfDataJson);
         
         // Validate the PDF data structure
         if (!pdfData || typeof pdfData !== 'object') {

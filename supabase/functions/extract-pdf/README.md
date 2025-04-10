@@ -21,6 +21,19 @@ If you encounter issues with the PDF extraction, check the following:
    - Try refreshing the page and uploading again
    - The edge function may be temporarily unavailable; try again later
    - Check that CORS is correctly configured in the edge function
+   - Try using a different browser or network connection
+   - If using a VPN, try disabling it temporarily
+
+## Network Connectivity Issues
+
+If you're consistently seeing errors about sending requests:
+
+1. Ensure your internet connection is stable
+2. Try a different network if possible (switch from wifi to mobile data)
+3. Clear your browser cache and cookies
+4. Disable browser extensions that might be interfering with requests
+5. Try a different browser
+6. If your network has strict security policies, they might be blocking the requests
 
 ## Usage
 
