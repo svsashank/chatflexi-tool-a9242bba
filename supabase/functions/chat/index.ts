@@ -40,9 +40,11 @@ serve(async (req) => {
     // Check if the query likely needs a web search
     let webSearchResults = [];
     if (shouldPerformWebSearch(content)) {
-      console.log(`Preemptively performing web search for query: "${content}"`);
+      console.log(`Query "${content}" seems to need web search, performing search...`);
       webSearchResults = await performBraveSearch(content);
-      console.log(`Preemptive search returned ${webSearchResults.length} results`);
+      console.log(`Search returned ${webSearchResults.length} results`);
+    } else {
+      console.log(`Query "${content}" doesn't seem to need web search, skipping search`);
     }
     
     // Add a system prompt based on the conversation context

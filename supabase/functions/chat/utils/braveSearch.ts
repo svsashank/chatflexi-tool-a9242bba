@@ -61,6 +61,40 @@ export async function performBraveSearch(query: string, count: number = 5): Prom
 
 // Helper function to check if a query likely needs web search
 export function shouldPerformWebSearch(query: string): boolean {
-  // Always perform a web search for all queries
-  return true;
+  const lowerQuery = query.toLowerCase();
+  
+  // Check for factual questions that would benefit from search
+  if (
+    lowerQuery.includes('what is') ||
+    lowerQuery.includes('who is') || 
+    lowerQuery.includes('when was') ||
+    lowerQuery.includes('where is') ||
+    lowerQuery.includes('how to') ||
+    lowerQuery.includes('why does') ||
+    lowerQuery.includes('tell me about') ||
+    lowerQuery.includes('find information') ||
+    lowerQuery.includes('search for') ||
+    lowerQuery.includes('have you heard') ||
+    lowerQuery.includes('latest') ||
+    lowerQuery.includes('recent') ||
+    lowerQuery.includes('news about') ||
+    lowerQuery.includes('current')
+  ) {
+    return true;
+  }
+  
+  // Check for specific entities that might need web search
+  const potentialEntities = query.match(/\b[A-Z][a-z]+(?: [A-Z][a-z]+)*\b/g);
+  if (potentialEntities && potentialEntities.length > 0) {
+    return true;
+  }
+  
+  // If the query is longer than 10 words, it might be a complex question needing search
+  const wordCount = query.split(/\s+/).length;
+  if (wordCount > 10) {
+    return true;
+  }
+  
+  return false;
 }
+
