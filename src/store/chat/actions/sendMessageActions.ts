@@ -33,6 +33,12 @@ export const createSendMessageAction = (
     set({
       conversations: conversations.map((conv) => {
         if (conv.id === currentConversationId) {
+          // Debug logging to ensure files are being properly added
+          if (files && files.length > 0) {
+            console.log(`Adding ${files.length} files to message ${messageId}`);
+            console.log(`First file content starts with: ${files[0].substring(0, 150)}...`);
+          }
+          
           return {
             ...conv,
             messages: [

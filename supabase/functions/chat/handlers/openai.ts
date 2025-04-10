@@ -1,4 +1,3 @@
-
 import { corsHeaders } from "../utils/cors.ts";
 import { performBraveSearch } from "../utils/braveSearch.ts";
 
@@ -34,16 +33,23 @@ export async function handleOpenAIReasoningModel(
     // Extract files content and add it to the prompt
     enhancedContent = `${content}\n\nHere are the contents of the provided files:\n\n`;
     files.forEach((fileContent, index) => {
-      // Parse the file content
-      const fileContentStr = String(fileContent);
-      const fileNameMatch = fileContentStr.match(/^File: (.+?)$/m);
-      const fileName = fileNameMatch ? fileNameMatch[1] : `File ${index + 1}`;
-      
-      // Extract the actual content part
-      const contentMatch = fileContentStr.match(/^Content: ([\s\S]+)$/m);
-      const extractedContent = contentMatch ? contentMatch[1] : fileContentStr;
-      
-      enhancedContent += `--- ${fileName} ---\n${extractedContent}\n\n`;
+      try {
+        // Parse the file content
+        const fileContentStr = String(fileContent);
+        console.log(`Processing file ${index + 1}, content length: ${fileContentStr.length} chars`);
+        
+        const fileNameMatch = fileContentStr.match(/^File: (.+?)$/m);
+        const fileName = fileNameMatch ? fileNameMatch[1] : `File ${index + 1}`;
+        console.log(`Extracted file name: ${fileName}`);
+        
+        // Extract the actual content part
+        const contentMatch = fileContentStr.match(/^Content: ([\s\S]+)$/m);
+        const extractedContent = contentMatch ? contentMatch[1] : fileContentStr;
+        
+        enhancedContent += `--- ${fileName} ---\n${extractedContent}\n\n`;
+      } catch (error) {
+        console.error(`Error processing file ${index}:`, error);
+      }
     });
     
     enhancedContent += `\nPlease analyze and respond to the above file content${content ? ' based on my request' : ''}.`;
@@ -286,16 +292,23 @@ export async function handleOpenAIStandard(
     // Extract files content and add it to the prompt
     enhancedContent = `${content}\n\nHere are the contents of the provided files:\n\n`;
     files.forEach((fileContent, index) => {
-      // Parse the file content
-      const fileContentStr = String(fileContent);
-      const fileNameMatch = fileContentStr.match(/^File: (.+?)$/m);
-      const fileName = fileNameMatch ? fileNameMatch[1] : `File ${index + 1}`;
-      
-      // Extract the actual content part
-      const contentMatch = fileContentStr.match(/^Content: ([\s\S]+)$/m);
-      const extractedContent = contentMatch ? contentMatch[1] : fileContentStr;
-      
-      enhancedContent += `--- ${fileName} ---\n${extractedContent}\n\n`;
+      try {
+        // Parse the file content
+        const fileContentStr = String(fileContent);
+        console.log(`Processing file ${index + 1}, content length: ${fileContentStr.length} chars`);
+        
+        const fileNameMatch = fileContentStr.match(/^File: (.+?)$/m);
+        const fileName = fileNameMatch ? fileNameMatch[1] : `File ${index + 1}`;
+        console.log(`Extracted file name: ${fileName}`);
+        
+        // Extract the actual content part
+        const contentMatch = fileContentStr.match(/^Content: ([\s\S]+)$/m);
+        const extractedContent = contentMatch ? contentMatch[1] : fileContentStr;
+        
+        enhancedContent += `--- ${fileName} ---\n${extractedContent}\n\n`;
+      } catch (error) {
+        console.error(`Error processing file ${index}:`, error);
+      }
     });
     
     enhancedContent += `\nPlease analyze and respond to the above file content${content ? ' based on my request' : ''}.`;

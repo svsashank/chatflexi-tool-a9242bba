@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 
@@ -35,6 +34,7 @@ serve(async (req) => {
     }
     if (messageFiles && messageFiles.length > 0) {
       console.log(`Request includes ${messageFiles.length} files`);
+      console.log(`First file preview: ${messageFiles[0].substring(0, 100)}...`);
     }
     
     // Check if the query likely needs a web search
@@ -79,9 +79,9 @@ Feel free to reference this information if it's helpful, but also draw on your b
         case 'openai':
           // Check if this is an O-series reasoning model that needs special handling
           if (isOSeriesReasoningModel(model.id)) {
-            response = await handleOpenAIReasoningModel(messageHistory, content, model.id, systemPrompt, messageImages, webSearchResults);
+            response = await handleOpenAIReasoningModel(messageHistory, content, model.id, systemPrompt, messageImages, webSearchResults, messageFiles);
           } else {
-            response = await handleOpenAIStandard(messageHistory, content, model.id, systemPrompt, messageImages, webSearchResults);
+            response = await handleOpenAIStandard(messageHistory, content, model.id, systemPrompt, messageImages, webSearchResults, messageFiles);
           }
           break;
         case 'anthropic':

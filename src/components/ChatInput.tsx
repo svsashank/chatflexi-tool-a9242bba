@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from "react";
 import { Send, ChevronDown, Image, X, FileText } from "lucide-react";
 import { useChatStore } from "@/store";
@@ -26,12 +25,11 @@ const ChatInput = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const documentInputRef = useRef<HTMLInputElement>(null);
 
-  // Auto-resize textarea as content grows
   useEffect(() => {
     const textarea = textareaRef.current;
     if (textarea) {
       textarea.style.height = "auto";
-      const newHeight = Math.min(textarea.scrollHeight, 200); // Max height of 200px
+      const newHeight = Math.min(textarea.scrollHeight, 200);
       textarea.style.height = `${newHeight}px`;
     }
   }, [inputValue]);
@@ -39,7 +37,6 @@ const ChatInput = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if ((inputValue.trim() || uploadedImages.length > 0 || uploadedFiles.length > 0) && !isLoading && !processingFile) {
-      // Construct message content - if there's no input but files are present, create a default prompt
       let messageContent = inputValue.trim();
       
       if (!messageContent && uploadedFiles.length > 0) {
@@ -53,7 +50,6 @@ const ChatInput = () => {
         filePreview: uploadedFiles.length > 0 ? uploadedFiles[0].substring(0, 50) + '...' : 'none'
       });
       
-      // Send message with content, images and files
       sendMessage(
         messageContent, 
         uploadedImages.length > 0 ? uploadedImages : undefined,
@@ -62,7 +58,6 @@ const ChatInput = () => {
       setInputValue("");
       setUploadedImages([]);
       setUploadedFiles([]);
-      // Reset textarea height
       if (textareaRef.current) {
         textareaRef.current.style.height = "auto";
       }
@@ -80,21 +75,17 @@ const ChatInput = () => {
     const files = e.target.files;
     if (!files) return;
 
-    // Check if model supports images
     if (!selectedModel.capabilities.includes('images')) {
       toast.error(`${selectedModel.name} does not support image analysis. Please select a model with vision capabilities.`);
       return;
     }
 
-    // Process each image
     Array.from(files).forEach(file => {
-      // Check file type
       if (!file.type.startsWith('image/')) {
         toast.error(`File ${file.name} is not an image.`);
         return;
       }
 
-      // Check file size (limit to 4MB)
       if (file.size > 4 * 1024 * 1024) {
         toast.error(`Image ${file.name} exceeds 4MB limit.`);
         return;
@@ -109,12 +100,11 @@ const ChatInput = () => {
       reader.readAsDataURL(file);
     });
 
-    // Reset file input
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
   };
-  
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
@@ -122,59 +112,47 @@ const ChatInput = () => {
     setProcessingFile(true);
     toast.info("Processing documents. Please wait...");
 
-    // Process each file
     let successCount = 0;
     let failCount = 0;
 
     for (const file of Array.from(files)) {
-      // Check file size (limit to 10MB)
       if (file.size > 10 * 1024 * 1024) {
         toast.error(`File ${file.name} exceeds 10MB limit.`);
         failCount++;
         continue;
       }
 
-      // Handle different file types
       try {
         if (file.type === 'application/pdf') {
           toast.info(`Extracting text from PDF: ${file.name}...`);
           
-          try {
-            // Use retries for PDF extraction
-            let pdfText = "";
-            let attempts = 0;
-            const maxAttempts = 3;
-            
-            while (attempts < maxAttempts) {
-              try {
-                attempts++;
-                pdfText = await extractTextFromPDF(file);
-                break; // If successful, exit the retry loop
-              } catch (pdfError) {
-                console.error(`PDF extraction attempt ${attempts} failed:`, pdfError);
-                if (attempts >= maxAttempts) throw pdfError;
-                // Wait before retrying
-                await new Promise(resolve => setTimeout(resolve, 1000));
-              }
+          let pdfText = "";
+          let attempts = 0;
+          const maxAttempts = 3;
+          
+          while (attempts < maxAttempts) {
+            try {
+              attempts++;
+              pdfText = await extractTextFromPDF(file);
+              break;
+            } catch (pdfError) {
+              console.error(`PDF extraction attempt ${attempts} failed:`, pdfError);
+              if (attempts >= maxAttempts) throw pdfError;
+              await new Promise(resolve => setTimeout(resolve, 1000));
             }
-            
-            if (pdfText.trim()) {
-              const fileContent = `File: ${file.name}\nContent: ${pdfText.substring(0, 100000)}${pdfText.length > 100000 ? '...(content truncated)' : ''}`;
-              console.log("Adding extracted PDF text to uploaded files:", fileContent.substring(0, 100) + '...');
-              setUploadedFiles(prev => [...prev, fileContent]);
-              toast.success(`Successfully extracted text from ${file.name}`);
-              successCount++;
-            } else {
-              toast.error(`No text content found in ${file.name}`);
-              failCount++;
-            }
-          } catch (error) {
-            toast.error(`Failed to extract PDF content: ${error instanceof Error ? error.message : 'Unknown error'}`);
-            console.error('PDF extraction failed:', error);
+          }
+          
+          if (pdfText.trim()) {
+            const fileContent = `File: ${file.name}\nContent: ${pdfText.substring(0, 100000)}${pdfText.length > 100000 ? '...(content truncated)' : ''}`;
+            console.log("Adding extracted PDF text to uploaded files:", fileContent.substring(0, 100) + '...');
+            setUploadedFiles(prev => [...prev, fileContent]);
+            toast.success(`Successfully extracted text from ${file.name}`);
+            successCount++;
+          } else {
+            toast.error(`No text content found in ${file.name}`);
             failCount++;
           }
         } else if (file.type.startsWith('text/')) {
-          // For text files, read the content directly
           const textContent = await file.text();
           const fileData = `File: ${file.name}\nContent: ${textContent.substring(0, 100000)}${textContent.length > 100000 ? '...(content truncated)' : ''}`;
           console.log("Adding text file content:", fileData.substring(0, 100) + '...');
@@ -182,7 +160,6 @@ const ChatInput = () => {
           toast.success(`File ${file.name} uploaded successfully`);
           successCount++;
         } else {
-          // For other file types, just use the name
           toast.warning(`File type ${file.type} content cannot be extracted. Only the filename will be used.`);
           setUploadedFiles(prev => [...prev, `File: ${file.name} (Binary content type: ${file.type})`]);
           successCount++;
@@ -194,7 +171,6 @@ const ChatInput = () => {
       }
     }
 
-    // Show a summary toast
     if (successCount > 0) {
       toast.success(`Successfully processed ${successCount} file(s)`);
     }
@@ -202,7 +178,6 @@ const ChatInput = () => {
       toast.error(`Failed to process ${failCount} file(s)`);
     }
 
-    // Reset file input and processing state
     if (documentInputRef.current) {
       documentInputRef.current.value = '';
     }
@@ -212,7 +187,7 @@ const ChatInput = () => {
   const removeImage = (index: number) => {
     setUploadedImages(prev => prev.filter((_, i) => i !== index));
   };
-  
+
   const removeFile = (index: number) => {
     setUploadedFiles(prev => prev.filter((_, i) => i !== index));
   };
@@ -223,7 +198,6 @@ const ChatInput = () => {
         onSubmit={handleSubmit} 
         className="relative flex flex-col gap-3 max-w-3xl mx-auto"
       >
-        {/* Model selector - now more prominent above the input */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -247,7 +221,7 @@ const ChatInput = () => {
           <DropdownMenuContent align="center" className="w-64 mt-1 border-primary/20">
             <DropdownMenuLabel className="text-center">Choose an AI Model</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <ScrollArea className="h-80"> {/* Set a fixed height for scrolling */}
+            <ScrollArea className="h-80">
               <div className="p-1">
                 {AI_MODELS.map((model) => (
                   <DropdownMenuItem 
@@ -276,7 +250,6 @@ const ChatInput = () => {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {/* Display uploaded images */}
         {uploadedImages.length > 0 && (
           <div className="flex flex-wrap gap-2 mt-2">
             {uploadedImages.map((image, index) => (
@@ -293,8 +266,7 @@ const ChatInput = () => {
             ))}
           </div>
         )}
-        
-        {/* Display uploaded files */}
+
         {uploadedFiles.length > 0 && (
           <div className="flex flex-wrap gap-2 mt-2">
             {uploadedFiles.map((file, index) => {
@@ -330,7 +302,6 @@ const ChatInput = () => {
             />
           </div>
           
-          {/* File upload inputs */}
           <input 
             type="file" 
             ref={fileInputRef}
@@ -351,7 +322,6 @@ const ChatInput = () => {
             disabled={isLoading || processingFile}
           />
           
-          {/* Image upload button */}
           <Button
             type="button"
             variant="outline"
@@ -364,7 +334,6 @@ const ChatInput = () => {
             <Image size={18} />
           </Button>
           
-          {/* Document upload button */}
           <Button
             type="button"
             variant="outline"
