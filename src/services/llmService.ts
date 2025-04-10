@@ -53,16 +53,6 @@ export const sendMessageToLLM = async (
       filesCount: files.length
     });
     
-    // Debug log for files
-    if (files && files.length > 0) {
-      console.log('Files being sent with message:', files.length);
-      // Log a preview of the first file
-      if (files[0]) {
-        const filePreview = files[0].substring(0, 100) + '...';
-        console.log('First file preview:', filePreview);
-      }
-    }
-    
     // Debug log to check if the current message appears in the history
     const lastUserMessageInHistory = messageHistory
       .filter(msg => msg.role === 'user')
@@ -123,10 +113,6 @@ export const sendMessageToLLM = async (
         
         if (data.webSearchResults && data.webSearchResults.length > 0) {
           console.log('Web search results:', JSON.stringify(data.webSearchResults).substring(0, 200) + '...');
-        }
-        
-        if (data.fileSearchResults && data.fileSearchResults.length > 0) {
-          console.log('File search results:', JSON.stringify(data.fileSearchResults).substring(0, 200) + '...');
         }
         
         // If content is empty but we have search results, create a placeholder message
