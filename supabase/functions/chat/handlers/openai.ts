@@ -1,6 +1,6 @@
 
 import { Configuration, OpenAIApi } from "https://esm.sh/openai@3.2.1";
-import { OpenAIStream } from "../../utils/openai.ts";
+import { OpenAIStream } from "../utils/openai.ts";
 
 const apiKey = Deno.env.get("OPENAI_API_KEY");
 
@@ -217,13 +217,20 @@ export async function handleOpenAIStream(
     
     // console.log("OpenAIStream response headers:", response.headers);
     
-    const stream = OpenAIStream(response);
-    return new Response(stream, {
-      headers: {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-      },
-    });
+    // Since we don't have the OpenAIStream utility now, let's return a message
+    return new Response(
+      JSON.stringify({
+        content: "Streaming is temporarily unavailable. Please use the standard API.",
+        model: modelId,
+        provider: "OpenAI",
+        tokens: { input: 0, output: 0 },
+      }),
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
   } catch (error: any) {
     const errorInfo = handleAPIError(error);
     console.error("OpenAI API Error:", error);
