@@ -1,3 +1,4 @@
+
 import { corsHeaders } from "../utils/cors.ts";
 import { performBraveSearch } from "../utils/braveSearch.ts";
 
