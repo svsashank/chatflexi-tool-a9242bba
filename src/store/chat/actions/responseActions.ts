@@ -41,6 +41,12 @@ export const generateResponseAction = (set: Function, get: Function) => async ()
       hasFiles: lastMessage.files && lastMessage.files.length > 0,
       filesCount: lastMessage.files?.length || 0
     });
+    
+    // If there are files, log them for debugging
+    if (lastMessage.files && lastMessage.files.length > 0) {
+      console.log("File content preview:", 
+        lastMessage.files[0].substring(0, 150) + (lastMessage.files[0].length > 150 ? '...' : ''));
+    }
 
     const aiResponse = await sendMessageToLLM(
       lastMessage.content,

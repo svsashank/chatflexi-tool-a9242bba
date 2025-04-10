@@ -46,6 +46,13 @@ const ChatInput = () => {
         messageContent = "Please analyze and summarize the content of these document(s)";
       }
       
+      console.log("Submitting message with:", {
+        content: messageContent,
+        images: uploadedImages.length,
+        files: uploadedFiles.length,
+        filePreview: uploadedFiles.length > 0 ? uploadedFiles[0].substring(0, 50) + '...' : 'none'
+      });
+      
       // Send message with content, images and files
       sendMessage(
         messageContent, 
@@ -153,6 +160,7 @@ const ChatInput = () => {
             
             if (pdfText.trim()) {
               const fileContent = `File: ${file.name}\nContent: ${pdfText.substring(0, 100000)}${pdfText.length > 100000 ? '...(content truncated)' : ''}`;
+              console.log("Adding extracted PDF text to uploaded files:", fileContent.substring(0, 100) + '...');
               setUploadedFiles(prev => [...prev, fileContent]);
               toast.success(`Successfully extracted text from ${file.name}`);
               successCount++;
@@ -168,10 +176,9 @@ const ChatInput = () => {
         } else if (file.type.startsWith('text/')) {
           // For text files, read the content directly
           const textContent = await file.text();
-          setUploadedFiles(prev => [
-            ...prev, 
-            `File: ${file.name}\nContent: ${textContent.substring(0, 100000)}${textContent.length > 100000 ? '...(content truncated)' : ''}`
-          ]);
+          const fileData = `File: ${file.name}\nContent: ${textContent.substring(0, 100000)}${textContent.length > 100000 ? '...(content truncated)' : ''}`;
+          console.log("Adding text file content:", fileData.substring(0, 100) + '...');
+          setUploadedFiles(prev => [...prev, fileData]);
           toast.success(`File ${file.name} uploaded successfully`);
           successCount++;
         } else {
