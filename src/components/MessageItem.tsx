@@ -35,6 +35,18 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, showTotalCredits = f
   const hasWebSearchResults = message.webSearchResults && message.webSearchResults.length > 0;
   const hasFileSearchResults = message.fileSearchResults && message.fileSearchResults.length > 0;
   
+  // Add debugging to make sure we're capturing search results
+  if (hasWebSearchResults && !isUserMessage) {
+    console.log(`Message ${message.id} has web search results:`, message.webSearchResults);
+  }
+  
+  // Auto-open search results section when first rendering
+  React.useEffect(() => {
+    if (hasWebSearchResults && !isUserMessage) {
+      setIsWebSearchOpen(true);
+    }
+  }, [hasWebSearchResults, isUserMessage]);
+  
   return (
     <div className={`flex items-start gap-4 animate-fade-in ${isUserMessage ? "" : "group"}`}>
       <div 
@@ -147,7 +159,7 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, showTotalCredits = f
               onOpenChange={setIsWebSearchOpen}
               className="mt-4 border-t border-border pt-2"
             >
-              <CollapsibleTrigger className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
+              <CollapsibleTrigger className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors py-1 w-full">
                 <Globe size={14} />
                 <span>Web search results ({message.webSearchResults!.length})</span>
                 <svg
@@ -156,7 +168,7 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, showTotalCredits = f
                   viewBox="0 0 12 12"
                   fill="none"
                   xmlns="http://www.w3.org/2000/svg"
-                  className={`transform transition-transform ${
+                  className={`transform transition-transform ml-auto ${
                     isWebSearchOpen ? "rotate-180" : ""
                   }`}
                 >
@@ -166,16 +178,21 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, showTotalCredits = f
                   ></path>
                 </svg>
               </CollapsibleTrigger>
-              <CollapsibleContent className="mt-2 text-sm">
-                <div className="space-y-2">
-                  {message.webSearchResults!.map((result, index) => (
-                    <div key={index} className="p-2 bg-background rounded border border-border">
-                      <h4 className="font-medium">{result.title}</h4>
-                      <p className="text-xs text-muted-foreground">{result.url}</p>
-                      <p className="text-xs mt-1">{result.snippet}</p>
-                    </div>
-                  ))}
-                </div>
+              <CollapsibleContent className="mt-2 text-sm space-y-2">
+                {message.webSearchResults!.map((result, index) => (
+                  <div key={index} className="p-2 bg-background rounded border border-border">
+                    <a 
+                      href={result.url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="font-medium text-blue-500 hover:text-blue-700 transition-colors"
+                    >
+                      {result.title}
+                    </a>
+                    <p className="text-xs text-muted-foreground break-all">{result.url}</p>
+                    <p className="text-xs mt-1">{result.snippet}</p>
+                  </div>
+                ))}
               </CollapsibleContent>
             </Collapsible>
           )}
@@ -187,7 +204,7 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, showTotalCredits = f
               onOpenChange={setIsFileSearchOpen}
               className="mt-4 border-t border-border pt-2"
             >
-              <CollapsibleTrigger className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
+              <CollapsibleTrigger className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors py-1 w-full">
                 <FileText size={14} />
                 <span>File search results ({message.fileSearchResults!.length})</span>
                 <svg
@@ -196,7 +213,7 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, showTotalCredits = f
                   viewBox="0 0 12 12"
                   fill="none"
                   xmlns="http://www.w3.org/2000/svg"
-                  className={`transform transition-transform ${
+                  className={`transform transition-transform ml-auto ${
                     isFileSearchOpen ? "rotate-180" : ""
                   }`}
                 >
@@ -206,15 +223,13 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, showTotalCredits = f
                   ></path>
                 </svg>
               </CollapsibleTrigger>
-              <CollapsibleContent className="mt-2 text-sm">
-                <div className="space-y-2">
-                  {message.fileSearchResults!.map((result, index) => (
-                    <div key={index} className="p-2 bg-background rounded border border-border">
-                      <h4 className="font-medium">{result.filename || 'File'}</h4>
-                      <p className="text-xs mt-1">{result.content || result.snippet}</p>
-                    </div>
-                  ))}
-                </div>
+              <CollapsibleContent className="mt-2 text-sm space-y-2">
+                {message.fileSearchResults!.map((result, index) => (
+                  <div key={index} className="p-2 bg-background rounded border border-border">
+                    <h4 className="font-medium">{result.filename || 'File'}</h4>
+                    <p className="text-xs mt-1 whitespace-pre-wrap">{result.content || result.snippet}</p>
+                  </div>
+                ))}
               </CollapsibleContent>
             </Collapsible>
           )}

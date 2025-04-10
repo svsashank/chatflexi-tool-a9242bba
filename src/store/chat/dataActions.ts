@@ -62,8 +62,7 @@ export const loadMessagesForConversationAction = (set: Function) => async (conve
       return;
     }
     
-    // Fetch the actual messages directly without checking columns first
-    // This avoids the 400 error when querying for specific columns that might not exist
+    // Fetch all messages for the conversation with all possible fields
     const { data: messages, error } = await supabase
       .from('conversation_messages')
       .select('*')
@@ -115,13 +114,17 @@ export const loadMessagesForConversationAction = (set: Function) => async (conve
           formattedMessage.files = message.files;
         }
         
-        // Add search results if they exist
+        // Add web search results if they exist
         if (message.web_search_results) {
           formattedMessage.webSearchResults = message.web_search_results;
+          console.log(`Found web search results for message ${message.id}:`, 
+            JSON.stringify(message.web_search_results).substring(0, 100) + '...');
         }
         
+        // Add file search results if they exist
         if (message.file_search_results) {
           formattedMessage.fileSearchResults = message.file_search_results;
+          console.log(`Found file search results for message ${message.id}`);
         }
         
         return formattedMessage;

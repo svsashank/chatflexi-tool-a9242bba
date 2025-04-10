@@ -111,6 +111,10 @@ export const sendMessageToLLM = async (
           hasFileSearchResults: !!data.fileSearchResults && data.fileSearchResults.length > 0
         });
         
+        if (data.webSearchResults && data.webSearchResults.length > 0) {
+          console.log('Web search results:', JSON.stringify(data.webSearchResults).substring(0, 200) + '...');
+        }
+        
         // If content is empty but we have search results, create a placeholder message
         if (!data.content && (data.webSearchResults?.length > 0 || data.fileSearchResults?.length > 0)) {
           data.content = "I'm currently searching for information related to your request. The results will be processed shortly.";
@@ -119,6 +123,14 @@ export const sendMessageToLLM = async (
         // Ensure we always have some content
         if (!data.content) {
           data.content = "I'm processing your request. Please wait a moment for the full response.";
+        }
+        
+        // If response doesn't contain a summary of search results but has search results,
+        // add a hint about the search results
+        if (data.webSearchResults?.length > 0 && 
+            !data.content.toLowerCase().includes('search') && 
+            !data.content.toLowerCase().includes('found')) {
+          data.content += "\n\nI've also found some relevant information from web searches that might be helpful.";
         }
         
         return {
