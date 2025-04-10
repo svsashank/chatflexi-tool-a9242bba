@@ -1,8 +1,7 @@
-
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,7 +16,6 @@ import { toast } from '@/components/ui/use-toast';
 
 export function UserMenu() {
   const { user, signOut } = useAuth();
-  const navigate = useNavigate();
   
   // Get user initials for avatar fallback
   const getUserInitials = () => {
@@ -46,7 +44,8 @@ export function UserMenu() {
         title: "Signed out successfully",
         description: "You have been logged out",
       });
-      navigate('/auth');
+      // Instead of using navigate, we'll use window.location to redirect
+      window.location.href = '/auth';
     } catch (error) {
       console.error('Error signing out:', error);
       toast({
@@ -93,9 +92,11 @@ export function UserMenu() {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => navigate('/profile')}>
-          <UserCog className="mr-2 h-4 w-4 text-indigo-400" />
-          <span>Profile</span>
+        <DropdownMenuItem asChild>
+          <Link to="/profile">
+            <UserCog className="mr-2 h-4 w-4 text-indigo-400" />
+            <span>Profile</span>
+          </Link>
         </DropdownMenuItem>
         <DropdownMenuItem onClick={handleSignOut}>
           <LogOut className="mr-2 h-4 w-4" />
