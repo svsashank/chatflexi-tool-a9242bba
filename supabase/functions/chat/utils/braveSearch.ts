@@ -1,5 +1,4 @@
 
-
 // Utility functions to perform Brave Search API calls
 
 // Helper to make a search request to Brave
@@ -101,6 +100,40 @@ export function shouldPerformWebSearch(query: string): boolean {
     }
   }
   
+  // Additional patterns for common knowledge that LLMs would know about
+  const commonKnowledgePatterns = [
+    /\bhistory\b|\bhistorical\b/i,  // Historical topics are usually in LLM training
+    /\bwho (?:is|was|are|were) .*?\b/i, // Questions about people/groups in history
+    /\bwhere (?:is|was|are|were) .*?\b(?!.*?(?:right now|today|currently|latest))/i, // General location questions
+    /\bwhen (?:is|was|were)\b(?!.*?(?:next|upcoming|future|scheduled))/i, // Historical timing questions
+    /\bwhy (?:did|were|was)\b(?!.*?(?:yesterday|today|recently|last week))/i, // Historical reasoning questions
+    /\bcapital of\b/i, // Questions about capitals
+    /\bmeaning of\b/i, // Word or phrase meanings
+    /\bdefinition\b/i, // Definitions
+    /\b(?:ancient|medieval|classical|traditional)\b/i, // Historical period indicators
+    /\b(?:empire|dynasty|kingdom|civilization)\b/i, // Historical societies
+    /\b(?:scientist|inventor|philosopher|author|artist|composer)\b/i, // Historical figures
+    /\b(?:written|authored|composed|created|invented|discovered)\b(?!.*?(?:recently|lately|this year|last month))/i, // Creative/scientific achievements
+    /\btheory of\b/i, // Scientific theories
+    /\bconcept of\b/i  // Abstract concepts
+  ];
+  
+  // If the query matches common knowledge patterns without time-sensitive indicators,
+  // the LLM likely has sufficient knowledge
+  if (commonKnowledgePatterns.some(pattern => pattern.test(lowerQuery))) {
+    // But still search if time-sensitive keywords are present
+    const timeRelevantTerms = ['latest', 'recent', 'news', 'current', 'today', 'yesterday', 'this week', 'this month', 'this year'];
+    
+    if (!timeRelevantTerms.some(term => lowerQuery.includes(term))) {
+      // Look for explicit requests for updated or current information  
+      const needsCurrentInfo = /\bcurrent|\blatest|\brecent|\bnow|\btoday|\bthis year\b/.test(lowerQuery);
+      if (!needsCurrentInfo) {
+        console.log("Query matches common knowledge pattern without time relevance, skipping search");
+        return false;
+      }
+    }
+  }
+  
   // Check for factual questions that likely need search
   const factualPatterns = [
     /what (?:is|are|was|were) (?!your|my)/i, // What is/are but not "what is your name"
@@ -122,8 +155,45 @@ export function shouldPerformWebSearch(query: string): boolean {
     /\blatest\b|\brecent\b|\bcurrent\b/i
   ];
   
+  // For factual patterns, we need to be more discriminating
   if (factualPatterns.some(pattern => pattern.test(lowerQuery))) {
-    return true;
+    // First check if it's about time-sensitive information
+    const timeRelevantTerms = ['latest', 'recent', 'news', 'current', 'today', 'yesterday', 'this week', 'this month', 'this year'];
+    const isTimeRelevant = timeRelevantTerms.some(term => lowerQuery.includes(term));
+    
+    if (isTimeRelevant) {
+      return true;
+    }
+    
+    // Check for specific named entities that might need very updated information
+    const politicalTerms = [
+      'president', 'prime minister', 'chancellor', 'election', 'government', 
+      'congress', 'parliament', 'senate', 'law', 'bill', 'policy', 'politician'
+    ];
+    const sportTerms = [
+      'score', 'game', 'match', 'tournament', 'championship', 'league',
+      'player', 'team', 'season', 'standing', 'ranking'
+    ];
+    const techTerms = [
+      'release', 'version', 'update', 'launch', 'product', 'device',
+      'software', 'hardware', 'app', 'technology', 'feature', 'bug'
+    ];
+    const businessTerms = [
+      'stock', 'price', 'market', 'company', 'corporation', 'business',
+      'finance', 'economic', 'economy', 'trade', 'investment', 'profit'
+    ];
+    
+    // If the query contains time-sensitive domain terms, perform search
+    const timeRelevantDomains = [
+      ...politicalTerms, ...sportTerms, ...techTerms, ...businessTerms
+    ];
+    if (timeRelevantDomains.some(term => lowerQuery.includes(term))) {
+      return true;
+    }
+    
+    // For factual questions about other topics, models can often answer from training
+    console.log("Factual query but not time-sensitive or domain-specific, skipping search");
+    return false;
   }
   
   // Check for specific named entities that might need search (more sophisticated)
@@ -137,23 +207,56 @@ export function shouldPerformWebSearch(query: string): boolean {
     );
     
     if (significantEntities.length > 0) {
-      return true;
+      // For entities, check if they're likely to need current information
+      const timeRelevantTerms = ['latest', 'recent', 'news', 'current', 'today', 'yesterday', 'this week'];
+      const isTimeRelevant = timeRelevantTerms.some(term => lowerQuery.includes(term));
+      
+      if (isTimeRelevant) {
+        return true;
+      }
+      
+      // For non-time-sensitive entity questions, skip search
+      console.log("Entity query but not time-sensitive, skipping search");
+      return false;
     }
   }
   
   // Check for dates, which often indicate time-sensitive information
   const datePattern = /\b(19|20)\d{2}\b|\b\d{1,2}\/\d{1,2}\/\d{2,4}\b|\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]* \d{1,2}(st|nd|rd|th)?\b/i;
   if (datePattern.test(query)) {
-    return true;
+    // If it's a recent date, search is likely needed
+    const currentYear = new Date().getFullYear();
+    const yearMatches = query.match(/\b(19|20)\d{2}\b/g);
+    if (yearMatches) {
+      const years = yearMatches.map(y => parseInt(y, 10));
+      // If any year is within last 3 years, likely needs search
+      if (years.some(y => y >= currentYear - 3)) {
+        return true;
+      }
+    }
+    
+    // For other date references, may not need search if historical
+    return false;
   }
   
   // Complex questions (longer than threshold) might benefit from search
   // This is a fallback for complex queries not caught by other patterns
-  if (wordCount > 12) {
+  if (wordCount > 15) {
+    // However, if it seems like a multi-part historical question, skip search
+    const historicalIndicators = [
+      'history', 'historical', 'ancient', 'medieval', 'classical', 
+      'traditional', 'empire', 'dynasty', 'kingdom', 'civilization'
+    ];
+    const hasHistoricalTerms = historicalIndicators.some(term => lowerQuery.includes(term));
+    
+    if (hasHistoricalTerms) {
+      console.log("Complex historical query, skipping search");
+      return false;
+    }
+    
     return true;
   }
   
   // If we've gotten this far, the query probably doesn't need a search
   return false;
 }
-

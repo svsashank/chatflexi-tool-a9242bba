@@ -2,7 +2,7 @@
 import React, { useEffect, useRef } from "react";
 import { useChatStore } from "@/store";
 import MessageItem from "./MessageItem";
-import { User, Hexagon } from "lucide-react";
+import { User, Hexagon, Search } from "lucide-react";
 
 const ChatMessages = () => {
   const { conversations, currentConversationId, isLoading } = useChatStore();
@@ -82,11 +82,18 @@ const ChatMessages = () => {
       ) : (
         <>
           {currentConversation.messages.map((message, index) => (
-            <MessageItem 
-              key={message.id} 
-              message={message} 
-              showTotalCredits={index === lastAssistantIndex}
-            />
+            <div key={message.id}>
+              <MessageItem 
+                message={message} 
+                showTotalCredits={index === lastAssistantIndex}
+              />
+              {message.role === 'assistant' && message.webSearchResults && message.webSearchResults.length > 0 && (
+                <div className="ml-12 mt-1 flex items-center text-xs text-muted-foreground">
+                  <Search size={12} className="mr-1" />
+                  <span>Web search was used to supplement this response</span>
+                </div>
+              )}
+            </div>
           ))}
           
           {isLoading && (

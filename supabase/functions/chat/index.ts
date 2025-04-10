@@ -42,11 +42,11 @@ serve(async (req) => {
     const shouldSearch = shouldPerformWebSearch(content);
     
     if (shouldSearch) {
-      console.log(`Query "${content}" determined to need web search, performing search...`);
+      console.log(`Query "${content}" analyzed and determined to need web search, performing search...`);
       webSearchResults = await performBraveSearch(content);
       console.log(`Search returned ${webSearchResults.length} results`);
     } else {
-      console.log(`Query "${content}" analyzed and determined NOT to need web search, skipping search`);
+      console.log(`Query "${content}" analyzed and determined NOT to need web search - model likely has this knowledge`);
     }
     
     // Add a system prompt based on the conversation context
