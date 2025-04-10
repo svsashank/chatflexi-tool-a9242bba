@@ -26,14 +26,9 @@ export const createSendMessageAction = (
           const pdfDataJson = file.substring(startIndex + 15);
           const pdfData = JSON.parse(pdfDataJson);
           
-          // Add any extracted images to the images array
-          if (pdfData.images && pdfData.images.length > 0) {
-            pdfData.images.forEach((imgSrc: string) => {
-              if (imgSrc && !images.includes(imgSrc)) {
-                images.push(imgSrc);
-              }
-            });
-          }
+          // Note: With pdf.js implementation, we don't get actual image data
+          // We just know if images are present but don't have the actual image data to display
+          console.log("PDF data processed:", pdfData.filename, "Pages:", pdfData.pages);
         } catch (error) {
           console.error("Error processing PDF extraction data:", error);
         }
@@ -55,7 +50,7 @@ export const createSendMessageAction = (
                 role: 'user',
                 model: selectedModel, // Include selected model info
                 timestamp,
-                images, // Include any attached images (including those from PDFs)
+                images, // Include any attached images
                 files: processedFiles   // Include any attached files
               }
             ],

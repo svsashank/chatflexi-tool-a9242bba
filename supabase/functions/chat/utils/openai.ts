@@ -105,7 +105,7 @@ export async function extractTextFromFile(fileContent: string): Promise<string> 
       let formattedContent = `PDF Document: ${pdfData.filename}\nPages: ${pdfData.pages}\n\nExtracted Text:\n${pdfData.text}`;
       
       if (pdfData.images && pdfData.images.length > 0) {
-        formattedContent += `\n\nThe document contains ${pdfData.images.length} extracted images.`;
+        formattedContent += `\n\nThe document contains images that could not be directly extracted.`;
       }
       
       return formattedContent;

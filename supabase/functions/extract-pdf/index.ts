@@ -1,6 +1,8 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
+// Import pdf.js for PDF parsing
+import * as pdfjs from "https://cdn.skypack.dev/pdfjs-dist@2.16.105/build/pdf.js";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -8,6 +10,35 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
   'Access-Control-Max-Age': '86400'
 };
+
+// Configure the PDF.js worker
+const PDFJS = pdfjs;
+PDFJS.GlobalWorkerOptions.workerSrc = "https://cdn.skypack.dev/pdfjs-dist@2.16.105/build/pdf.worker.min.js";
+
+// Function to extract text from a PDF page
+async function extractTextFromPage(page) {
+  const textContent = await page.getTextContent();
+  return textContent.items
+    .map(item => item.str)
+    .join(' ');
+}
+
+// Function to extract images from a PDF page (basic implementation)
+async function extractImagesFromPage(page) {
+  const operatorList = await page.getOperatorList();
+  const images = [];
+  
+  // This is a simplified approach - in production you might want to use a more robust method
+  for (const op of operatorList.fnArray) {
+    if (op === PDFJS.OPS.paintImageXObject) {
+      // We found an image, but extraction is complex
+      // For now, we'll just note that images exist
+      images.push(true);
+    }
+  }
+  
+  return images.length > 0;
+}
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -34,51 +65,38 @@ serve(async (req) => {
       );
     }
     
-    // Convert the file to a base64 string
+    // Convert the file to an array buffer
     const arrayBuffer = await file.arrayBuffer();
-    const bytes = new Uint8Array(arrayBuffer);
-    const base64 = btoa(String.fromCharCode(...bytes));
     
-    // Use a PDF extraction service
-    const apiUrl = 'https://api.pdf.co/v1/pdf/extract/text';
-    const apiKey = Deno.env.get('PDF_CO_API_KEY');
+    // Load the PDF document
+    const loadingTask = PDFJS.getDocument({ data: arrayBuffer });
+    const pdf = await loadingTask.promise;
     
-    if (!apiKey) {
-      return new Response(
-        JSON.stringify({ error: 'PDF extraction API key is not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    const numPages = pdf.numPages;
+    let fullText = '';
+    let hasImages = false;
+    
+    // Process each page
+    for (let i = 1; i <= numPages; i++) {
+      const page = await pdf.getPage(i);
+      
+      // Extract text
+      const pageText = await extractTextFromPage(page);
+      fullText += pageText + '\n\n';
+      
+      // Check for images
+      const pageHasImages = await extractImagesFromPage(page);
+      if (pageHasImages) {
+        hasImages = true;
+      }
     }
     
-    const extractionResponse = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey
-      },
-      body: JSON.stringify({
-        url: `data:application/pdf;base64,${base64}`,
-        async: false,
-        profiles: ["text", "images"]
-      })
-    });
-    
-    if (!extractionResponse.ok) {
-      const errorData = await extractionResponse.json();
-      return new Response(
-        JSON.stringify({ error: `PDF extraction failed: ${errorData.message || errorData.error || 'Unknown error'}` }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-    
-    const extractionData = await extractionResponse.json();
-    
-    // Return the extracted text and images
+    // Return the extracted content
     return new Response(
       JSON.stringify({
-        text: extractionData.text || "No text could be extracted from this PDF.",
-        images: extractionData.images || [],
-        pages: extractionData.pages || 0,
+        text: fullText || "No text could be extracted from this PDF.",
+        images: hasImages ? ["PDF contains images, but direct extraction is not supported in this version."] : [],
+        pages: numPages,
         filename: file.name
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

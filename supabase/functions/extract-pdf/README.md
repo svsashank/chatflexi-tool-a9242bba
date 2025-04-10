@@ -1,23 +1,18 @@
 
 # PDF Extraction Edge Function
 
-This Edge Function extracts text and images from PDF files. It uses the PDF.co API for extraction.
+This Edge Function extracts text and detects the presence of images from PDF files. It uses pdf.js, an open-source PDF library developed by Mozilla.
 
 ## Setup
 
-1. You need to sign up for a PDF.co API key at https://pdf.co/
-2. Add your API key to the Supabase Edge Function secrets:
-
-```bash
-supabase secrets set PDF_CO_API_KEY=your_api_key_here
-```
+No API keys are required as we're using the open-source pdf.js library.
 
 ## Usage
 
 This function accepts a PDF file through a FormData POST request and returns:
 
 - Extracted text content
-- Extracted images as base64 strings
+- Information about whether images are present (but doesn't extract the actual images)
 - Number of pages
 - The original filename
 
@@ -43,7 +38,7 @@ console.log('Extracted PDF data:', data);
 ```json
 {
   "text": "Extracted text content...",
-  "images": ["data:image/png;base64,...", "data:image/png;base64,..."],
+  "images": ["PDF contains images, but direct extraction is not supported in this version."],
   "pages": 5,
   "filename": "document.pdf"
 }
@@ -51,5 +46,13 @@ console.log('Extracted PDF data:', data);
 
 ## Limitations
 
-- The function has a 10MB file size limit
-- The PDF.co API has its own rate limits based on your plan
+- The function has a size limit determined by Supabase Edge Functions (typically around 6MB)
+- Image extraction is limited to detecting the presence of images, not extracting the actual image data
+- Complex PDF documents may not have all text properly extracted
+
+## Future Improvements
+
+In the future, we may enhance this function to:
+1. Extract actual image data from the PDFs
+2. Preserve document structure and formatting better
+3. Support additional PDF features like form fields, annotations, etc.
