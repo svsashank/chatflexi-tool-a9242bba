@@ -1,6 +1,7 @@
 
 import { Configuration, OpenAIApi } from "https://esm.sh/openai@3.2.1";
 import { OpenAIStream } from "../utils/openai.ts";
+import { encode } from "https://esm.sh/gpt-tokenizer@2.1.2";
 
 const apiKey = Deno.env.get("OPENAI_API_KEY");
 
@@ -14,17 +15,15 @@ const config = new Configuration({
 
 const openai = new OpenAIApi(config);
 
-// Function to count tokens using OpenAI's tiktoken library
+// Function to count tokens using a simple tokenizer
 async function countTokens(modelName: string, text: string): Promise<number> {
   try {
-    const tiktoken = await import("tiktoken");
-    const encoding = tiktoken.encoding_for_model(modelName);
-    const tokens = encoding.encode(text);
-    encoding.free(); // Free the encoder to avoid memory leaks
+    // Use the imported encode function from gpt-tokenizer
+    const tokens = encode(text);
     return tokens.length;
   } catch (error) {
     console.error("Failed to count tokens:", error);
-    // Fallback to a rough estimate if tiktoken fails
+    // Fallback to a rough estimate if tokenizer fails
     return Math.ceil(text.length / 4);
   }
 }
@@ -205,7 +204,6 @@ export async function handleOpenAIStream(
       {
         headers: {
           "Content-Type": "application/json",
-          // "Authorization": `Bearer ${apiKey}`, // Already managed by OpenAI instance
         },
       }
     );
@@ -215,22 +213,14 @@ export async function handleOpenAIStream(
       throw new Error(errorInfo.message);
     }
     
-    // console.log("OpenAIStream response headers:", response.headers);
-    
-    // Since we don't have the OpenAIStream utility now, let's return a message
-    return new Response(
-      JSON.stringify({
-        content: "Streaming is temporarily unavailable. Please use the standard API.",
-        model: modelId,
-        provider: "OpenAI",
-        tokens: { input: 0, output: 0 },
-      }),
-      {
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
-    );
+    // Use the OpenAIStream utility to handle streaming
+    const stream = OpenAIStream(response);
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+      },
+    });
   } catch (error: any) {
     const errorInfo = handleAPIError(error);
     console.error("OpenAI API Error:", error);
