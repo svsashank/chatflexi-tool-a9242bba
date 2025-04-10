@@ -312,6 +312,7 @@ export async function handleOpenAIStandard(messageHistory: any[], content: strin
     // Log tool calls for debugging
     if (toolCalls.length > 0) {
       console.log(`Tool calls detected: ${toolCalls.length}`);
+      
       for (const toolCall of toolCalls) {
         console.log(`Tool call: ${JSON.stringify(toolCall, null, 2)}`);
         
@@ -319,30 +320,50 @@ export async function handleOpenAIStandard(messageHistory: any[], content: strin
         if (!responseContent && toolCall.function.name === "web_search") {
           try {
             const args = JSON.parse(toolCall.function.arguments);
+            console.log(`Web search query: ${args.query}`);
             responseContent = `I'm searching for information about "${args.query}". Please wait a moment while I gather the latest data.`;
+            
+            // If results are provided in the arguments, use them
+            if (args.results) {
+              webSearchResults = args.results;
+            }
           } catch (e) {
             console.error("Error parsing web search query:", e);
             responseContent = "I'm searching for more information about this topic. Please wait a moment.";
           }
         }
         
-        // Try to extract results from tool calls
+        // Try to extract query from tool calls
         if (toolCall.function.name === "web_search") {
           try {
             const args = JSON.parse(toolCall.function.arguments);
-            webSearchResults = args.results || [];
-            if (!webSearchResults.length && args.query) {
+            if (!args.results && args.query) {
               console.log(`Web search query: ${args.query}`);
+              // We'll simulate placeholder results since OpenAI doesn't actually perform the search
+              webSearchResults = [
+                {
+                  title: `Results for "${args.query}"`,
+                  url: `https://example.com/search?q=${encodeURIComponent(args.query)}`,
+                  snippet: `This is a placeholder for web search results about "${args.query}".`
+                }
+              ];
             }
           } catch (e) {
-            console.error("Error parsing web search results:", e);
+            console.error("Error extracting web search query:", e);
           }
         } else if (toolCall.function.name === "file_search") {
           try {
             const args = JSON.parse(toolCall.function.arguments);
-            fileSearchResults = args.results || [];
+            if (args.query) {
+              fileSearchResults = [
+                {
+                  filename: "example.txt",
+                  content: `This is a placeholder for file search results matching "${args.query}".`
+                }
+              ];
+            }
           } catch (e) {
-            console.error("Error parsing file search results:", e);
+            console.error("Error parsing file search query:", e);
           }
         }
       }

@@ -1,14 +1,14 @@
 export interface Message {
   id: string;
   content: string;
-  role: 'system' | 'assistant' | 'user';
+  role: 'user' | 'assistant' | 'system';
   model: AIModel;
   timestamp: Date;
-  computeCredits?: number;
   tokens?: {
     input: number;
     output: number;
   };
+  computeCredits?: number;
   images?: string[];
   files?: string[];
   webSearchResults?: any[];
