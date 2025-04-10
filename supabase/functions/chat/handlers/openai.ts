@@ -195,6 +195,24 @@ export async function handleOpenAIStandard(messageHistory: any[], content: strin
     console.log(`Proactively performing web search for: "${content}"`);
     webSearchResults = await performBraveSearch(content);
     console.log(`Proactive search returned ${webSearchResults.length} results`);
+    
+    // Prepare contextual information from search results for the AI
+    if (webSearchResults.length > 0) {
+      // Add search results to system prompt for context
+      const searchContext = `
+Here are some relevant web search results about the user's query:
+${webSearchResults.map((result, index) => `
+[${index + 1}] ${result.title}
+URL: ${result.url}
+${result.snippet}
+`).join('\n')}
+
+Use the information above to help answer the user's question. Cite the sources when appropriate.`;
+      
+      // Enhance system prompt with search results
+      systemPrompt = systemPrompt + "\n" + searchContext;
+      console.log("Enhanced system prompt with search results");
+    }
   }
   
   // Prepare the messages for OpenAI
@@ -355,6 +373,61 @@ export async function handleOpenAIStandard(messageHistory: any[], content: strin
             // Perform real search with Brave API
             webSearchResults = await performBraveSearch(searchQuery);
             console.log(`Received ${webSearchResults.length} search results from Brave`);
+            
+            // If we got search results, make a follow-up call to OpenAI with the results
+            if (webSearchResults.length > 0) {
+              console.log("Making follow-up call with search results");
+              
+              // Create a new message with search results
+              const searchResultsText = webSearchResults.map((result, index) => 
+                `[${index + 1}] ${result.title}\nURL: ${result.url}\n${result.snippet}`
+              ).join('\n\n');
+              
+              const followUpMessages = [...formattedMessages];
+              followUpMessages.push({
+                role: 'assistant',
+                content: "I need to search the web for more information about this."
+              });
+              
+              followUpMessages.push({
+                role: 'function',
+                name: 'web_search',
+                content: `Here are the search results for "${searchQuery}":\n\n${searchResultsText}`
+              });
+              
+              followUpMessages.push({
+                role: 'user',
+                content: "Please answer my question based on these search results."
+              });
+              
+              // Make the follow-up API call
+              const followUpResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${OPENAI_API_KEY}`
+                },
+                body: JSON.stringify({
+                  model: modelId,
+                  messages: followUpMessages,
+                  temperature: 0.7,
+                  max_tokens: 1000
+                })
+              });
+              
+              if (followUpResponse.ok) {
+                const followUpData = await followUpResponse.json();
+                // Update the response content with the informed response
+                responseContent = followUpData.choices[0].message.content || responseContent;
+                
+                // Add to the token counts
+                if (followUpData.usage) {
+                  inputTokens += followUpData.usage.prompt_tokens;
+                  outputTokens += followUpData.usage.completion_tokens;
+                }
+                console.log("Updated response with informed content from search results");
+              }
+            }
           }
           
           // Process file search tool call
