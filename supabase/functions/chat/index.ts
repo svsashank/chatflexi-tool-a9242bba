@@ -4,6 +4,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 
 import { corsHeaders } from "./utils/cors.ts";
 import { generateSystemPrompt } from "./utils/context.ts";
+import { performBraveSearch, shouldPerformWebSearch } from "./utils/braveSearch.ts";
 
 // Import handlers for different model providers
 import { handleOpenAIStandard, handleOpenAIReasoningModel, isOSeriesReasoningModel } from "./handlers/openai.ts";
@@ -36,8 +37,32 @@ serve(async (req) => {
       console.log(`Request includes ${messageFiles.length} files`);
     }
     
+    // Check if the query likely needs a web search
+    let webSearchResults = [];
+    if (shouldPerformWebSearch(content)) {
+      console.log(`Preemptively performing web search for query: "${content}"`);
+      webSearchResults = await performBraveSearch(content);
+      console.log(`Preemptive search returned ${webSearchResults.length} results`);
+    }
+    
     // Add a system prompt based on the conversation context
-    const systemPrompt = generateSystemPrompt(messageHistory);
+    let systemPrompt = generateSystemPrompt(messageHistory);
+    
+    // Enhance the system prompt with search results
+    if (webSearchResults.length > 0) {
+      const searchContext = `
+Here are some relevant web search results about the user's query:
+${webSearchResults.map((result, index) => `
+[${index + 1}] ${result.title}
+URL: ${result.url}
+${result.snippet}
+`).join('\n')}
+
+Use the information above to help answer the user's question. Cite the sources when appropriate.`;
+      
+      systemPrompt = systemPrompt + "\n" + searchContext;
+      console.log("Enhanced system prompt with search results");
+    }
     
     // Format varies by provider
     try {
@@ -46,9 +71,9 @@ serve(async (req) => {
         case 'openai':
           // Check if this is an O-series reasoning model that needs special handling
           if (isOSeriesReasoningModel(model.id)) {
-            response = await handleOpenAIReasoningModel(messageHistory, content, model.id, systemPrompt, messageImages);
+            response = await handleOpenAIReasoningModel(messageHistory, content, model.id, systemPrompt, messageImages, webSearchResults);
           } else {
-            response = await handleOpenAIStandard(messageHistory, content, model.id, systemPrompt, messageImages);
+            response = await handleOpenAIStandard(messageHistory, content, model.id, systemPrompt, messageImages, webSearchResults);
           }
           break;
         case 'anthropic':
@@ -82,7 +107,7 @@ serve(async (req) => {
           model: model.id,
           provider: model.provider,
           tokens: { input: 0, output: 0 },
-          webSearchResults: [],
+          webSearchResults: webSearchResults,
           fileSearchResults: []
         }),
         { 

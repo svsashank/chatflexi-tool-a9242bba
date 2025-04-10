@@ -41,11 +41,14 @@ export async function performBraveSearch(query: string, count: number = 5): Prom
       console.log(`Received ${data.web.results.length} search results from Brave`);
       
       // Transform the results to match our expected format
-      return data.web.results.map((result: any) => ({
+      const results = data.web.results.map((result: any) => ({
         title: result.title || 'No title',
         url: result.url || '',
         snippet: result.description || 'No description available'
       }));
+      
+      console.log("Processed search results:", JSON.stringify(results).substring(0, 500) + "...");
+      return results;
     }
     
     console.log("No web search results found in Brave response");
@@ -54,4 +57,10 @@ export async function performBraveSearch(query: string, count: number = 5): Prom
     console.error("Error making Brave Search request:", error);
     return [];
   }
+}
+
+// Helper function to check if a query likely needs web search
+export function shouldPerformWebSearch(query: string): boolean {
+  // Always perform a web search for all queries
+  return true;
 }
