@@ -14,11 +14,13 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { AI_MODELS } from "@/constants";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { extractTextFromPDF } from "@/utils/pdfExtractor";
 
 const ChatInput = () => {
   const [inputValue, setInputValue] = useState("");
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
+  const [processingFile, setProcessingFile] = useState(false);
   const { sendMessage, isLoading, selectedModel, setSelectedModel } = useChatStore();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -36,7 +38,7 @@ const ChatInput = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if ((inputValue.trim() || uploadedImages.length > 0 || uploadedFiles.length > 0) && !isLoading) {
+    if ((inputValue.trim() || uploadedImages.length > 0 || uploadedFiles.length > 0) && !isLoading && !processingFile) {
       // Send message with content, images and files
       sendMessage(
         inputValue.trim(), 
@@ -99,53 +101,56 @@ const ChatInput = () => {
     }
   };
   
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
 
     // Process each file
-    Array.from(files).forEach(file => {
+    for (const file of Array.from(files)) {
       // Check file size (limit to 10MB)
       if (file.size > 10 * 1024 * 1024) {
         toast.error(`File ${file.name} exceeds 10MB limit.`);
-        return;
+        continue;
       }
 
-      // Check file type (only accept text-based files)
-      const allowedTypes = [
-        'text/plain', 'text/csv', 'text/html', 'text/css', 'text/javascript',
-        'application/json', 'application/xml', 'application/pdf',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-      ];
-      
-      if (!allowedTypes.includes(file.type)) {
-        toast.error(`File type ${file.type} is not supported.`);
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        if (e.target?.result) {
-          // For text files, we can use the content directly
-          if (file.type.startsWith('text/')) {
-            setUploadedFiles(prev => [...prev, `File: ${file.name}\nContent: ${e.target?.result}`]);
-          } else {
-            // For other files, we'll just use the name and let the API handle the content
-            setUploadedFiles(prev => [...prev, `File: ${file.name} (Binary content)`]);
+      // Handle different file types
+      try {
+        setProcessingFile(true);
+        
+        if (file.type === 'application/pdf') {
+          toast.info(`Extracting text from PDF: ${file.name}...`);
+          
+          try {
+            const pdfText = await extractTextFromPDF(file);
+            setUploadedFiles(prev => [
+              ...prev, 
+              `File: ${file.name}\nContent: ${pdfText.substring(0, 100000)}${pdfText.length > 100000 ? '...(content truncated)' : ''}`
+            ]);
+            toast.success(`Successfully extracted text from ${file.name}`);
+          } catch (error) {
+            toast.error(`Failed to extract PDF content: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            console.error('PDF extraction failed:', error);
           }
+        } else if (file.type.startsWith('text/')) {
+          // For text files, read the content directly
+          const textContent = await file.text();
+          setUploadedFiles(prev => [
+            ...prev, 
+            `File: ${file.name}\nContent: ${textContent.substring(0, 100000)}${textContent.length > 100000 ? '...(content truncated)' : ''}`
+          ]);
           toast.success(`File ${file.name} uploaded successfully`);
+        } else {
+          // For other file types, just use the name
+          toast.warning(`File type ${file.type} content cannot be extracted. Only the filename will be used.`);
+          setUploadedFiles(prev => [...prev, `File: ${file.name} (Binary content type: ${file.type})`]);
         }
-      };
-      
-      if (file.type.startsWith('text/')) {
-        reader.readAsText(file);
-      } else {
-        // For non-text files, just read as data URL for now
-        // In a production app, we would upload these files to storage
-        reader.readAsDataURL(file);
+      } catch (error) {
+        console.error(`Error processing file ${file.name}:`, error);
+        toast.error(`Error processing file ${file.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      } finally {
+        setProcessingFile(false);
       }
-    });
+    }
 
     // Reset file input
     if (documentInputRef.current) {

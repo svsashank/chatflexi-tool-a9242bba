@@ -1,8 +1,8 @@
 
-
 import { v4 as uuidv4 } from 'uuid';
 import { ChatStore } from '../types';
 import { AIModel } from '@/types';
+import { toast } from 'sonner';
 
 export const createSendMessageAction = (
   set: (state: Partial<ChatStore>) => void,
@@ -11,7 +11,10 @@ export const createSendMessageAction = (
   return (content: string, images: string[] = [], files: string[] = []) => {
     const { currentConversationId, conversations, selectedModel, generateResponse } = get();
     
-    if (!currentConversationId) return;
+    if (!currentConversationId) {
+      toast.error("No active conversation found");
+      return;
+    }
     
     const userId = localStorage.getItem('userId') || undefined;
     
@@ -33,7 +36,7 @@ export const createSendMessageAction = (
                 model: selectedModel, // Include selected model info
                 timestamp,
                 images, // Include any attached images
-                files   // Include any attached files
+                files   // Include any attached files (including extracted PDF text)
               }
             ],
             updatedAt: timestamp
