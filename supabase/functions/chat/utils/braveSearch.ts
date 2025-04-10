@@ -1,4 +1,5 @@
 
+
 // Utility functions to perform Brave Search API calls
 
 // Helper to make a search request to Brave
@@ -61,40 +62,98 @@ export async function performBraveSearch(query: string, count: number = 5): Prom
 
 // Helper function to check if a query likely needs web search
 export function shouldPerformWebSearch(query: string): boolean {
-  const lowerQuery = query.toLowerCase();
+  const lowerQuery = query.toLowerCase().trim();
   
-  // Check for factual questions that would benefit from search
-  if (
-    lowerQuery.includes('what is') ||
-    lowerQuery.includes('who is') || 
-    lowerQuery.includes('when was') ||
-    lowerQuery.includes('where is') ||
-    lowerQuery.includes('how to') ||
-    lowerQuery.includes('why does') ||
-    lowerQuery.includes('tell me about') ||
-    lowerQuery.includes('find information') ||
-    lowerQuery.includes('search for') ||
-    lowerQuery.includes('have you heard') ||
-    lowerQuery.includes('latest') ||
-    lowerQuery.includes('recent') ||
-    lowerQuery.includes('news about') ||
-    lowerQuery.includes('current')
-  ) {
+  // If query is too short (less than 4 words), probably not a search query
+  // unless it contains specific search indicators
+  const wordCount = query.split(/\s+/).filter(Boolean).length;
+  if (wordCount < 4) {
+    // Short queries still need search if they contain specific keywords
+    const shortQuerySearchTerms = ['latest', 'news', 'current', 'recent', 'today'];
+    if (!shortQuerySearchTerms.some(term => lowerQuery.includes(term))) {
+      return false;
+    }
+  }
+  
+  // Context-dependent phrases that suggest internal knowledge is sufficient
+  const internalKnowledgePatterns = [
+    /^(?:can|could) you/i,      // "Can you tell me about X" often asks for AI capabilities
+    /how (?:do|would|can) you/i, // "How do you solve X" often asks for AI explanation
+    /what (?:do|would) you/i,    // "What do you think about X" often asks for AI opinion
+    /^tell me a joke/i,          // Jokes don't need search
+    /^write (?:a|some|me)/i,     // Creative writing tasks
+    /^generate (?:a|some|me)/i,  // Generation tasks
+    /^create (?:a|some|me)/i,    // Creation tasks
+    /^translate/i,               // Translation tasks
+    /^summarize/i,               // Summarization without context often doesn't need search
+    /\bphilosophy\b/i,           // Philosophical questions often use AI's reasoning
+    /\bopinion\b/i,              // Opinion requests
+    /\bthoughts\b/i              // Thought requests
+  ];
+  
+  // If query matches internal knowledge patterns, it likely doesn't need search
+  if (internalKnowledgePatterns.some(pattern => pattern.test(lowerQuery))) {
+    // However, if it ALSO contains indicators of needing external data, we still search
+    const overrideTerms = ['latest', 'recent', 'news', 'current', 'today', 'yesterday', 'facts about', 'statistics'];
+    const needsOverride = overrideTerms.some(term => lowerQuery.includes(term));
+    if (!needsOverride) {
+      return false;
+    }
+  }
+  
+  // Check for factual questions that likely need search
+  const factualPatterns = [
+    /what (?:is|are|was|were) (?!your|my)/i, // What is/are but not "what is your name"
+    /who (?:is|are|was|were)/i,
+    /when (?:is|was|will)/i,
+    /where (?:is|are|was|were)/i,
+    /why (?:is|are|was|were|does|did)/i,
+    /how (?:is|are|was|were|does|did) (?!.*feel)/i, // How does X work but not "how does that make you feel"
+    /\bhistory of\b/i,
+    /\bdefinition of\b/i,
+    /tell me about (?!yourself)/i,  // Tell me about X but not "tell me about yourself"
+    /\bfind\b/i,
+    /\bsearch\b/i,
+    /have you heard/i,
+    /\bnews\b/i,
+    /\binformation\b/i,
+    /\bdata\b/i,
+    /\bstats\b|\bstatistics\b/i,
+    /\blatest\b|\brecent\b|\bcurrent\b/i
+  ];
+  
+  if (factualPatterns.some(pattern => pattern.test(lowerQuery))) {
     return true;
   }
   
-  // Check for specific entities that might need web search
+  // Check for specific named entities that might need search (more sophisticated)
+  // Look for proper nouns (capitalized multi-word phrases or single words)
   const potentialEntities = query.match(/\b[A-Z][a-z]+(?: [A-Z][a-z]+)*\b/g);
   if (potentialEntities && potentialEntities.length > 0) {
+    // Filter out common sentence starters that might be capitalized
+    const commonWords = ['I', 'My', 'You', 'Your', 'We', 'They', 'Their', 'The', 'A', 'An'];
+    const significantEntities = potentialEntities.filter(entity => 
+      !commonWords.includes(entity) && entity.length > 1
+    );
+    
+    if (significantEntities.length > 0) {
+      return true;
+    }
+  }
+  
+  // Check for dates, which often indicate time-sensitive information
+  const datePattern = /\b(19|20)\d{2}\b|\b\d{1,2}\/\d{1,2}\/\d{2,4}\b|\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]* \d{1,2}(st|nd|rd|th)?\b/i;
+  if (datePattern.test(query)) {
     return true;
   }
   
-  // If the query is longer than 10 words, it might be a complex question needing search
-  const wordCount = query.split(/\s+/).length;
-  if (wordCount > 10) {
+  // Complex questions (longer than threshold) might benefit from search
+  // This is a fallback for complex queries not caught by other patterns
+  if (wordCount > 12) {
     return true;
   }
   
+  // If we've gotten this far, the query probably doesn't need a search
   return false;
 }
 
