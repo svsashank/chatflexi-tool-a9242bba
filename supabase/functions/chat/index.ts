@@ -82,14 +82,24 @@ serve(async (req) => {
     
     // Check if the query likely needs a web search
     let webSearchResults = [];
-    const shouldSearch = shouldPerformWebSearch(content);
     
-    if (shouldSearch) {
-      console.log(`Query "${content}" analyzed and determined to need web search, performing search...`);
-      webSearchResults = await performBraveSearch(content);
-      console.log(`Search returned ${webSearchResults.length} results`);
+    // Check if we already have URLs in the message or in files
+    // If we do, we'll skip the web search
+    const hasExplicitUrls = urls.length > 0 || messageFiles.some(file => file.startsWith('URL:'));
+    
+    // Only perform search if we don't have explicit URLs and the query likely needs search
+    if (!hasExplicitUrls) {
+      const shouldSearch = shouldPerformWebSearch(content);
+      
+      if (shouldSearch) {
+        console.log(`Query "${content}" analyzed and determined to need web search, performing search...`);
+        webSearchResults = await performBraveSearch(content);
+        console.log(`Search returned ${webSearchResults.length} results`);
+      } else {
+        console.log(`Query "${content}" analyzed and determined NOT to need web search - model likely has this knowledge`);
+      }
     } else {
-      console.log(`Query "${content}" analyzed and determined NOT to need web search - model likely has this knowledge`);
+      console.log(`URLs already provided or extracted from message, skipping web search`);
     }
     
     // Add a system prompt based on the conversation context
