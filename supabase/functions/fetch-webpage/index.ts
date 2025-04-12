@@ -1,6 +1,6 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { load } from "https://deno.land/x/cheerio@1.0.6/mod.ts";
+import * as cheerio from "https://esm.sh/cheerio@1.0.0-rc.12";
 
 // Define CORS headers for browser requests
 const corsHeaders = {
@@ -59,10 +59,10 @@ serve(async (req) => {
         // Get content type to handle different types of content
         const contentType = response.headers.get('content-type') || '';
         
-        // If it's HTML, parse it with cheerio (BeautifulSoup equivalent for Deno)
+        // If it's HTML, parse it with cheerio
         if (contentType.includes('text/html')) {
           const html = await response.text();
-          const $ = load(html);
+          const $ = cheerio.load(html);
           
           // Remove script and style elements
           $('script, style, nav, footer, header').remove();

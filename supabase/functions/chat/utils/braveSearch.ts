@@ -107,7 +107,7 @@ export const shouldPerformWebSearch = (query: string): boolean => {
   const commonKnowledgePatterns = [
     /\bhistory\b|\bhistorical\b/i,  // Historical topics are usually in LLM training
     /\bwho (?:is|was|are|were) .*?\b/i, // Questions about people/groups in history
-    /\bwhere (?:is|was|are|were) .*?\b(?!.*?(?:right now|today|currently|latest))/i, // General location questions
+    /\bwhere (?:is|are|was|were) .*?\b(?!.*?(?:right now|today|currently|latest))/i, // General location questions
     /\bwhen (?:is|was|will)\b(?!.*?(?:next|upcoming|future|scheduled))/i, // Historical timing questions
     /\bwhy (?:is|are|was)\b(?!.*?(?:yesterday|today|recently|last week))/i, // Historical reasoning questions
     /\bcapital of\b/i, // Questions about capitals
@@ -269,8 +269,9 @@ export const shouldPerformWebSearch = (query: string): boolean => {
  * @param url URL to fetch content from
  * @returns Extracted text content or null if failed
  */
-export const fetchUrlContent = async (url: string): Promise<string | null> => {
+export async function fetchUrlContent(url: string): Promise<string | null> {
   try {
+    // Fetch the webpage with a timeout
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
     
@@ -290,31 +291,19 @@ export const fetchUrlContent = async (url: string): Promise<string | null> => {
     // Get content type to handle different types of content
     const contentType = response.headers.get('content-type') || '';
     
-    // Simple text extraction based on content type
-    if (contentType.includes('text/html')) {
+    // For simple Edge Function, just return the text content with minimal processing
+    if (contentType.includes('text/html') || contentType.includes('text/')) {
       const text = await response.text();
-      
-      // Use a simple regex-based extraction for the edge function
-      // This is a simplified extraction without full HTML parsing
-      // Remove HTML tags and get text content
-      const content = text
-        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-        .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
-        .replace(/<[^>]*>/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
-      
-      // Limit content size to prevent exceeding token limits
-      return content.substring(0, 8000);
-    } else if (contentType.includes('application/json') || contentType.includes('text/')) {
-      // For JSON or text content, just return as is
-      const text = await response.text();
-      return text.substring(0, 8000);
+      // Very minimal cleaning - just get the text without fancy processing
+      return `Extracted content from ${url}:\n${text.substring(0, 5000)}${text.length > 5000 ? '... (content truncated)' : ''}`;
+    } else if (contentType.includes('application/json')) {
+      const json = await response.json();
+      return `JSON content from ${url}:\n${JSON.stringify(json).substring(0, 5000)}`;
+    } else {
+      return `Could not extract content from ${url} (unsupported content type: ${contentType})`;
     }
-    
-    return null;
   } catch (error) {
-    console.error(`Error fetching content for ${url}:`, error);
+    console.error(`Error processing URL ${url}:`, error);
     return null;
   }
-};
+}
