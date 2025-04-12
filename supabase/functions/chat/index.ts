@@ -4,7 +4,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 
 import { corsHeaders } from "./utils/cors.ts";
 import { generateSystemPrompt } from "./utils/context.ts";
-import { performBraveSearch, shouldPerformWebSearch } from "./utils/braveSearch.ts";
+import { performBraveSearch, shouldPerformWebSearch, fetchUrlContent } from "./utils/braveSearch.ts";
 
 // Import handlers for different model providers
 import { handleOpenAIStandard, handleOpenAIReasoningModel, isOSeriesReasoningModel } from "./handlers/openai.ts";
@@ -12,6 +12,12 @@ import { handleAnthropic } from "./handlers/anthropic.ts";
 import { handleGoogle } from "./handlers/google.ts";
 import { handleXAI } from "./handlers/xai.ts";
 import { handleKrutrim } from "./handlers/krutrim.ts";
+
+// Helper to extract URLs from text
+function extractUrls(text: string): string[] {
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  return text.match(urlRegex) || [];
+}
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -37,6 +43,42 @@ serve(async (req) => {
       console.log(`Request includes ${messageFiles.length} files`);
       console.log(`First file preview: ${messageFiles[0].substring(0, 100)}...`);
     }
+    
+    // Extract URLs from the user's message
+    const urls = extractUrls(content);
+    let webContentFiles: string[] = [];
+    
+    // If URLs are found and not already included in the files, fetch their content
+    if (urls.length > 0) {
+      console.log(`Found ${urls.length} URLs in the message, checking if they need to be fetched`);
+      
+      // Check if the URLs have already been processed (in the files array)
+      const existingUrls = messageFiles
+        .filter(file => file.startsWith('URL:'))
+        .map(file => {
+          const urlLine = file.split('\n')[0];
+          return urlLine.substring(5).trim(); // Extract URL from "URL: [url]"
+        });
+      
+      // Only fetch URLs that haven't been processed yet
+      const urlsToFetch = urls.filter(url => !existingUrls.includes(url));
+      
+      if (urlsToFetch.length > 0) {
+        console.log(`Fetching content for ${urlsToFetch.length} new URLs`);
+        
+        // Fetch content for each URL
+        for (const url of urlsToFetch) {
+          const urlContent = await fetchUrlContent(url);
+          if (urlContent) {
+            webContentFiles.push(`URL: ${url}\nContent: ${urlContent}`);
+            console.log(`Added content from URL: ${url} (${urlContent.length} characters)`);
+          }
+        }
+      }
+    }
+    
+    // Combine regular files with web content files
+    const allFiles = [...messageFiles, ...webContentFiles];
     
     // Check if the query likely needs a web search
     let webSearchResults = [];
@@ -80,22 +122,22 @@ Feel free to reference this information if it's helpful, but also draw on your b
         case 'openai':
           // Check if this is an O-series reasoning model that needs special handling
           if (isOSeriesReasoningModel(model.id)) {
-            response = await handleOpenAIReasoningModel(messageHistory, content, model.id, systemPrompt, messageImages, webSearchResults, messageFiles);
+            response = await handleOpenAIReasoningModel(messageHistory, content, model.id, systemPrompt, messageImages, webSearchResults, allFiles);
           } else {
-            response = await handleOpenAIStandard(messageHistory, content, model.id, systemPrompt, messageImages, webSearchResults, messageFiles);
+            response = await handleOpenAIStandard(messageHistory, content, model.id, systemPrompt, messageImages, webSearchResults, allFiles);
           }
           break;
         case 'anthropic':
-          response = await handleAnthropic(messageHistory, content, model.id, systemPrompt, messageImages, webSearchResults, messageFiles);
+          response = await handleAnthropic(messageHistory, content, model.id, systemPrompt, messageImages, webSearchResults, allFiles);
           break;
         case 'google':
-          response = await handleGoogle(messageHistory, content, model.id, systemPrompt, messageImages, webSearchResults, messageFiles);
+          response = await handleGoogle(messageHistory, content, model.id, systemPrompt, messageImages, webSearchResults, allFiles);
           break;
         case 'xai':
-          response = await handleXAI(messageHistory, content, model.id, systemPrompt, messageImages, webSearchResults, messageFiles);
+          response = await handleXAI(messageHistory, content, model.id, systemPrompt, messageImages, webSearchResults, allFiles);
           break;
         case 'krutrim':
-          response = await handleKrutrim(messageHistory, content, model.id, systemPrompt, messageImages, webSearchResults, messageFiles);
+          response = await handleKrutrim(messageHistory, content, model.id, systemPrompt, messageImages, webSearchResults, allFiles);
           break;
         default:
           throw new Error(`Provider ${model.provider} not supported`);

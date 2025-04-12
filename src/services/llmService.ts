@@ -43,6 +43,14 @@ export const sendMessageToLLM = async (
     const images = lastMessage?.images || [];
     const files = lastMessage?.files || [];
     
+    // Debug logging for URL content
+    if (files.length > 0) {
+      const urlFiles = files.filter(file => file.startsWith('URL:'));
+      if (urlFiles.length > 0) {
+        console.log(`Message includes ${urlFiles.length} URL content files`);
+      }
+    }
+    
     console.log('Sending message to LLM:', { 
       model: model.name, 
       modelId: model.id, 

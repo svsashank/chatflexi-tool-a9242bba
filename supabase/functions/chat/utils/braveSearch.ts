@@ -59,6 +59,58 @@ export async function performBraveSearch(query: string, count: number = 5): Prom
   }
 }
 
+// Helper function to fetch content from a specific URL
+export async function fetchUrlContent(url: string): Promise<string | null> {
+  const BRAVE_API_KEY = Deno.env.get('BRAVE_API_KEY');
+  
+  if (!BRAVE_API_KEY) {
+    console.error("Brave API key not configured");
+    return null;
+  }
+  
+  try {
+    console.log(`Fetching content from URL: ${url}`);
+    
+    // Use Brave's API to fetch webpage content
+    const fetchUrl = new URL('https://api.search.brave.com/res/v1/web/index');
+    fetchUrl.searchParams.append('url', url);
+    
+    const response = await fetch(fetchUrl.toString(), {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'Accept-Encoding': 'gzip',
+        'X-Subscription-Token': BRAVE_API_KEY
+      }
+    });
+    
+    if (!response.ok) {
+      console.error(`Brave API error: ${response.status}`);
+      const errorText = await response.text();
+      console.error(`Error details: ${errorText}`);
+      return null;
+    }
+    
+    const data = await response.json();
+    
+    // Extract text content from the response
+    if (data && data.web) {
+      // Return the extracted content (combine title and body content)
+      const title = data.web.title || '';
+      const bodyContent = data.web.body || '';
+      
+      console.log(`Successfully extracted ${bodyContent.length} characters from ${url}`);
+      return `${title}\n\n${bodyContent}`.trim();
+    }
+    
+    console.log(`No content found for URL: ${url}`);
+    return null;
+  } catch (error) {
+    console.error(`Error fetching webpage content for ${url}:`, error);
+    return null;
+  }
+}
+
 // Helper function to check if a query likely needs web search
 export function shouldPerformWebSearch(query: string): boolean {
   const lowerQuery = query.toLowerCase().trim();
