@@ -4,6 +4,7 @@ import { ChatStore } from '../types';
 import { AIModel } from '@/types';
 import { toast } from 'sonner';
 import { extractUrls } from '@/utils/urlUtils';
+import { supabase } from '@/integrations/supabase/client';
 
 export const createSendMessageAction = (
   set: (state: Partial<ChatStore>) => void,
