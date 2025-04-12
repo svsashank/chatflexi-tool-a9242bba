@@ -1,4 +1,3 @@
-
 // Utility functions to perform Brave Search API calls
 
 // Helper to make a search request to Brave
@@ -59,60 +58,12 @@ export async function performBraveSearch(query: string, count: number = 5): Prom
   }
 }
 
-// Helper function to fetch content from a specific URL
-export async function fetchUrlContent(url: string): Promise<string | null> {
-  const BRAVE_API_KEY = Deno.env.get('BRAVE_API_KEY');
-  
-  if (!BRAVE_API_KEY) {
-    console.error("Brave API key not configured");
-    return null;
-  }
-  
-  try {
-    console.log(`Fetching content from URL: ${url}`);
-    
-    // Use Brave's API to fetch webpage content
-    const fetchUrl = new URL('https://api.search.brave.com/res/v1/web/index');
-    fetchUrl.searchParams.append('url', url);
-    
-    const response = await fetch(fetchUrl.toString(), {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-        'Accept-Encoding': 'gzip',
-        'X-Subscription-Token': BRAVE_API_KEY
-      }
-    });
-    
-    if (!response.ok) {
-      console.error(`Brave API error: ${response.status}`);
-      const errorText = await response.text();
-      console.error(`Error details: ${errorText}`);
-      return null;
-    }
-    
-    const data = await response.json();
-    
-    // Extract text content from the response
-    if (data && data.web) {
-      // Return the extracted content (combine title and body content)
-      const title = data.web.title || '';
-      const bodyContent = data.web.body || '';
-      
-      console.log(`Successfully extracted ${bodyContent.length} characters from ${url}`);
-      return `${title}\n\n${bodyContent}`.trim();
-    }
-    
-    console.log(`No content found for URL: ${url}`);
-    return null;
-  } catch (error) {
-    console.error(`Error fetching webpage content for ${url}:`, error);
-    return null;
-  }
-}
-
-// Helper function to check if a query likely needs web search
-export function shouldPerformWebSearch(query: string): boolean {
+/**
+ * Determines if a query should trigger a web search
+ * @param query The user query to analyze
+ * @returns Boolean indicating if search should be performed
+ */
+export const shouldPerformWebSearch = (query: string): boolean => {
   const lowerQuery = query.toLowerCase().trim();
   
   // If query is too short (less than 4 words), probably not a search query
@@ -157,8 +108,8 @@ export function shouldPerformWebSearch(query: string): boolean {
     /\bhistory\b|\bhistorical\b/i,  // Historical topics are usually in LLM training
     /\bwho (?:is|was|are|were) .*?\b/i, // Questions about people/groups in history
     /\bwhere (?:is|was|are|were) .*?\b(?!.*?(?:right now|today|currently|latest))/i, // General location questions
-    /\bwhen (?:is|was|were)\b(?!.*?(?:next|upcoming|future|scheduled))/i, // Historical timing questions
-    /\bwhy (?:did|were|was)\b(?!.*?(?:yesterday|today|recently|last week))/i, // Historical reasoning questions
+    /\bwhen (?:is|was|will)\b(?!.*?(?:next|upcoming|future|scheduled))/i, // Historical timing questions
+    /\bwhy (?:is|are|was)\b(?!.*?(?:yesterday|today|recently|last week))/i, // Historical reasoning questions
     /\bcapital of\b/i, // Questions about capitals
     /\bmeaning of\b/i, // Word or phrase meanings
     /\bdefinition\b/i, // Definitions
@@ -311,4 +262,59 @@ export function shouldPerformWebSearch(query: string): boolean {
   
   // If we've gotten this far, the query probably doesn't need a search
   return false;
-}
+};
+
+/**
+ * Fetches the content of a webpage
+ * @param url URL to fetch content from
+ * @returns Extracted text content or null if failed
+ */
+export const fetchUrlContent = async (url: string): Promise<string | null> => {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+    
+    const response = await fetch(url, { 
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+      }
+    });
+    clearTimeout(timeoutId);
+    
+    if (!response.ok) {
+      console.error(`Error fetching ${url}: ${response.status} ${response.statusText}`);
+      return null;
+    }
+    
+    // Get content type to handle different types of content
+    const contentType = response.headers.get('content-type') || '';
+    
+    // Simple text extraction based on content type
+    if (contentType.includes('text/html')) {
+      const text = await response.text();
+      
+      // Use a simple regex-based extraction for the edge function
+      // This is a simplified extraction without full HTML parsing
+      // Remove HTML tags and get text content
+      const content = text
+        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+        .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
+        .replace(/<[^>]*>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      
+      // Limit content size to prevent exceeding token limits
+      return content.substring(0, 8000);
+    } else if (contentType.includes('application/json') || contentType.includes('text/')) {
+      // For JSON or text content, just return as is
+      const text = await response.text();
+      return text.substring(0, 8000);
+    }
+    
+    return null;
+  } catch (error) {
+    console.error(`Error fetching content for ${url}:`, error);
+    return null;
+  }
+};

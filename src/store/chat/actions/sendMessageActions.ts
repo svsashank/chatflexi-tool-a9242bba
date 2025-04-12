@@ -32,19 +32,19 @@ export const createSendMessageAction = (
       toast.info(`Found ${urls.length} URL(s) in your message. Fetching content...`);
       
       try {
-        // Use Supabase Edge Function to fetch webpage content
-        const { data: braveData, error: braveError } = await supabase.functions.invoke('fetch-webpage', {
+        // Use our edge function to fetch webpage content with BeautifulSoup/cheerio
+        const { data: scrapedData, error: scrapingError } = await supabase.functions.invoke('fetch-webpage', {
           body: { urls }
         });
 
-        if (braveError) {
-          console.error('Error fetching webpage content:', braveError);
-          toast.error(`Could not fetch content from URLs: ${braveError.message}`);
-        } else if (braveData && braveData.webContent) {
+        if (scrapingError) {
+          console.error('Error fetching webpage content:', scrapingError);
+          toast.error(`Could not fetch content from URLs: ${scrapingError.message}`);
+        } else if (scrapedData && scrapedData.webContent) {
           // For each fetched URL, create a "file" with the webpage content
-          Object.entries(braveData.webContent).forEach(([url, content]) => {
+          Object.entries(scrapedData.webContent).forEach(([url, content]) => {
             if (content) {
-              webContentFiles.push(`URL: ${url}\nContent: ${content}`);
+              webContentFiles.push(`URL: ${url}\n${content}`);
               toast.success(`Successfully extracted content from ${url}`);
             }
           });
