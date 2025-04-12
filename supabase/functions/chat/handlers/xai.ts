@@ -1,3 +1,4 @@
+
 import { corsHeaders } from "../utils/cors.ts";
 
 // xAI (Grok) handler
@@ -7,8 +8,21 @@ export async function handleXAI(messageHistory: any[], content: string, modelId:
     throw new Error("xAI API key not configured. Please add your xAI API key in the Supabase settings.");
   }
   
-  // Override model ID to use grok-2-latest as per user's curl example
-  const grokModelId = "grok-2-latest";
+  // Map model ID to the correct xAI model ID
+  let grokModelId;
+  switch(modelId) {
+    case 'grok-3':
+      grokModelId = "grok-3";
+      break;
+    case 'grok-3-mini':
+      grokModelId = "grok-3-mini";
+      break;
+    default:
+      // Default to Grok 2 for any other model ID (for backward compatibility)
+      grokModelId = "grok-2-latest";
+      break;
+  }
+  
   console.log(`Processing request for xAI model ${grokModelId} with content: ${content.substring(0, 50)}...`);
   console.log(`Has files: ${files.length > 0}, file count: ${files.length}`);
   

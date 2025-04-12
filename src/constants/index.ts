@@ -1,3 +1,4 @@
+
 // AI Models
 export const AI_MODELS = [
   {
@@ -160,6 +161,22 @@ export const AI_MODELS = [
     capabilities: ['text', 'code'] as Array<'text' | 'code'>,
     avatarColor: '#1d9bf0', // Twitter blue
   },
+  {
+    id: 'grok-3',
+    name: 'Grok-3',
+    provider: 'xai',
+    description: 'xAI\'s advanced model with enhanced reasoning capabilities',
+    capabilities: ['text', 'code'] as Array<'text' | 'code'>,
+    avatarColor: '#1d9bf0', // Twitter blue
+  },
+  {
+    id: 'grok-3-mini',
+    name: 'Grok-3 Mini',
+    provider: 'xai',
+    description: 'Efficient and cost-effective version of Grok-3',
+    capabilities: ['text', 'code'] as Array<'text' | 'code'>,
+    avatarColor: '#1d9bf0', // Twitter blue
+  }
 ];
 
 export const DEFAULT_MODEL = AI_MODELS[0];

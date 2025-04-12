@@ -229,6 +229,57 @@ export type Database = {
           },
         ]
       }
+      payment_orders: {
+        Row: {
+          amount: number
+          created_at: string | null
+          currency: string
+          id: string
+          order_id: string
+          payment_details: Json | null
+          payment_id: string | null
+          payment_method: string | null
+          product_name: string | null
+          status: string | null
+          updated_at: string | null
+          user_email: string
+          user_id: string | null
+          user_name: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          currency?: string
+          id?: string
+          order_id: string
+          payment_details?: Json | null
+          payment_id?: string | null
+          payment_method?: string | null
+          product_name?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_email: string
+          user_id?: string | null
+          user_name?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          currency?: string
+          id?: string
+          order_id?: string
+          payment_details?: Json | null
+          payment_id?: string | null
+          payment_method?: string | null
+          product_name?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_email?: string
+          user_id?: string | null
+          user_name?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           compute_points: number | null

@@ -22,6 +22,8 @@ export const COMPUTE_CREDITS_PER_TOKEN: Record<string, number> = {
   'deepseek-r1-llama-8b': 0.02,
   'deepseek-r1-qwen-14b': 0.08,
   'grok-2-latest': 6.75,
+  'grok-3': 1.87,
+  'grok-3-mini': 0.06,
 };
 
 // Default value if model is not found

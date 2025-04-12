@@ -24,6 +24,8 @@ export const createSendMessageAction = (
     // For debugging: Log what's being sent to the model
     console.log('Sending message to model:', {
       content,
+      modelId: selectedModel.id,
+      modelProvider: selectedModel.provider,
       imagesCount: images.length,
       filesCount: files.length,
       filesPreview: files.length > 0 ? files.map(f => f.substring(0, 100) + '...') : []
