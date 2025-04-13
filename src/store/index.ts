@@ -1,3 +1,3 @@
 
 // Re-export the chat store
-export { default as useChatStore } from './chat';
+export { useChatStore } from './chat';

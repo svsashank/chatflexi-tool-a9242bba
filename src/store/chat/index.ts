@@ -1,15 +1,17 @@
+
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Conversation, ChatStore } from './types';
-import { AI_MODELS } from '@/constants';
+import { ChatStore } from './types';
+import { AIModel } from '@/types';
 import { 
   addMessageAction,
   createSendMessageAction,
   createRegenerateMessageAction,
   selectModelAction
 } from './actions';
+import { createConversationAction, setCurrentConversationIdAction, deleteConversationAction } from './conversationActions';
 
-export const useChatStore = create<ChatStore>((set, get) => ({
+const useChatStore = create<ChatStore>((set, get) => ({
   conversations: [],
   currentConversationId: null,
   isLoading: false,
@@ -17,52 +19,27 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   processingUrls: null, // Add the URL processing state
   
   // Actions that don't depend on other actions
-  setCurrentConversationId: (id: string) => set({ currentConversationId: id }),
-  setSelectedModel: (model: AIModel) => set({ selectedModel: model }),
-  setProcessingUrls: (message: string | null) => set({ processingUrls: message }),
+  setCurrentConversationId: setCurrentConversationIdAction(set, get),
+  setSelectedModel: selectModelAction(set),
   
   // Message Actions
   addMessage: addMessageAction(set, get),
   
   // Async Actions (must be defined after all state properties)
-  generateResponse: () => import('./actions/responseActions').then(m => m.generateResponseAction(set, get)()),
+  generateResponse: async () => {
+    const { generateResponseAction } = await import('./actions/responseActions');
+    return generateResponseAction(set, get)();
+  },
   sendMessage: createSendMessageAction(set, get),
   regenerateMessage: createRegenerateMessageAction(set, get),
   
-  // Model Actions
-  selectModel: selectModelAction(set, get),
-  
   // Conversation Actions
-  createNewConversation: () => {
-    const newConversationId = Date.now().toString(); // Simple unique ID
-    const newConversation: Conversation = {
-      id: newConversationId,
-      title: 'New Conversation',
-      messages: [],
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      contextSummary: null,
-    };
-    
-    set(state => ({
-      conversations: [...state.conversations, newConversation],
-      currentConversationId: newConversationId,
-    }));
-    
-    return newConversationId;
-  },
-  
-  deleteConversation: (conversationId: string) => {
-    set(state => ({
-      conversations: state.conversations.filter(c => c.id !== conversationId),
-      currentConversationId: state.currentConversationId === conversationId ? null : state.currentConversationId,
-    }));
-  },
-  
-  updateConversationTitle: (conversationId: string, newTitle: string) => {
+  createConversation: createConversationAction(set, get),
+  deleteConversation: deleteConversationAction(set, get),
+  updateConversationTitle: async (id: string, title: string) => {
     set(state => ({
       conversations: state.conversations.map(conv =>
-        conv.id === conversationId ? { ...conv, title: newTitle } : conv
+        conv.id === id ? { ...conv, title: title } : conv
       ),
     }));
   },
@@ -78,7 +55,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       
       console.log("Loading conversations from database for user:", userId);
       
-      const { data, error } = await import('@/integrations/supabase/client').then(m => m.supabase)
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data, error } = await supabase
         .from('conversations')
         .select('*')
         .eq('user_id', userId)
@@ -123,7 +101,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       
       console.log(`Loading messages for conversation ${conversationId} for user:`, userId);
       
-      const { data, error } = await import('@/integrations/supabase/client').then(m => m.supabase)
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data, error } = await supabase
         .from('conversation_messages')
         .select('*')
         .eq('conversation_id', conversationId)
@@ -168,4 +147,11 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       throw error;
     }
   },
+  clearConversations: () => set({ conversations: [], currentConversationId: null }),
 }));
+
+// Make sure to import AI_MODELS here
+import { AI_MODELS } from '@/constants';
+
+// Export the store
+export { useChatStore };

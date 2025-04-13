@@ -1,4 +1,7 @@
-import { Conversation, AIModel, Message } from '@/types';
+
+import { Conversation as ConversationType, AIModel, Message } from '@/types';
+
+export type Conversation = ConversationType;
 
 export interface ChatStore {
   conversations: Conversation[];
@@ -8,7 +11,7 @@ export interface ChatStore {
   processingUrls: string | null; // Add the URL processing state
   
   // Actions
-  setCurrentConversationId: (id: string) => void;
+  setCurrentConversationId: (id: string) => Promise<void>;
   createConversation: () => Promise<void>;
   deleteConversation: (id: string) => Promise<void>;
   updateConversationTitle: (id: string, title: string) => Promise<void>;
@@ -23,5 +26,5 @@ export interface ChatStore {
   clearConversations: () => void;
   loadConversationsFromDB: () => Promise<void>;
   loadMessagesForConversation: (conversationId: string) => Promise<void>;
-  addTestConversations: (count?: number) => void;
+  addTestConversations?: (count?: number) => void;
 }
