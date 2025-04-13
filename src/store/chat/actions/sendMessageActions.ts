@@ -2,7 +2,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { ChatStore } from '../types';
 import { AIModel } from '@/types';
-import { toast } from 'sonner';
 import { extractUrls } from '@/utils/urlUtils';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -14,7 +13,8 @@ export const createSendMessageAction = (
     const { currentConversationId, conversations, selectedModel, generateResponse } = get();
     
     if (!currentConversationId) {
-      toast.error("No active conversation found");
+      set({ processingUrls: "Error: No active conversation found" });
+      setTimeout(() => set({ processingUrls: null }), 3000);
       return;
     }
     
@@ -29,7 +29,10 @@ export const createSendMessageAction = (
 
     // If URLs are found, try to fetch their content
     if (urls.length > 0) {
-      toast.info(`Found ${urls.length} URL(s) in your message. Fetching content...`);
+      // Show URL processing in the chat UI
+      set({ 
+        processingUrls: `Found ${urls.length} URL(s) in your message. Fetching content...`
+      });
       
       try {
         // Use our edge function to fetch webpage content with BeautifulSoup/cheerio
@@ -39,19 +42,32 @@ export const createSendMessageAction = (
 
         if (scrapingError) {
           console.error('Error fetching webpage content:', scrapingError);
-          toast.error(`Could not fetch content from URLs: ${scrapingError.message}`);
+          set({ 
+            processingUrls: `Could not fetch content from URLs: ${scrapingError.message}`
+          });
+          setTimeout(() => set({ processingUrls: null }), 4000);
         } else if (scrapedData && scrapedData.webContent) {
           // For each fetched URL, create a "file" with the webpage content
           Object.entries(scrapedData.webContent).forEach(([url, content]) => {
             if (content) {
               webContentFiles.push(`URL: ${url}\n${content}`);
-              toast.success(`Successfully extracted content from ${url}`);
+              
+              // Update the processing message with success
+              set({ 
+                processingUrls: `Successfully extracted content from ${url}`
+              });
             }
           });
+          
+          // Clear the processing message after a brief delay
+          setTimeout(() => set({ processingUrls: null }), 2000);
         }
       } catch (error) {
         console.error('Error invoking fetch-webpage function:', error);
-        toast.error('Could not fetch webpage content');
+        set({ 
+          processingUrls: 'Could not fetch webpage content due to an error'
+        });
+        setTimeout(() => set({ processingUrls: null }), 4000);
       }
     }
     

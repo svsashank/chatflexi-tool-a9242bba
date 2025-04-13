@@ -2,10 +2,10 @@
 import React, { useEffect, useRef } from "react";
 import { useChatStore } from "@/store";
 import MessageItem from "./MessageItem";
-import { User, Hexagon, Search } from "lucide-react";
+import { User, Hexagon, Search, Link } from "lucide-react";
 
 const ChatMessages = () => {
-  const { conversations, currentConversationId, isLoading } = useChatStore();
+  const { conversations, currentConversationId, isLoading, processingUrls } = useChatStore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isAutoScrollEnabled, setIsAutoScrollEnabled] = React.useState(true);
@@ -36,7 +36,7 @@ const ChatMessages = () => {
     if (isAutoScrollEnabled && messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
-  }, [currentConversation?.messages, isLoading, isAutoScrollEnabled]);
+  }, [currentConversation?.messages, isLoading, processingUrls, isAutoScrollEnabled]);
 
   if (!currentConversation) {
     return <div className="flex-1 overflow-y-auto p-4">No conversation selected</div>;
@@ -50,7 +50,7 @@ const ChatMessages = () => {
 
   return (
     <div ref={containerRef} className="flex-1 overflow-y-auto p-4 space-y-6">
-      {currentConversation.messages.length === 0 && !isLoading ? (
+      {currentConversation.messages.length === 0 && !isLoading && !processingUrls ? (
         <div className="h-full flex flex-col items-center justify-center text-center px-4 py-12">
           <div className="flex gap-2 mb-4">
             {[
@@ -95,6 +95,19 @@ const ChatMessages = () => {
               )}
             </div>
           ))}
+          
+          {processingUrls && processingUrls.length > 0 && (
+            <div className="flex items-start gap-4 animate-fade-in">
+              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                <Link size={16} className="text-primary" />
+              </div>
+              <div className="flex-1 p-4 rounded-lg glass-morphism">
+                <p className="text-sm text-muted-foreground">
+                  {processingUrls}
+                </p>
+              </div>
+            </div>
+          )}
           
           {isLoading && (
             <div className="flex items-start gap-4 animate-fade-in">

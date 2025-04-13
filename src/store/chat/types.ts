@@ -1,18 +1,22 @@
-
 import { Conversation, AIModel, Message } from '@/types';
 
 export interface ChatStore {
   conversations: Conversation[];
   currentConversationId: string | null;
-  selectedModel: AIModel;
   isLoading: boolean;
+  selectedModel: AIModel;
+  processingUrls: string | null; // Add the URL processing state
   
   // Actions
   setCurrentConversationId: (id: string) => void;
   createConversation: () => Promise<void>;
   deleteConversation: (id: string) => Promise<void>;
   updateConversationTitle: (id: string, title: string) => Promise<void>;
-  sendMessage: (content: string, images?: string[], files?: string[]) => void;
+  sendMessage: (
+    content: string, 
+    images?: string[], 
+    files?: string[]
+  ) => void;
   generateResponse: () => Promise<void>;
   regenerateMessage: () => Promise<void>;
   setSelectedModel: (model: AIModel) => void;

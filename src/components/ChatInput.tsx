@@ -20,7 +20,7 @@ const ChatInput = () => {
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
   const [processingFile, setProcessingFile] = useState(false);
-  const { sendMessage, isLoading, selectedModel, setSelectedModel } = useChatStore();
+  const { sendMessage, isLoading, selectedModel, setSelectedModel, setProcessingUrls } = useChatStore();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const documentInputRef = useRef<HTMLInputElement>(null);
@@ -110,21 +110,21 @@ const ChatInput = () => {
     if (!files) return;
 
     setProcessingFile(true);
-    toast.info("Processing documents. Please wait...");
+    setProcessingUrls("Processing documents. Please wait...");
 
     let successCount = 0;
     let failCount = 0;
 
     for (const file of Array.from(files)) {
       if (file.size > 10 * 1024 * 1024) {
-        toast.error(`File ${file.name} exceeds 10MB limit.`);
+        setProcessingUrls(`File ${file.name} exceeds 10MB limit.`);
         failCount++;
         continue;
       }
 
       try {
         if (file.type === 'application/pdf') {
-          toast.info(`Extracting text from PDF: ${file.name}...`);
+          setProcessingUrls(`Extracting text from PDF: ${file.name}...`);
           
           let pdfText = "";
           let attempts = 0;
@@ -146,10 +146,10 @@ const ChatInput = () => {
             const fileContent = `File: ${file.name}\nContent: ${pdfText.substring(0, 100000)}${pdfText.length > 100000 ? '...(content truncated)' : ''}`;
             console.log("Adding extracted PDF text to uploaded files:", fileContent.substring(0, 100) + '...');
             setUploadedFiles(prev => [...prev, fileContent]);
-            toast.success(`Successfully extracted text from ${file.name}`);
+            setProcessingUrls(`Successfully extracted text from ${file.name}`);
             successCount++;
           } else {
-            toast.error(`No text content found in ${file.name}`);
+            setProcessingUrls(`No text content found in ${file.name}`);
             failCount++;
           }
         } else if (file.type.startsWith('text/')) {
@@ -157,30 +157,32 @@ const ChatInput = () => {
           const fileData = `File: ${file.name}\nContent: ${textContent.substring(0, 100000)}${textContent.length > 100000 ? '...(content truncated)' : ''}`;
           console.log("Adding text file content:", fileData.substring(0, 100) + '...');
           setUploadedFiles(prev => [...prev, fileData]);
-          toast.success(`File ${file.name} uploaded successfully`);
+          setProcessingUrls(`File ${file.name} uploaded successfully`);
           successCount++;
         } else {
-          toast.warning(`File type ${file.type} content cannot be extracted. Only the filename will be used.`);
+          setProcessingUrls(`File type ${file.type} content cannot be extracted. Only the filename will be used.`);
           setUploadedFiles(prev => [...prev, `File: ${file.name} (Binary content type: ${file.type})`]);
           successCount++;
         }
       } catch (error) {
         console.error(`Error processing file ${file.name}:`, error);
-        toast.error(`Error processing file ${file.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        setProcessingUrls(`Error processing file ${file.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
         failCount++;
       }
     }
 
     if (successCount > 0) {
-      toast.success(`Successfully processed ${successCount} file(s)`);
+      setProcessingUrls(`Successfully processed ${successCount} file(s)`);
     }
     if (failCount > 0) {
-      toast.error(`Failed to process ${failCount} file(s)`);
+      setProcessingUrls(`Failed to process ${failCount} file(s)`);
     }
 
     if (documentInputRef.current) {
       documentInputRef.current.value = '';
     }
+    
+    setTimeout(() => setProcessingUrls(null), 2000);
     setProcessingFile(false);
   };
 
