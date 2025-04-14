@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from "react";
-import { Send, ChevronDown, Image, X, FileText } from "lucide-react";
+import { Send, ChevronDown, Image, FileText, PlusCircle, Smile, X, Paperclip } from "lucide-react";
 import { useChatStore } from "@/store";
 import { 
   DropdownMenu,
@@ -15,12 +15,14 @@ import { AI_MODELS } from "@/constants";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { extractTextFromPDF } from "@/utils/pdfExtractor";
+import { Textarea } from "@/components/ui/textarea";
 
 const ChatInput = () => {
   const [inputValue, setInputValue] = useState("");
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
   const [processingFile, setProcessingFile] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const { 
     sendMessage, 
     isLoading, 
@@ -202,116 +204,191 @@ const ChatInput = () => {
     setUploadedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
+  const isDisabled = (inputValue.trim() === "" && uploadedImages.length === 0 && uploadedFiles.length === 0) || isLoading || processingFile;
+
   return (
-    <div className="p-4 border-t border-border bg-background/90 backdrop-blur-sm sticky bottom-0 z-10">
-      <form 
-        onSubmit={handleSubmit} 
-        className="relative flex flex-col gap-3 max-w-3xl mx-auto"
-      >
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="outline"
-              className="self-center flex items-center justify-center h-10 gap-2 px-4 rounded-lg border border-primary/20 bg-background hover:bg-accent"
-              aria-label="Select AI model"
-            >
-              <div 
-                className="w-2.5 h-2.5 rounded-full" 
-                style={{ backgroundColor: selectedModel.avatarColor }}
-              />
-              <span className="text-sm font-medium">
-                {selectedModel.name}
-                <span className="text-xs ml-1.5 text-muted-foreground hidden sm:inline">
-                  ({selectedModel.provider})
+    <div className="px-4 py-3 border-t border-border bg-background/95 backdrop-blur-sm sticky bottom-0 z-10">
+      {processingUrls && (
+        <div className="text-center text-sm py-2 px-3 mb-3 bg-primary/10 text-primary rounded-md flex items-center justify-center">
+          <span className="inline-block h-2 w-2 rounded-full bg-primary/60 mr-2 animate-pulse"></span>
+          {processingUrls}
+        </div>
+      )}
+      
+      <div className="max-w-3xl mx-auto">
+        {/* Model Selector - Always visible at top for easy access */}
+        <div className="flex justify-center mb-3">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                className="flex items-center justify-center h-9 gap-2 px-3 py-1.5 rounded-full border border-primary/20 bg-background hover:bg-accent transition-all"
+                aria-label="Select AI model"
+              >
+                <div 
+                  className="w-2.5 h-2.5 rounded-full" 
+                  style={{ backgroundColor: selectedModel.avatarColor }}
+                />
+                <span className="text-sm font-medium">
+                  {selectedModel.name}
+                  <span className="text-xs ml-1.5 text-muted-foreground hidden sm:inline">
+                    ({selectedModel.provider})
+                  </span>
                 </span>
-              </span>
-              <ChevronDown size={14} />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="center" className="w-64 mt-1 border-primary/20">
-            <DropdownMenuLabel className="text-center">Choose an AI Model</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <ScrollArea className="h-80">
-              <div className="p-1">
-                {AI_MODELS.map((model) => (
-                  <DropdownMenuItem 
-                    key={model.id}
-                    onClick={() => setSelectedModel(model)}
-                    className="flex items-center gap-2 cursor-pointer py-2"
-                  >
-                    <div 
-                      className="w-3 h-3 rounded-full mr-2" 
-                      style={{ backgroundColor: model.avatarColor }}
-                    />
-                    <div className="flex flex-col">
-                      <span className="font-medium">{model.name}</span>
-                      <span className="text-xs text-muted-foreground">{model.provider}</span>
-                    </div>
-                    {model.capabilities.includes('images') && (
-                      <span className="text-xs ml-auto px-1.5 py-0.5 bg-primary/10 text-primary rounded">Vision</span>
-                    )}
-                    {selectedModel.id === model.id && (
-                      <span className="w-2 h-2 rounded-full bg-primary ml-auto" />
-                    )}
-                  </DropdownMenuItem>
-                ))}
-              </div>
-            </ScrollArea>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        {uploadedImages.length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-2">
-            {uploadedImages.map((image, index) => (
-              <div key={index} className="relative w-16 h-16 rounded-md overflow-hidden border border-border">
-                <img src={image} alt="Uploaded" className="w-full h-full object-cover" />
-                <button
-                  type="button"
-                  onClick={() => removeImage(index)}
-                  className="absolute top-0.5 right-0.5 bg-background/80 rounded-full p-0.5"
-                >
-                  <X size={12} />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {uploadedFiles.length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-2">
-            {uploadedFiles.map((file, index) => {
-              const fileName = file.split('\n')[0].replace('File: ', '');
-              return (
-                <div key={index} className="relative flex items-center gap-1 px-3 py-2 rounded-md border border-border bg-muted/30">
-                  <FileText size={14} className="text-muted-foreground" />
-                  <span className="text-xs truncate max-w-[150px]">{fileName}</span>
-                  <button
-                    type="button"
-                    onClick={() => removeFile(index)}
-                    className="ml-1 rounded-full p-0.5 hover:bg-muted"
-                  >
-                    <X size={12} />
-                  </button>
+                <ChevronDown size={14} />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="center" className="w-64 mt-1 border-primary/20">
+              <DropdownMenuLabel className="text-center">Choose an AI Model</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <ScrollArea className="h-80">
+                <div className="p-1">
+                  {AI_MODELS.map((model) => (
+                    <DropdownMenuItem 
+                      key={model.id}
+                      onClick={() => setSelectedModel(model)}
+                      className="flex items-center gap-2 cursor-pointer py-2"
+                    >
+                      <div 
+                        className="w-3 h-3 rounded-full mr-2" 
+                        style={{ backgroundColor: model.avatarColor }}
+                      />
+                      <div className="flex flex-col">
+                        <span className="font-medium">{model.name}</span>
+                        <span className="text-xs text-muted-foreground">{model.provider}</span>
+                      </div>
+                      {model.capabilities.includes('images') && (
+                        <span className="text-xs ml-auto px-1.5 py-0.5 bg-primary/10 text-primary rounded">Vision</span>
+                      )}
+                      {selectedModel.id === model.id && (
+                        <span className="w-2 h-2 rounded-full bg-primary ml-auto" />
+                      )}
+                    </DropdownMenuItem>
+                  ))}
                 </div>
-              );
-            })}
-          </div>
-        )}
+              </ScrollArea>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+        
+        <form onSubmit={handleSubmit} className="relative flex flex-col gap-3">
+          {/* Media previews */}
+          {(uploadedImages.length > 0 || uploadedFiles.length > 0) && (
+            <div className="bg-muted/30 p-3 rounded-t-xl border border-border border-b-0">
+              {uploadedImages.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {uploadedImages.map((image, index) => (
+                    <div key={index} className="relative w-20 h-20 rounded-md overflow-hidden border border-border group hover:shadow-md transition-all">
+                      <img src={image} alt="Uploaded" className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => removeImage(index)}
+                        className="absolute top-1 right-1 bg-background/80 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X size={14} className="text-foreground" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
 
-        <div className="flex items-end gap-2">
-          <div className="relative flex-1 bg-muted/50 rounded-lg overflow-hidden">
-            <textarea
+              {uploadedFiles.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {uploadedFiles.map((file, index) => {
+                    const fileName = file.split('\n')[0].replace('File: ', '');
+                    return (
+                      <div 
+                        key={index} 
+                        className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border bg-background/50 group hover:bg-background/80 transition-all"
+                      >
+                        <FileText size={14} className="text-primary" />
+                        <span className="text-xs truncate max-w-[150px]">{fileName}</span>
+                        <button
+                          type="button"
+                          onClick={() => removeFile(index)}
+                          className="ml-1 rounded-full p-1 hover:bg-muted"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Main input area with attachments and send button */}
+          <div className={`flex items-end relative border border-muted-foreground/20 rounded-xl ${(uploadedImages.length > 0 || uploadedFiles.length > 0) ? 'rounded-t-none' : ''} bg-muted/30 focus-within:border-primary/50 transition-all overflow-hidden`}>
+            {/* Expandable textarea */}
+            <Textarea
               ref={textareaRef}
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={uploadedImages.length > 0 ? "Ask about this image..." : (uploadedFiles.length > 0 ? "Ask about these files..." : "Message...")}
+              placeholder={uploadedImages.length > 0 ? "Ask about these images..." : (uploadedFiles.length > 0 ? "Ask about these files..." : "Message...")}
               disabled={isLoading || processingFile}
-              className="w-full max-h-[200px] resize-none bg-transparent border-0 py-3 px-4 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0"
-              rows={1}
+              className="min-h-[56px] max-h-[200px] resize-none bg-transparent border-0 py-4 px-4 pr-[120px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0 rounded-xl"
             />
+            
+            {/* Actions buttons */}
+            <div className="absolute right-2 bottom-2 flex items-center gap-1">
+              {/* File attachment button */}
+              <div className="relative group">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 rounded-full hover:bg-accent"
+                  onClick={() => setExpanded(prev => !prev)}
+                  disabled={isLoading || processingFile}
+                >
+                  <PlusCircle size={20} className="text-muted-foreground group-hover:text-foreground transition-colors" />
+                </Button>
+                
+                {expanded && (
+                  <div className="absolute bottom-full right-0 mb-2 flex items-center gap-1 bg-popover p-1.5 rounded-lg border border-border shadow-md">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9 rounded-full hover:bg-accent"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isLoading || processingFile}
+                      title="Upload images"
+                    >
+                      <Image size={18} className="text-muted-foreground hover:text-foreground transition-colors" />
+                    </Button>
+                    
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9 rounded-full hover:bg-accent"
+                      onClick={() => documentInputRef.current?.click()}
+                      disabled={isLoading || processingFile}
+                      title="Upload document files"
+                    >
+                      <FileText size={18} className="text-muted-foreground hover:text-foreground transition-colors" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+              
+              {/* Send button */}
+              <Button
+                type="submit"
+                disabled={isDisabled}
+                variant={isDisabled ? "ghost" : "primary"}
+                size="icon"
+                className={`h-9 w-9 rounded-full transition-all ${isDisabled ? 'opacity-50' : 'bg-primary hover:bg-primary/90'}`}
+              >
+                <Send size={18} className={isDisabled ? 'text-muted-foreground' : 'text-primary-foreground'} />
+              </Button>
+            </div>
           </div>
           
+          {/* Hidden file inputs */}
           <input 
             type="file" 
             ref={fileInputRef}
@@ -331,42 +408,16 @@ const ChatInput = () => {
             multiple
             disabled={isLoading || processingFile}
           />
-          
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            className="h-10 w-10"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isLoading || processingFile}
-            title="Upload images"
-          >
-            <Image size={18} />
-          </Button>
-          
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            className="h-10 w-10"
-            onClick={() => documentInputRef.current?.click()}
-            disabled={isLoading || processingFile}
-            title="Upload document files"
-          >
-            <FileText size={18} />
-          </Button>
-          
-          <Button
-            type="submit"
-            disabled={(inputValue.trim() === "" && uploadedImages.length === 0 && uploadedFiles.length === 0) || isLoading || processingFile}
-            variant={(inputValue.trim() === "" && uploadedImages.length === 0 && uploadedFiles.length === 0) || isLoading || processingFile ? "secondary" : "default"}
-            size="icon"
-            className="h-10 w-10"
-          >
-            <Send size={18} />
-          </Button>
+        </form>
+      </div>
+      
+      {/* Processing status indicator */}
+      {isLoading && (
+        <div className="mt-3 flex items-center justify-center gap-2 text-xs text-muted-foreground">
+          <div className="w-1.5 h-1.5 rounded-full bg-primary/70 animate-pulse"></div>
+          <span>{processingUrls || "Processing your request..."}</span>
         </div>
-      </form>
+      )}
     </div>
   );
 };
