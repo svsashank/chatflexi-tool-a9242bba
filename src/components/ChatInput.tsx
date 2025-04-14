@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Send, ChevronDown, Image, FileText, PlusCircle, Smile, X, Paperclip } from "lucide-react";
+import { Send, ChevronDown, Image, FileText, PlusCircle, X } from "lucide-react";
 import { useChatStore } from "@/store";
 import { 
   DropdownMenu,
@@ -315,7 +315,7 @@ const ChatInput = () => {
             </div>
           )}
 
-          <div className={`flex items-end relative border border-muted-foreground/20 rounded-xl ${(uploadedImages.length > 0 || uploadedFiles.length > 0) ? 'rounded-t-none' : ''} bg-muted/30 focus-within:border-primary/50 transition-all overflow-hidden`}>
+          <div className={`flex relative border rounded-full ${(uploadedImages.length > 0 || uploadedFiles.length > 0) ? 'rounded-t-none' : ''} bg-background/30 focus-within:border-primary/50 transition-all overflow-hidden`}>
             <Textarea
               ref={textareaRef}
               value={inputValue}
@@ -323,49 +323,36 @@ const ChatInput = () => {
               onKeyDown={handleKeyDown}
               placeholder={uploadedImages.length > 0 ? "Ask about these images..." : (uploadedFiles.length > 0 ? "Ask about these files..." : "Message...")}
               disabled={isLoading || processingFile}
-              className="min-h-[56px] max-h-[200px] resize-none bg-transparent border-0 py-4 px-4 pr-[120px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0 rounded-xl"
+              className="min-h-[56px] max-h-[200px] resize-none bg-transparent border-0 py-3 px-4 pr-[100px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0 rounded-full"
             />
             
-            <div className="absolute right-2 bottom-2 flex items-center gap-1">
-              <div className="relative group">
+            <div className="absolute right-2 bottom-[8px] flex items-center gap-2">
+              <div className="relative">
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon"
                   className="h-9 w-9 rounded-full hover:bg-accent"
-                  onClick={() => setExpanded(prev => !prev)}
+                  onClick={() => fileInputRef.current?.click()}
                   disabled={isLoading || processingFile}
+                  title="Upload images"
                 >
-                  <PlusCircle size={20} className="text-muted-foreground group-hover:text-foreground transition-colors" />
+                  <Image size={18} className="text-muted-foreground hover:text-foreground transition-colors" />
                 </Button>
-                
-                {expanded && (
-                  <div className="absolute bottom-full right-0 mb-2 flex items-center gap-1 bg-popover p-1.5 rounded-lg border border-border shadow-md">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-9 w-9 rounded-full hover:bg-accent"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={isLoading || processingFile}
-                      title="Upload images"
-                    >
-                      <Image size={18} className="text-muted-foreground hover:text-foreground transition-colors" />
-                    </Button>
-                    
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-9 w-9 rounded-full hover:bg-accent"
-                      onClick={() => documentInputRef.current?.click()}
-                      disabled={isLoading || processingFile}
-                      title="Upload document files"
-                    >
-                      <FileText size={18} className="text-muted-foreground hover:text-foreground transition-colors" />
-                    </Button>
-                  </div>
-                )}
+              </div>
+              
+              <div className="relative">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 rounded-full hover:bg-accent"
+                  onClick={() => documentInputRef.current?.click()}
+                  disabled={isLoading || processingFile}
+                  title="Upload document files"
+                >
+                  <FileText size={18} className="text-muted-foreground hover:text-foreground transition-colors" />
+                </Button>
               </div>
               
               <Button
