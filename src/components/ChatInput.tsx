@@ -1,5 +1,6 @@
+
 import React, { useState, useRef, useEffect } from "react";
-import { Send, ChevronDown, Image, FileText, PlusCircle, X } from "lucide-react";
+import { Send, ChevronDown, Image, FileText, Paperclip, X } from "lucide-react";
 import { useChatStore } from "@/store";
 import { 
   DropdownMenu,
@@ -21,7 +22,7 @@ const ChatInput = () => {
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
   const [processingFile, setProcessingFile] = useState(false);
-  const [expanded, setExpanded] = useState(false);
+  const [showAttachments, setShowAttachments] = useState(false);
   const { 
     sendMessage, 
     isLoading, 
@@ -33,6 +34,7 @@ const ChatInput = () => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const documentInputRef = useRef<HTMLInputElement>(null);
+  const attachmentMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const textarea = textareaRef.current;
@@ -42,6 +44,20 @@ const ChatInput = () => {
       textarea.style.height = `${newHeight}px`;
     }
   }, [inputValue]);
+
+  // Close attachment menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (attachmentMenuRef.current && !attachmentMenuRef.current.contains(event.target as Node)) {
+        setShowAttachments(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -112,6 +128,7 @@ const ChatInput = () => {
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
+    setShowAttachments(false);
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -193,6 +210,7 @@ const ChatInput = () => {
     
     setTimeout(() => setProcessingUrls(null), 2000);
     setProcessingFile(false);
+    setShowAttachments(false);
   };
 
   const removeImage = (index: number) => {
@@ -315,46 +333,62 @@ const ChatInput = () => {
             </div>
           )}
 
-          <div className={`flex relative border rounded-full ${(uploadedImages.length > 0 || uploadedFiles.length > 0) ? 'rounded-t-none' : ''} bg-background/30 focus-within:border-primary/50 transition-all overflow-hidden`}>
-            <Textarea
-              ref={textareaRef}
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={uploadedImages.length > 0 ? "Ask about these images..." : (uploadedFiles.length > 0 ? "Ask about these files..." : "Message...")}
-              disabled={isLoading || processingFile}
-              className="min-h-[56px] max-h-[200px] resize-none bg-transparent border-0 py-3 px-4 pr-[100px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0 rounded-full"
-            />
+          <div 
+            className={`flex relative border ${(uploadedImages.length > 0 || uploadedFiles.length > 0) ? 'rounded-t-none rounded-b-full' : 'rounded-full'} bg-background/30 focus-within:border-primary/50 transition-all`}
+          >
+            <div className="flex-grow flex items-center">
+              <div className="relative">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-10 w-10 rounded-full hover:bg-accent ml-1"
+                  onClick={() => setShowAttachments(!showAttachments)}
+                  disabled={isLoading || processingFile}
+                >
+                  <Paperclip size={18} className={`${showAttachments ? 'text-primary' : 'text-muted-foreground'} hover:text-foreground transition-colors`} />
+                </Button>
+                
+                {showAttachments && (
+                  <div 
+                    ref={attachmentMenuRef}
+                    className="absolute bottom-full left-0 mb-2 flex flex-col gap-1 bg-popover rounded-lg border border-border shadow-md p-2 min-w-[120px] z-20"
+                  >
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="flex items-center justify-start gap-2 h-9 px-2 py-2 rounded-md hover:bg-accent text-sm"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isLoading || processingFile}
+                    >
+                      <Image size={16} className="text-primary" /> Images
+                    </Button>
+                    
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="flex items-center justify-start gap-2 h-9 px-2 py-2 rounded-md hover:bg-accent text-sm"
+                      onClick={() => documentInputRef.current?.click()}
+                      disabled={isLoading || processingFile}
+                    >
+                      <FileText size={16} className="text-primary" /> Documents
+                    </Button>
+                  </div>
+                )}
+              </div>
+              
+              <Textarea
+                ref={textareaRef}
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder={uploadedImages.length > 0 ? "Ask about these images..." : (uploadedFiles.length > 0 ? "Ask about these files..." : "Message...")}
+                disabled={isLoading || processingFile}
+                className="min-h-[48px] max-h-[200px] resize-none bg-transparent border-0 py-3 px-2 pr-12 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0"
+              />
+            </div>
             
-            <div className="absolute right-2 bottom-[8px] flex items-center gap-2">
-              <div className="relative">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-9 w-9 rounded-full hover:bg-accent"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isLoading || processingFile}
-                  title="Upload images"
-                >
-                  <Image size={18} className="text-muted-foreground hover:text-foreground transition-colors" />
-                </Button>
-              </div>
-              
-              <div className="relative">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-9 w-9 rounded-full hover:bg-accent"
-                  onClick={() => documentInputRef.current?.click()}
-                  disabled={isLoading || processingFile}
-                  title="Upload document files"
-                >
-                  <FileText size={18} className="text-muted-foreground hover:text-foreground transition-colors" />
-                </Button>
-              </div>
-              
+            <div className="flex items-center pr-2">
               <Button
                 type="submit"
                 disabled={isDisabled}
