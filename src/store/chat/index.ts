@@ -123,10 +123,13 @@ export const useChatStore = create<ChatStore>((set, get) => ({
           content: dbMessage.content,
           role: dbMessage.role as 'user' | 'assistant' | 'system',
           model: {
-            id: dbMessage.model_id,
-            name: dbMessage.model_id, // You might want to fetch the actual model details
-            provider: dbMessage.model_provider,
-          },
+            id: dbMessage.model_id || '',
+            name: dbMessage.model_id || '', 
+            provider: dbMessage.model_provider || '',
+            description: '',  // Add missing properties from AIModel
+            capabilities: ['text'] as Array<'text' | 'images' | 'code' | 'audio'>,  // Default capability
+            avatarColor: '#808080'  // Default color
+          } as AIModel,
           timestamp: new Date(dbMessage.created_at),
           tokens: {
             input: dbMessage.input_tokens || 0,
@@ -138,7 +141,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
           images: dbMessage.images || [],
         }));
         
-        set((state) => ({
+        set((state: ChatStore) => ({
           conversations: state.conversations.map(conv =>
             conv.id === conversationId ? { ...conv, messages: loadedMessages } : conv
           ),
@@ -153,6 +156,3 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   },
   clearConversations: () => set({ conversations: [], currentConversationId: null }),
 }));
-
-// Export the store
-export { useChatStore };

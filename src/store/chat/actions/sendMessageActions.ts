@@ -6,7 +6,7 @@ import { extractUrls } from '@/utils/urlUtils';
 import { supabase } from '@/integrations/supabase/client';
 
 export const createSendMessageAction = (
-  set: (state: Partial<ChatStore>) => void,
+  set: (state: Partial<ChatStore> | ((state: ChatStore) => Partial<ChatStore>)) => void,
   get: () => ChatStore
 ) => {
   return async (content: string, images: string[] = [], files: string[] = []) => {
@@ -78,39 +78,41 @@ export const createSendMessageAction = (
     });
     
     // Add user message
-    set((state) => ({
-      conversations: state.conversations.map((conv) => {
-        if (conv.id === currentConversationId) {
-          // Debug logging to ensure files are being properly added
-          if (allFiles && allFiles.length > 0) {
-            console.log(`Adding ${allFiles.length} files to message ${messageId}`);
-            console.log(`First file content starts with: ${allFiles[0].substring(0, 150)}...`);
+    set((state: ChatStore) => {
+      return {
+        conversations: state.conversations.map((conv) => {
+          if (conv.id === currentConversationId) {
+            // Debug logging to ensure files are being properly added
+            if (allFiles && allFiles.length > 0) {
+              console.log(`Adding ${allFiles.length} files to message ${messageId}`);
+              console.log(`First file content starts with: ${allFiles[0].substring(0, 150)}...`);
+            }
+            
+            if (images && images.length > 0) {
+              console.log(`Adding ${images.length} images to message ${messageId}`);
+            }
+            
+            return {
+              ...conv,
+              messages: [
+                ...conv.messages,
+                {
+                  id: messageId,
+                  content: enhancedContent,
+                  role: 'user' as const,
+                  model: selectedModel,
+                  timestamp,
+                  images,
+                  files: allFiles
+                }
+              ],
+              updatedAt: timestamp
+            };
           }
-          
-          if (images && images.length > 0) {
-            console.log(`Adding ${images.length} images to message ${messageId}`);
-          }
-          
-          return {
-            ...conv,
-            messages: [
-              ...conv.messages,
-              {
-                id: messageId,
-                content: enhancedContent,
-                role: 'user' as const,
-                model: selectedModel,
-                timestamp,
-                images,
-                files: allFiles
-              }
-            ],
-            updatedAt: timestamp
-          };
-        }
-        return conv;
-      })
-    }));
+          return conv;
+        })
+      };
+    });
     
     // Add a slight delay before generating the AI response to improve UX
     setTimeout(() => {
