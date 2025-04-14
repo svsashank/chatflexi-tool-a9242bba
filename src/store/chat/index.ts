@@ -2,7 +2,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { ChatStore } from './types';
-import { AIModel } from '@/types';
+import { AIModel, Conversation, Message } from '@/types';
 import { 
   addMessageAction,
   createSendMessageAction,
@@ -78,7 +78,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
           messages: [], // Messages will be loaded separately
           createdAt: new Date(dbConversation.created_at),
           updatedAt: new Date(dbConversation.updated_at),
-          contextSummary: null,
+          contextSummary: '',
         }));
         
         set({ conversations: loadedConversations });
@@ -118,37 +118,73 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       }
       
       if (data) {
-        const loadedMessages = data.map(dbMessage => ({
-          id: dbMessage.id,
-          content: dbMessage.content,
-          role: dbMessage.role as 'user' | 'assistant' | 'system',
-          model: {
-            id: dbMessage.model_id || '',
-            name: dbMessage.model_id || '', 
-            provider: dbMessage.model_provider || '',
-            description: '',  // Add missing properties from AIModel
-            capabilities: ['text'] as Array<'text' | 'images' | 'code' | 'audio'>,  // Default capability
-            avatarColor: '#808080'  // Default color
-          } as AIModel,
-          timestamp: new Date(dbMessage.created_at),
-          tokens: {
-            input: dbMessage.input_tokens || 0,
-            output: dbMessage.output_tokens || 0,
-          },
-          computeCredits: dbMessage.compute_credits || 0,
-          webSearchResults: dbMessage.web_search_results || [], // Ensure this is always an array
-          fileSearchResults: dbMessage.file_search_results || [], // Ensure this is always an array
-          images: dbMessage.images || [],
-        }));
-        
-        // Fix the state update to properly satisfy TypeScript
-        set(state => {
-          const updatedConversations = state.conversations.map(conv =>
-            conv.id === conversationId ? { ...conv, messages: loadedMessages } : conv
-          );
+        const loadedMessages: Message[] = data.map(dbMessage => {
+          // Create a properly typed message object
+          const message: Message = {
+            id: dbMessage.id,
+            content: dbMessage.content,
+            role: dbMessage.role as 'user' | 'assistant' | 'system',
+            model: {
+              id: dbMessage.model_id || '',
+              name: dbMessage.model_id || '', 
+              provider: dbMessage.model_provider || '',
+              description: '',
+              capabilities: ['text'] as Array<'text' | 'images' | 'code' | 'audio'>,
+              avatarColor: '#808080'
+            },
+            timestamp: new Date(dbMessage.created_at),
+          };
+
+          // Add tokens if available
+          if (dbMessage.input_tokens !== null && dbMessage.output_tokens !== null) {
+            message.tokens = {
+              input: dbMessage.input_tokens || 0,
+              output: dbMessage.output_tokens || 0,
+            };
+          }
           
-          return { conversations: updatedConversations };
+          // Add compute credits if available
+          if (dbMessage.compute_credits !== null) {
+            message.computeCredits = dbMessage.compute_credits;
+          }
+          
+          // Add images if available
+          if (dbMessage.images && Array.isArray(dbMessage.images) && dbMessage.images.length > 0) {
+            message.images = dbMessage.images;
+          }
+          
+          // Add files if available
+          if (dbMessage.files && Array.isArray(dbMessage.files) && dbMessage.files.length > 0) {
+            message.files = dbMessage.files;
+          }
+          
+          // Ensure web search results are always arrays
+          if (dbMessage.web_search_results) {
+            message.webSearchResults = Array.isArray(dbMessage.web_search_results) 
+              ? dbMessage.web_search_results 
+              : [];
+          } else {
+            message.webSearchResults = [];
+          }
+          
+          // Ensure file search results are always arrays
+          if (dbMessage.file_search_results) {
+            message.fileSearchResults = Array.isArray(dbMessage.file_search_results)
+              ? dbMessage.file_search_results
+              : [];
+          } else {
+            message.fileSearchResults = [];
+          }
+          
+          return message;
         });
+        
+        // Update the state with properly typed messages
+        set((state: ChatStore) => ({
+          conversations: state.conversations.map(conv =>
+            conv.id === conversationId ? { ...conv, messages: loadedMessages } : conv
+          ),
+        }));
         
         console.log(`Successfully loaded ${loadedMessages.length} messages for conversation ${conversationId}`);
       }

@@ -1,7 +1,7 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import { ChatStore } from '../types';
-import { AIModel } from '@/types';
+import { AIModel, Message } from '@/types';
 import { extractUrls } from '@/utils/urlUtils';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -77,6 +77,17 @@ export const createSendMessageAction = (
       filesPreview: allFiles.length > 0 ? allFiles.map(f => f.substring(0, 100) + '...') : []
     });
     
+    // Create a properly typed new message
+    const newMessage: Message = {
+      id: messageId,
+      content: enhancedContent,
+      role: 'user',
+      model: selectedModel,
+      timestamp,
+      images,
+      files: allFiles
+    };
+    
     // Add user message
     set((state: ChatStore) => {
       const updatedConversations = state.conversations.map(conv => {
@@ -93,18 +104,7 @@ export const createSendMessageAction = (
           
           return {
             ...conv,
-            messages: [
-              ...conv.messages,
-              {
-                id: messageId,
-                content: enhancedContent,
-                role: 'user' as const,
-                model: selectedModel,
-                timestamp,
-                images,
-                files: allFiles
-              }
-            ],
+            messages: [...conv.messages, newMessage],
             updatedAt: timestamp
           };
         }
