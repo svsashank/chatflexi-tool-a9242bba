@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from "react";
 import { Send, ChevronDown, Image, FileText, PlusCircle, Smile, X, Paperclip } from "lucide-react";
 import { useChatStore } from "@/store";
@@ -216,7 +215,6 @@ const ChatInput = () => {
       )}
       
       <div className="max-w-3xl mx-auto">
-        {/* Model Selector - Always visible at top for easy access */}
         <div className="flex justify-center mb-3">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -272,7 +270,6 @@ const ChatInput = () => {
         </div>
         
         <form onSubmit={handleSubmit} className="relative flex flex-col gap-3">
-          {/* Media previews */}
           {(uploadedImages.length > 0 || uploadedFiles.length > 0) && (
             <div className="bg-muted/30 p-3 rounded-t-xl border border-border border-b-0">
               {uploadedImages.length > 0 && (
@@ -318,9 +315,7 @@ const ChatInput = () => {
             </div>
           )}
 
-          {/* Main input area with attachments and send button */}
           <div className={`flex items-end relative border border-muted-foreground/20 rounded-xl ${(uploadedImages.length > 0 || uploadedFiles.length > 0) ? 'rounded-t-none' : ''} bg-muted/30 focus-within:border-primary/50 transition-all overflow-hidden`}>
-            {/* Expandable textarea */}
             <Textarea
               ref={textareaRef}
               value={inputValue}
@@ -331,9 +326,7 @@ const ChatInput = () => {
               className="min-h-[56px] max-h-[200px] resize-none bg-transparent border-0 py-4 px-4 pr-[120px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0 rounded-xl"
             />
             
-            {/* Actions buttons */}
             <div className="absolute right-2 bottom-2 flex items-center gap-1">
-              {/* File attachment button */}
               <div className="relative group">
                 <Button
                   type="button"
@@ -375,20 +368,18 @@ const ChatInput = () => {
                 )}
               </div>
               
-              {/* Send button */}
               <Button
                 type="submit"
                 disabled={isDisabled}
-                variant={isDisabled ? "ghost" : "primary"}
+                variant={isDisabled ? "ghost" : "default"}
                 size="icon"
-                className={`h-9 w-9 rounded-full transition-all ${isDisabled ? 'opacity-50' : 'bg-primary hover:bg-primary/90'}`}
+                className={`h-9 w-9 rounded-full transition-all ${isDisabled ? 'opacity-50' : ''}`}
               >
                 <Send size={18} className={isDisabled ? 'text-muted-foreground' : 'text-primary-foreground'} />
               </Button>
             </div>
           </div>
           
-          {/* Hidden file inputs */}
           <input 
             type="file" 
             ref={fileInputRef}
@@ -411,7 +402,6 @@ const ChatInput = () => {
         </form>
       </div>
       
-      {/* Processing status indicator */}
       {isLoading && (
         <div className="mt-3 flex items-center justify-center gap-2 text-xs text-muted-foreground">
           <div className="w-1.5 h-1.5 rounded-full bg-primary/70 animate-pulse"></div>
