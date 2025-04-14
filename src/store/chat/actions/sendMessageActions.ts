@@ -79,39 +79,39 @@ export const createSendMessageAction = (
     
     // Add user message
     set((state: ChatStore) => {
-      return {
-        conversations: state.conversations.map((conv) => {
-          if (conv.id === currentConversationId) {
-            // Debug logging to ensure files are being properly added
-            if (allFiles && allFiles.length > 0) {
-              console.log(`Adding ${allFiles.length} files to message ${messageId}`);
-              console.log(`First file content starts with: ${allFiles[0].substring(0, 150)}...`);
-            }
-            
-            if (images && images.length > 0) {
-              console.log(`Adding ${images.length} images to message ${messageId}`);
-            }
-            
-            return {
-              ...conv,
-              messages: [
-                ...conv.messages,
-                {
-                  id: messageId,
-                  content: enhancedContent,
-                  role: 'user' as const,
-                  model: selectedModel,
-                  timestamp,
-                  images,
-                  files: allFiles
-                }
-              ],
-              updatedAt: timestamp
-            };
+      const updatedConversations = state.conversations.map(conv => {
+        if (conv.id === currentConversationId) {
+          // Debug logging to ensure files are being properly added
+          if (allFiles && allFiles.length > 0) {
+            console.log(`Adding ${allFiles.length} files to message ${messageId}`);
+            console.log(`First file content starts with: ${allFiles[0].substring(0, 150)}...`);
           }
-          return conv;
-        })
-      };
+          
+          if (images && images.length > 0) {
+            console.log(`Adding ${images.length} images to message ${messageId}`);
+          }
+          
+          return {
+            ...conv,
+            messages: [
+              ...conv.messages,
+              {
+                id: messageId,
+                content: enhancedContent,
+                role: 'user' as const,
+                model: selectedModel,
+                timestamp,
+                images,
+                files: allFiles
+              }
+            ],
+            updatedAt: timestamp
+          };
+        }
+        return conv;
+      });
+      
+      return { conversations: updatedConversations };
     });
     
     // Add a slight delay before generating the AI response to improve UX

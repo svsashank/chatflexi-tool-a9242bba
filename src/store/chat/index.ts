@@ -136,17 +136,18 @@ export const useChatStore = create<ChatStore>((set, get) => ({
             output: dbMessage.output_tokens || 0,
           },
           computeCredits: dbMessage.compute_credits || 0,
-          webSearchResults: dbMessage.web_search_results || [],
-          fileSearchResults: dbMessage.file_search_results || [],
+          webSearchResults: dbMessage.web_search_results || [], // Ensure this is always an array
+          fileSearchResults: dbMessage.file_search_results || [], // Ensure this is always an array
           images: dbMessage.images || [],
         }));
         
-        set((state) => {
-          return {
-            conversations: state.conversations.map(conv =>
-              conv.id === conversationId ? { ...conv, messages: loadedMessages } : conv
-            )
-          };
+        // Fix the state update to properly satisfy TypeScript
+        set(state => {
+          const updatedConversations = state.conversations.map(conv =>
+            conv.id === conversationId ? { ...conv, messages: loadedMessages } : conv
+          );
+          
+          return { conversations: updatedConversations };
         });
         
         console.log(`Successfully loaded ${loadedMessages.length} messages for conversation ${conversationId}`);

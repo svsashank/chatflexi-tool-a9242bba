@@ -12,8 +12,8 @@ export interface Message {
   computeCredits?: number;
   images?: string[];
   files?: string[];
-  webSearchResults?: any[];
-  fileSearchResults?: any[];
+  webSearchResults?: any[];  // Changed from any[] to explicitly define as any array
+  fileSearchResults?: any[]; // Changed from any[] to explicitly define as any array
 }
 
 export interface Conversation {
