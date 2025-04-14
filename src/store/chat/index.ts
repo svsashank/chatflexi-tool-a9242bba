@@ -11,7 +11,10 @@ import {
 } from './actions';
 import { createConversationAction, setCurrentConversationIdAction, deleteConversationAction } from './conversationActions';
 
-const useChatStore = create<ChatStore>((set, get) => ({
+// Import AI_MODELS
+import { AI_MODELS } from '@/constants';
+
+export const useChatStore = create<ChatStore>((set, get) => ({
   conversations: [],
   currentConversationId: null,
   isLoading: false,
@@ -21,7 +24,7 @@ const useChatStore = create<ChatStore>((set, get) => ({
   // Actions that don't depend on other actions
   setCurrentConversationId: setCurrentConversationIdAction(set, get),
   setSelectedModel: selectModelAction(set),
-  setProcessingUrls: (message: string | null) => set({ processingUrls: message }), // Add this method
+  setProcessingUrls: (message: string | null) => set({ processingUrls: message }),
   
   // Message Actions
   addMessage: addMessageAction(set, get),
@@ -118,7 +121,7 @@ const useChatStore = create<ChatStore>((set, get) => ({
         const loadedMessages = data.map(dbMessage => ({
           id: dbMessage.id,
           content: dbMessage.content,
-          role: dbMessage.role,
+          role: dbMessage.role as 'user' | 'assistant' | 'system',
           model: {
             id: dbMessage.model_id,
             name: dbMessage.model_id, // You might want to fetch the actual model details
@@ -135,7 +138,7 @@ const useChatStore = create<ChatStore>((set, get) => ({
           images: dbMessage.images || [],
         }));
         
-        set(state => ({
+        set((state) => ({
           conversations: state.conversations.map(conv =>
             conv.id === conversationId ? { ...conv, messages: loadedMessages } : conv
           ),
@@ -150,9 +153,6 @@ const useChatStore = create<ChatStore>((set, get) => ({
   },
   clearConversations: () => set({ conversations: [], currentConversationId: null }),
 }));
-
-// Make sure to import AI_MODELS here
-import { AI_MODELS } from '@/constants';
 
 // Export the store
 export { useChatStore };

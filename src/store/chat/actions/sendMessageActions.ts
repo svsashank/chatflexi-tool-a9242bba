@@ -78,8 +78,8 @@ export const createSendMessageAction = (
     });
     
     // Add user message
-    set({
-      conversations: conversations.map((conv) => {
+    set((state) => ({
+      conversations: state.conversations.map((conv) => {
         if (conv.id === currentConversationId) {
           // Debug logging to ensure files are being properly added
           if (allFiles && allFiles.length > 0) {
@@ -110,7 +110,7 @@ export const createSendMessageAction = (
         }
         return conv;
       })
-    });
+    }));
     
     // Add a slight delay before generating the AI response to improve UX
     setTimeout(() => {
