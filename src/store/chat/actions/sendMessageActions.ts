@@ -10,11 +10,11 @@ export const createSendMessageAction = (
   get: () => ChatStore
 ) => {
   return async (content: string, images: string[] = [], files: string[] = []) => {
-    const { currentConversationId, conversations, selectedModel, generateResponse } = get();
+    const { currentConversationId, conversations, selectedModel, generateResponse, setProcessingUrls } = get();
     
     if (!currentConversationId) {
-      set({ processingUrls: "Error: No active conversation found" });
-      setTimeout(() => set({ processingUrls: null }), 3000);
+      setProcessingUrls("Error: No active conversation found");
+      setTimeout(() => setProcessingUrls(null), 3000);
       return;
     }
     
@@ -30,9 +30,7 @@ export const createSendMessageAction = (
     // If URLs are found, try to fetch their content
     if (urls.length > 0) {
       // Show URL processing in the chat UI
-      set({ 
-        processingUrls: `Found ${urls.length} URL(s) in your message. Fetching content...`
-      });
+      setProcessingUrls(`Found ${urls.length} URL(s) in your message. Fetching content...`);
       
       try {
         // Use our edge function to fetch webpage content with BeautifulSoup/cheerio
@@ -42,10 +40,8 @@ export const createSendMessageAction = (
 
         if (scrapingError) {
           console.error('Error fetching webpage content:', scrapingError);
-          set({ 
-            processingUrls: `Could not fetch content from URLs: ${scrapingError.message}`
-          });
-          setTimeout(() => set({ processingUrls: null }), 4000);
+          setProcessingUrls(`Could not fetch content from URLs: ${scrapingError.message}`);
+          setTimeout(() => setProcessingUrls(null), 4000);
         } else if (scrapedData && scrapedData.webContent) {
           // For each fetched URL, create a "file" with the webpage content
           Object.entries(scrapedData.webContent).forEach(([url, content]) => {
@@ -53,21 +49,17 @@ export const createSendMessageAction = (
               webContentFiles.push(`URL: ${url}\n${content}`);
               
               // Update the processing message with success
-              set({ 
-                processingUrls: `Successfully extracted content from ${url}`
-              });
+              setProcessingUrls(`Successfully extracted content from ${url}`);
             }
           });
           
           // Clear the processing message after a brief delay
-          setTimeout(() => set({ processingUrls: null }), 2000);
+          setTimeout(() => setProcessingUrls(null), 2000);
         }
       } catch (error) {
         console.error('Error invoking fetch-webpage function:', error);
-        set({ 
-          processingUrls: 'Could not fetch webpage content due to an error'
-        });
-        setTimeout(() => set({ processingUrls: null }), 4000);
+        setProcessingUrls('Could not fetch webpage content due to an error');
+        setTimeout(() => setProcessingUrls(null), 4000);
       }
     }
     
@@ -106,11 +98,11 @@ export const createSendMessageAction = (
               {
                 id: messageId,
                 content: enhancedContent,
-                role: 'user',
-                model: selectedModel, // Include selected model info
+                role: 'user' as const,
+                model: selectedModel,
                 timestamp,
-                images, // Include any attached images
-                files: allFiles   // Include any attached files (including extracted PDF text and webpage content)
+                images,
+                files: allFiles
               }
             ],
             updatedAt: timestamp

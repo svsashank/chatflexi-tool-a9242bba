@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from "react";
 import { Send, ChevronDown, Image, X, FileText } from "lucide-react";
 import { useChatStore } from "@/store";
@@ -20,7 +21,14 @@ const ChatInput = () => {
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
   const [processingFile, setProcessingFile] = useState(false);
-  const { sendMessage, isLoading, selectedModel, setSelectedModel, setProcessingUrls } = useChatStore();
+  const { 
+    sendMessage, 
+    isLoading, 
+    selectedModel, 
+    setSelectedModel, 
+    setProcessingUrls, 
+    processingUrls 
+  } = useChatStore();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const documentInputRef = useRef<HTMLInputElement>(null);

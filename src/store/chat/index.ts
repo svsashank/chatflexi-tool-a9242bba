@@ -16,11 +16,12 @@ const useChatStore = create<ChatStore>((set, get) => ({
   currentConversationId: null,
   isLoading: false,
   selectedModel: AI_MODELS[0], // default to the first model
-  processingUrls: null, // Add the URL processing state
+  processingUrls: null, // URL processing state
   
   // Actions that don't depend on other actions
   setCurrentConversationId: setCurrentConversationIdAction(set, get),
   setSelectedModel: selectModelAction(set),
+  setProcessingUrls: (message: string | null) => set({ processingUrls: message }), // Add this method
   
   // Message Actions
   addMessage: addMessageAction(set, get),

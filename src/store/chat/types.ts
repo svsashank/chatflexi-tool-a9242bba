@@ -23,6 +23,7 @@ export interface ChatStore {
   generateResponse: () => Promise<void>;
   regenerateMessage: () => Promise<void>;
   setSelectedModel: (model: AIModel) => void;
+  setProcessingUrls: (message: string | null) => void; // Add this method
   clearConversations: () => void;
   loadConversationsFromDB: () => Promise<void>;
   loadMessagesForConversation: (conversationId: string) => Promise<void>;
