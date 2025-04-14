@@ -153,9 +153,13 @@ export const useChatStore = create<ChatStore>((set, get) => ({
             message.images = dbMessage.images;
           }
           
-          // Add files if available
-          if (dbMessage.files && Array.isArray(dbMessage.files) && dbMessage.files.length > 0) {
-            message.files = dbMessage.files;
+          // Handle files separately since they're not directly in the database schema
+          // Instead, we'll need to construct them from other fields or process them differently
+          const files: string[] = [];
+          
+          // For now, we're not setting files property since it doesn't exist in the database
+          if (files.length > 0) {
+            message.files = files;
           }
           
           // Ensure web search results are always arrays

@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { Message, AIModel, Conversation } from "@/types";
@@ -45,11 +44,8 @@ export const loadUserConversationsAction = (set: Function) => async () => {
         currentConversationId: conversations[0].id,
       });
       
-      // After setting the current conversation, load the messages for it
       console.log(`Set first conversation as current: ${conversations[0].id}, now loading its messages`);
       
-      // We need to load messages for the first conversation
-      // This needs to be called after the state update
       setTimeout(() => {
         const loadMessagesForConversation = (window as any).useChatStore?.getState()?.loadMessagesForConversation;
         if (typeof loadMessagesForConversation === 'function') {
@@ -76,7 +72,6 @@ export const loadMessagesForConversationAction = (set: Function) => async (conve
     
     console.log(`Loading messages for conversation ${conversationId}...`);
     
-    // Fetch all messages for the conversation with all possible fields
     const { data: messages, error } = await supabase
       .from('conversation_messages')
       .select('*')
@@ -118,26 +113,17 @@ export const loadMessagesForConversationAction = (set: Function) => async (conve
           computeCredits: message.compute_credits,
         };
         
-        // Add images if they exist
         if (message.images && message.images.length > 0) {
           formattedMessage.images = message.images;
           console.log(`Found ${message.images.length} images for message ${message.id}`);
         }
         
-        // Add files if they exist
-        if (message.files && message.files.length > 0) {
-          formattedMessage.files = message.files;
-          console.log(`Found ${message.files.length} files for message ${message.id}`);
-        }
-        
-        // Add web search results if they exist
         if (message.web_search_results) {
           formattedMessage.webSearchResults = message.web_search_results;
           console.log(`Found web search results for message ${message.id}:`, 
             JSON.stringify(message.web_search_results).substring(0, 100) + '...');
         }
         
-        // Add file search results if they exist
         if (message.file_search_results) {
           formattedMessage.fileSearchResults = message.file_search_results;
           console.log(`Found file search results for message ${message.id}`);
