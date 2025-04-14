@@ -141,11 +141,13 @@ export const useChatStore = create<ChatStore>((set, get) => ({
           images: dbMessage.images || [],
         }));
         
-        set((state: ChatStore) => ({
-          conversations: state.conversations.map(conv =>
-            conv.id === conversationId ? { ...conv, messages: loadedMessages } : conv
-          ),
-        }));
+        set((state) => {
+          return {
+            conversations: state.conversations.map(conv =>
+              conv.id === conversationId ? { ...conv, messages: loadedMessages } : conv
+            )
+          };
+        });
         
         console.log(`Successfully loaded ${loadedMessages.length} messages for conversation ${conversationId}`);
       }
