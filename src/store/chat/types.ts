@@ -23,7 +23,8 @@ export interface ChatStore {
   generateResponse: () => Promise<void>;
   regenerateMessage: () => Promise<void>;
   setSelectedModel: (model: AIModel) => void;
-  setProcessingUrls: (message: string | null) => void; // Add this method
+  initializeSelectedModel: () => void; // Make sure this matches the name used in App.tsx
+  setProcessingUrls: (message: string | null) => void;
   clearConversations: () => void;
   loadConversationsFromDB: () => Promise<void>;
   loadMessagesForConversation: (conversationId: string) => Promise<void>;
