@@ -23,10 +23,11 @@ export interface ChatStore {
   generateResponse: () => Promise<void>;
   regenerateMessage: () => Promise<void>;
   setSelectedModel: (model: AIModel) => void;
-  initializeSelectedModel: () => void; // Make sure this matches the name used in App.tsx
+  initializeSelectedModel: () => void;
   setProcessingUrls: (message: string | null) => void;
   clearConversations: () => void;
   loadConversationsFromDB: () => Promise<void>;
   loadMessagesForConversation: (conversationId: string) => Promise<void>;
   addTestConversations?: (count?: number) => void;
+  handleError: (message: string) => void; // Add the new error handling action
 }

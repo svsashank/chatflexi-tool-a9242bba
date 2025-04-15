@@ -10,11 +10,27 @@ export const createSendMessageAction = (
   get: () => ChatStore
 ) => {
   return async (content: string, images: string[] = [], files: string[] = []) => {
-    const { currentConversationId, conversations, selectedModel, generateResponse, setProcessingUrls } = get();
+    const { 
+      currentConversationId, 
+      conversations, 
+      selectedModel, 
+      generateResponse, 
+      setProcessingUrls, 
+      handleError,
+      createConversation 
+    } = get();
     
-    if (!currentConversationId) {
-      setProcessingUrls("Error: No active conversation found");
-      setTimeout(() => setProcessingUrls(null), 3000);
+    // If no conversation exists, create one first
+    if (!currentConversationId || !conversations.find(c => c.id === currentConversationId)) {
+      console.log("No active conversation, creating a new one before sending message");
+      await createConversation();
+      // After creating a new conversation, proceed with the current one
+    }
+    
+    const updatedCurrentConversationId = get().currentConversationId;
+    
+    if (!updatedCurrentConversationId) {
+      handleError("Error: Could not create or find a conversation");
       return;
     }
     
@@ -91,7 +107,7 @@ export const createSendMessageAction = (
     // Add user message
     set((state: ChatStore) => {
       const updatedConversations = state.conversations.map(conv => {
-        if (conv.id === currentConversationId) {
+        if (conv.id === updatedCurrentConversationId) {
           // Debug logging to ensure files are being properly added
           if (allFiles && allFiles.length > 0) {
             console.log(`Adding ${allFiles.length} files to message ${messageId}`);
@@ -114,9 +130,8 @@ export const createSendMessageAction = (
       return { conversations: updatedConversations };
     });
     
-    // Add a slight delay before generating the AI response to improve UX
+    // Generate AI response with a small delay to ensure UI updates first
     setTimeout(() => {
-      // Generate AI response
       generateResponse();
     }, 100);
   };

@@ -3,12 +3,33 @@ import React, { useEffect, useRef } from "react";
 import { useChatStore } from "@/store";
 import MessageItem from "./MessageItem";
 import { User, Hexagon, Search, Link } from "lucide-react";
+import { toast } from "sonner"; 
 
 const ChatMessages = () => {
-  const { conversations, currentConversationId, isLoading, processingUrls } = useChatStore();
+  const { conversations, currentConversationId, isLoading, processingUrls, createConversation } = useChatStore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isAutoScrollEnabled, setIsAutoScrollEnabled] = React.useState(true);
+  const loadingRef = useRef<boolean>(false);
+  
+  // Use this to track and handle unusually long loading times
+  useEffect(() => {
+    if (isLoading && !loadingRef.current) {
+      loadingRef.current = true;
+      // Set a timeout to check if loading takes too long
+      const timeoutId = setTimeout(() => {
+        if (isLoading) {
+          toast.error("Response is taking longer than expected. You may need to try again.");
+        }
+      }, 15000); // 15 seconds
+      
+      return () => {
+        clearTimeout(timeoutId);
+      };
+    } else if (!isLoading) {
+      loadingRef.current = false;
+    }
+  }, [isLoading]);
 
   const currentConversation = conversations.find(
     (conv) => conv.id === currentConversationId
@@ -37,9 +58,20 @@ const ChatMessages = () => {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [currentConversation?.messages, isLoading, processingUrls, isAutoScrollEnabled]);
+  
+  // Create a new conversation if none exists
+  useEffect(() => {
+    if (!currentConversation && conversations.length === 0) {
+      createConversation();
+    }
+  }, [currentConversation, conversations.length, createConversation]);
 
   if (!currentConversation) {
-    return <div className="flex-1 overflow-y-auto p-4">No conversation selected</div>;
+    return <div className="flex-1 overflow-y-auto p-4 flex items-center justify-center">
+      <div className="animate-spin">
+        <Hexagon size={24} className="text-primary" />
+      </div>
+    </div>;
   }
 
   // Find the last assistant message index to display total credits

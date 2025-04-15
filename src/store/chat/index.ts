@@ -19,7 +19,7 @@ import {
   loadConversationsFromDBAction,
   loadMessagesForConversationAction,
 } from './actions/dataActions';
-import { clearConversationsAction } from './actions/stateActions';
+import { clearConversationsAction, handleErrorAction } from './actions/stateActions';
 
 // Import AI_MODELS
 import { AI_MODELS } from '@/constants';
@@ -57,4 +57,5 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   
   // State Management Actions
   clearConversations: clearConversationsAction(set),
+  handleError: handleErrorAction(set),
 }));

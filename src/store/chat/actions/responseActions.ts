@@ -1,37 +1,32 @@
-
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from 'sonner';
 import { sendMessageToLLM } from '@/services/llmService';
 import { calculateComputeCredits } from '@/utils/computeCredits';
 import { updateContextSummary } from '../utils';
 
 export const generateResponseAction = (set: Function, get: Function) => async () => {
+  if (get().isLoading) {
+    console.log("Already generating a response, skipping duplicate request");
+    return;
+  }
+  
   set({ isLoading: true });
   
   try {
     const currentConversationId = get().currentConversationId;
     const currentConversation = get().conversations.find(c => c.id === currentConversationId);
     const selectedModel = get().selectedModel;
+    const handleError = get().handleError;
 
     if (!currentConversationId || !currentConversation) {
-      toast({
-        title: 'Error',
-        description: 'No active conversation found',
-        variant: 'destructive',
-      });
-      set({ isLoading: false });
+      handleError('No active conversation found');
       return;
     }
 
     const lastMessage = currentConversation.messages[currentConversation.messages.length - 1];
     if (!lastMessage || lastMessage.role !== 'user') {
-      toast({
-        title: 'Error',
-        description: 'Please send a message first',
-        variant: 'destructive',
-      });
-      set({ isLoading: false });
+      handleError('Please send a message first');
       return;
     }
 
@@ -48,20 +43,35 @@ export const generateResponseAction = (set: Function, get: Function) => async ()
         lastMessage.files[0].substring(0, 150) + (lastMessage.files[0].length > 150 ? '...' : ''));
     }
 
-    const aiResponse = await sendMessageToLLM(
-      lastMessage.content,
-      selectedModel,
-      currentConversation.messages
-    );
+    let retryCount = 0;
+    const maxRetries = 3;
+    let aiResponse;
     
-    if (aiResponse.content.startsWith('Error:')) {
-      console.log('Response contained error, will auto-retry in 2 seconds');
-      setTimeout(() => {
-        console.log('Auto-retrying generateResponse...');
-        set({ isLoading: true });
-        generateResponseAction(set, get)();
-      }, 2000);
-      set({ isLoading: false });
+    while (retryCount < maxRetries) {
+      try {
+        aiResponse = await sendMessageToLLM(
+          lastMessage.content,
+          selectedModel,
+          currentConversation.messages
+        );
+        
+        if (aiResponse && !aiResponse.content.startsWith('Error:')) {
+          break; // Successful response
+        }
+        
+        // If we get an error response, retry
+        retryCount++;
+        console.log(`AI response contained error (attempt ${retryCount}/${maxRetries}), retrying...`);
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retrying
+      } catch (callError) {
+        retryCount++;
+        console.error(`Error calling LLM API (attempt ${retryCount}/${maxRetries}):`, callError);
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retrying
+      }
+    }
+    
+    if (!aiResponse || aiResponse.content.startsWith('Error:')) {
+      handleError('Failed to generate a response after multiple attempts. Please try again.');
       return;
     }
 
@@ -119,11 +129,7 @@ export const generateResponseAction = (set: Function, get: Function) => async ()
             
           if (convCheckError) {
             console.error('Error checking conversation:', convCheckError);
-            toast({
-              title: 'Error',
-              description: 'Failed to verify conversation ownership',
-              variant: 'destructive',
-            });
+            toast.error('Failed to verify conversation ownership');
             return;
           }
           
@@ -142,21 +148,13 @@ export const generateResponseAction = (set: Function, get: Function) => async ()
               
             if (createConvError) {
               console.error('Error creating conversation:', createConvError);
-              toast({
-                title: 'Error',
-                description: 'Failed to create conversation in database',
-                variant: 'destructive',
-              });
+              toast.error('Failed to create conversation in database');
               return;
             }
             console.log('Successfully created conversation in database');
           } else if (convData.user_id !== session.user.id) {
             console.error('Conversation belongs to a different user');
-            toast({
-              title: 'Error',
-              description: 'You do not have permission to access this conversation',
-              variant: 'destructive',
-            });
+            toast.error('You do not have permission to access this conversation');
             return;
           }
           
@@ -169,11 +167,7 @@ export const generateResponseAction = (set: Function, get: Function) => async ()
 
           if (conversationError) {
             console.error('Error updating conversation timestamp:', conversationError);
-            toast({
-              title: 'Warning',
-              description: 'Failed to update conversation timestamp',
-              variant: 'destructive',
-            });
+            toast.error('Failed to update conversation timestamp');
           }
           
           // Prepare the message insert data with all available info
@@ -222,11 +216,7 @@ export const generateResponseAction = (set: Function, get: Function) => async ()
 
           if (error) {
             console.error('Error saving message to database:', error);
-            toast({
-              title: 'Error',
-              description: 'Failed to save message to database',
-              variant: 'destructive',
-            });
+            toast.error('Failed to save message to database');
           } else {
             // Update the user's total compute credits using RPC
             try {
@@ -257,11 +247,7 @@ export const generateResponseAction = (set: Function, get: Function) => async ()
                   
                 if (insertError) {
                   console.error('Error creating user compute credits record:', insertError);
-                  toast({
-                    title: 'Warning',
-                    description: 'Failed to create compute credits record',
-                    variant: 'destructive',
-                  });
+                  toast.error('Failed to create compute credits record');
                 } else {
                   console.log(`Created new credit record with ${computeCredits} credits`);
                 }
@@ -277,11 +263,7 @@ export const generateResponseAction = (set: Function, get: Function) => async ()
                 
                 if (creditError) {
                   console.error('Error updating user compute credits:', creditError);
-                  toast({
-                    title: 'Warning',
-                    description: 'Failed to update compute credits',
-                    variant: 'destructive',
-                  });
+                  toast.error('Failed to update compute credits');
                 } else {
                   console.log(`Updated user compute credits: +${computeCredits} credits`);
                 }
@@ -292,30 +274,17 @@ export const generateResponseAction = (set: Function, get: Function) => async ()
           }
         } catch (dbError) {
           console.error('Database error:', dbError);
-          toast({
-            title: 'Error',
-            description: 'Failed to save message to database',
-            variant: 'destructive',
-          });
+          toast.error('Failed to save message to database');
         }
       } else {
         console.warn("User not authenticated, skipping database save");
       }
     } else {
-      toast({
-        title: 'Error',
-        description: 'Failed to generate response',
-        variant: 'destructive',
-      });
-      set({ isLoading: false });
+      handleError('Failed to generate response');
     }
   } catch (error) {
     console.error('Error generating response:', error);
-    set({ isLoading: false });
-    toast({
-      title: 'Error',
-      description: 'Failed to generate response. Please try again.',
-      variant: 'destructive',
-    });
+    const handleError = get().handleError;
+    handleError('Failed to generate response. Please try again.');
   }
 };
