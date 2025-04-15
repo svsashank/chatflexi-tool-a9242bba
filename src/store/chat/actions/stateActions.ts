@@ -30,3 +30,33 @@ export const handleErrorAction = (set: Function) => (message: string) => {
   toast.error(message);
   console.error(`Chat error: ${message}`);
 };
+
+// Add a retry action for failed requests
+export const retryRequestAction = (set: Function, get: Function) => async () => {
+  if (get().isLoading) {
+    console.log("Already processing a request, cannot retry now");
+    return;
+  }
+  
+  const currentConversation = get().conversations.find(c => c.id === get().currentConversationId);
+  if (!currentConversation) {
+    toast.error("No active conversation found");
+    return;
+  }
+  
+  // Find the last user message
+  const lastUserMessage = [...currentConversation.messages]
+    .reverse()
+    .find(m => m.role === 'user');
+    
+  if (!lastUserMessage) {
+    toast.error("No user message found to retry");
+    return;
+  }
+  
+  // Call generateResponse to retry
+  console.log("Retrying the last request with user message: ", 
+    lastUserMessage.content.substring(0, 50) + (lastUserMessage.content.length > 50 ? '...' : ''));
+  
+  await get().generateResponse();
+};

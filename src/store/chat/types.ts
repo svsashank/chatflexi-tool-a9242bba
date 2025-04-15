@@ -28,6 +28,6 @@ export interface ChatStore {
   clearConversations: () => void;
   loadConversationsFromDB: () => Promise<void>;
   loadMessagesForConversation: (conversationId: string) => Promise<void>;
-  addTestConversations?: (count?: number) => void;
-  handleError: (message: string) => void; // Add the new error handling action
+  handleError: (message: string) => void;
+  retryRequest: () => Promise<void>; // Add retry action
 }
