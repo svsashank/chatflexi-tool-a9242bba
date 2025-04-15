@@ -2,7 +2,7 @@
 import React, { useEffect } from "react";
 import ChatHeader from "./ChatHeader";
 import ChatMessages from "./ChatMessages";
-import ChatInput from "./ChatInput";
+import ChatInput from "./chat-input";
 import { useChatStore } from "@/store";
 
 const ChatContainer = () => {
@@ -10,7 +10,6 @@ const ChatContainer = () => {
     conversations, 
     currentConversationId, 
     selectedModel,
-    initializeSelectedModel 
   } = useChatStore();
   
   const hasMessages = conversations.find(

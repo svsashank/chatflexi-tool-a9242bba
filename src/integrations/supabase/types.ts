@@ -161,6 +161,27 @@ export type Database = {
         }
         Relationships: []
       }
+      faqs: {
+        Row: {
+          answer: string
+          display_order: number
+          id: string
+          question: string
+        }
+        Insert: {
+          answer: string
+          display_order?: number
+          id?: string
+          question: string
+        }
+        Update: {
+          answer?: string
+          display_order?: number
+          id?: string
+          question?: string
+        }
+        Relationships: []
+      }
       leads: {
         Row: {
           discount_eligible: boolean
@@ -280,6 +301,78 @@ export type Database = {
           user_id?: string | null
           user_name?: string | null
           user_phone?: string | null
+        }
+        Relationships: []
+      }
+      plan_models: {
+        Row: {
+          basic: boolean
+          id: string
+          model_name: string
+          professional: boolean
+          starter: boolean
+        }
+        Insert: {
+          basic?: boolean
+          id?: string
+          model_name: string
+          professional?: boolean
+          starter?: boolean
+        }
+        Update: {
+          basic?: boolean
+          id?: string
+          model_name?: string
+          professional?: boolean
+          starter?: boolean
+        }
+        Relationships: []
+      }
+      plans: {
+        Row: {
+          badge: string | null
+          created_at: string
+          description: string
+          features: Json
+          highlight: boolean
+          id: string
+          monthly_amount: number
+          original_price: string
+          plan_id: string
+          price: string
+          price_detail: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          badge?: string | null
+          created_at?: string
+          description: string
+          features: Json
+          highlight?: boolean
+          id?: string
+          monthly_amount: number
+          original_price: string
+          plan_id: string
+          price: string
+          price_detail: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          badge?: string | null
+          created_at?: string
+          description?: string
+          features?: Json
+          highlight?: boolean
+          id?: string
+          monthly_amount?: number
+          original_price?: string
+          plan_id?: string
+          price?: string
+          price_detail?: string
+          title?: string
+          updated_at?: string
         }
         Relationships: []
       }
