@@ -1,6 +1,13 @@
-
 // AI Models
 export const AI_MODELS = [
+  {
+    id: 'gpt-4.1-preview',
+    name: 'GPT-4.1',
+    provider: 'openai',
+    description: 'OpenAI\'s newest model with enhanced capabilities',
+    capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
+    avatarColor: '#10a37f', // OpenAI green
+  },
   {
     id: 'gpt-4o',
     name: 'GPT-4o',

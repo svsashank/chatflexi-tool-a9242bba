@@ -1,6 +1,7 @@
 
 // Compute credits conversion rates by model
 export const COMPUTE_CREDITS_PER_TOKEN: Record<string, number> = {
+  'gpt-4.1-preview': 1.0,
   'claude-3-5-haiku-20240307': 2.70,
   'claude-3-5-sonnet-20241022': 10.13,
   'claude-3-7-sonnet-20250219': 10.13,
