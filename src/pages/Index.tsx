@@ -10,8 +10,14 @@ const Index = () => {
     loadConversationsFromDB, 
     currentConversationId, 
     loadMessagesForConversation,
-    conversations 
+    conversations,
+    initializeSelectedModel
   } = useChatStore();
+
+  // Initialize the selected model from localStorage
+  useEffect(() => {
+    initializeSelectedModel();
+  }, [initializeSelectedModel]);
 
   // Load conversations when the user is authenticated and the page loads
   useEffect(() => {

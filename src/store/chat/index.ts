@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { ChatStore } from './types';
@@ -7,7 +6,8 @@ import {
   addMessageAction,
   createSendMessageAction,
   createRegenerateMessageAction,
-  selectModelAction
+  selectModelAction,
+  initializeModelAction
 } from './actions';
 import { createConversationAction, setCurrentConversationIdAction, deleteConversationAction } from './conversationActions';
 
@@ -24,6 +24,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   // Actions that don't depend on other actions
   setCurrentConversationId: setCurrentConversationIdAction(set, get),
   setSelectedModel: selectModelAction(set),
+  initializeSelectedModel: initializeModelAction(set, get),
   setProcessingUrls: (message: string | null) => set({ processingUrls: message }),
   
   // Message Actions

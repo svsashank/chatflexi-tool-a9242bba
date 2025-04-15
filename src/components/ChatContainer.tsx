@@ -1,15 +1,26 @@
 
-import React from "react";
+import React, { useEffect } from "react";
 import ChatHeader from "./ChatHeader";
 import ChatMessages from "./ChatMessages";
 import ChatInput from "./ChatInput";
 import { useChatStore } from "@/store";
 
 const ChatContainer = () => {
-  const { conversations, currentConversationId } = useChatStore();
+  const { 
+    conversations, 
+    currentConversationId, 
+    selectedModel,
+    initializeSelectedModel 
+  } = useChatStore();
+  
   const hasMessages = conversations.find(
     conv => conv.id === currentConversationId
   )?.messages.length > 0;
+  
+  // Make sure the selected model is initialized when the chat container mounts
+  useEffect(() => {
+    console.log("ChatContainer mounted, current selected model:", selectedModel.name);
+  }, [selectedModel]);
 
   return (
     <div className="flex flex-col h-screen">
