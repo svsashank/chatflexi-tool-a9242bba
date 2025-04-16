@@ -383,6 +383,7 @@ export type Database = {
           discount_eligible: boolean | null
           email: string
           id: string
+          is_admin: boolean | null
           is_subscribed: boolean | null
           name: string
           photo_url: string | null
@@ -393,6 +394,7 @@ export type Database = {
           discount_eligible?: boolean | null
           email: string
           id?: string
+          is_admin?: boolean | null
           is_subscribed?: boolean | null
           name: string
           photo_url?: string | null
@@ -403,6 +405,7 @@ export type Database = {
           discount_eligible?: boolean | null
           email?: string
           id?: string
+          is_admin?: boolean | null
           is_subscribed?: boolean | null
           name?: string
           photo_url?: string | null
