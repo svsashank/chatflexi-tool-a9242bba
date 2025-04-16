@@ -41,13 +41,16 @@ export const initializeModelAction = (set: Function, get: Function) => () => {
         const matchedModel = AI_MODELS.find(model => model.id === savedModel.id);
         
         if (matchedModel) {
+          console.log(`Found matched model: ${matchedModel.name} (${matchedModel.id})`);
           set({ selectedModel: matchedModel });
           return;
         } else {
           console.log(`Saved model ${savedModel.id} not found in AI_MODELS, using default`);
+          localStorage.removeItem('selectedModel'); // Clear invalid model from storage
         }
       } catch (parseError) {
         console.error('Error initializing model from localStorage:', parseError);
+        localStorage.removeItem('selectedModel'); // Clear corrupted model from storage
       }
     }
   } catch (error) {
@@ -60,5 +63,6 @@ export const initializeModelAction = (set: Function, get: Function) => () => {
   }
   
   // Fall back to default model if nothing is saved or if there was an error
+  console.log(`Using default model: ${DEFAULT_MODEL.name} (${DEFAULT_MODEL.id})`);
   set({ selectedModel: DEFAULT_MODEL });
 };

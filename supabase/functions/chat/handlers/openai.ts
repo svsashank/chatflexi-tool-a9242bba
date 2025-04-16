@@ -1,3 +1,4 @@
+
 import { corsHeaders } from "../utils/cors.ts";
 import { performBraveSearch } from "../utils/braveSearch.ts";
 
@@ -621,3 +622,4 @@ function needsWebSearch(query: string): boolean {
   
   return false;
 }
+
