@@ -1,6 +1,6 @@
+
 // Compute credits conversion rates by model
 export const COMPUTE_CREDITS_PER_TOKEN: Record<string, number> = {
-  'gpt-4.1-preview': 1.0,
   'claude-3-5-haiku-20240307': 2.70,
   'claude-3-5-sonnet-20241022': 10.13,
   'claude-3-7-sonnet-20250219': 10.13,
@@ -24,7 +24,6 @@ export const COMPUTE_CREDITS_PER_TOKEN: Record<string, number> = {
   'grok-2-latest': 6.75,
   'grok-3': 1.87,
   'grok-3-mini': 0.06,
-  'gpt-4.1-2025-04-14': 101.25,
 };
 
 // Default value if model is not found

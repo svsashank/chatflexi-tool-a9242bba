@@ -1,13 +1,6 @@
+
 // AI Models
 export const AI_MODELS = [
-  {
-    id: 'gpt-4.1-2025-04-14',
-    name: 'GPT-4.1',
-    provider: 'openai',
-    description: 'OpenAI\'s newest model with enhanced capabilities for April 2025',
-    capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
-    avatarColor: '#10a37f', // OpenAI green
-  },
   {
     id: 'gpt-4o',
     name: 'GPT-4o',
@@ -183,14 +176,6 @@ export const AI_MODELS = [
     description: 'Efficient and cost-effective version of Grok-3',
     capabilities: ['text', 'code'] as Array<'text' | 'code'>,
     avatarColor: '#1d9bf0', // Twitter blue
-  },
-  {
-    id: 'gpt-4.1-preview',
-    name: 'GPT-4.1',
-    provider: 'openai',
-    description: 'OpenAI\'s newest model with enhanced capabilities',
-    capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
-    avatarColor: '#10a37f', // OpenAI green
   }
 ];
 

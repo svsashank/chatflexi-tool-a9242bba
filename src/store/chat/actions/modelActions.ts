@@ -1,76 +1,53 @@
 
-import { AI_MODELS, DEFAULT_MODEL } from '@/constants';
+import { ChatStore } from '../types';
 import { AIModel } from '@/types';
-import { toast } from '@/components/ui/use-toast';
 
 export const selectModelAction = (set: Function) => (model: AIModel) => {
-  if (!model) {
-    console.error('Attempted to select a null or undefined model');
-    return;
-  }
-
-  console.log(`Setting selected model to: ${model.name} (${model.id})`);
+  console.log("Selecting model:", {
+    id: model.id,
+    name: model.name,
+    provider: model.provider,
+    capabilities: model.capabilities
+  });
   
+  // Update the selected model in the store
+  set({ selectedModel: model });
+  
+  // Save the selected model to localStorage for persistence across sessions
   try {
-    // Save selected model to local storage
     localStorage.setItem('selectedModel', JSON.stringify({
       id: model.id,
       name: model.name,
       provider: model.provider
     }));
   } catch (error) {
-    console.error('Error saving model to localStorage:', error);
+    console.error("Error saving selected model to localStorage:", error);
   }
-  
-  // Display toast for GPT-4.1 to let users know it's being implemented
-  if (model.id === 'gpt-4.1-2025-04-14') {
-    toast({
-      title: "Using GPT-4.1",
-      description: "GPT-4.1 is now being used. If issues occur, the system will automatically fall back to GPT-4o.",
-    });
-  }
-  
-  set({ selectedModel: model });
 };
 
+// Function to initialize the selected model from localStorage
 export const initializeModelAction = (set: Function, get: Function) => () => {
-  console.log('Initializing selected model');
-  
   try {
-    // Try to load model from localStorage
-    const savedModelJson = localStorage.getItem('selectedModel');
+    const savedModel = localStorage.getItem('selectedModel');
     
-    if (savedModelJson) {
-      try {
-        const savedModel = JSON.parse(savedModelJson);
-        console.log('Initializing from saved model:', savedModel);
-        
-        // Find the full model configuration by ID
-        const matchedModel = AI_MODELS.find(model => model.id === savedModel.id);
-        
-        if (matchedModel) {
-          console.log(`Found matched model: ${matchedModel.name} (${matchedModel.id})`);
-          set({ selectedModel: matchedModel });
-          return;
-        } else {
-          console.log(`Saved model ${savedModel.id} not found in AI_MODELS, using default`);
-          localStorage.removeItem('selectedModel'); // Clear invalid model from storage
-        }
-      } catch (parseError) {
-        console.error('Error initializing model from localStorage:', parseError);
-        localStorage.removeItem('selectedModel'); // Clear corrupted model from storage
+    if (savedModel) {
+      const parsedModel = JSON.parse(savedModel);
+      console.log("Initializing from saved model:", parsedModel);
+      
+      // Find the matching model from the available models
+      const { AI_MODELS } = require('@/constants');
+      const matchedModel = AI_MODELS.find((m: AIModel) => m.id === parsedModel.id);
+      
+      if (matchedModel) {
+        console.log("Found matching model:", matchedModel.name);
+        set({ selectedModel: matchedModel });
+        return;
       }
     }
+    
+    // If no saved model or no match, use the current selected model
+    console.log("Using default model:", get().selectedModel.name);
   } catch (error) {
-    console.error('Error reading from localStorage:', error);
-    toast({
-      title: "Error",
-      description: "Failed to initialize model preference. Using default model.",
-      variant: "destructive", 
-    });
+    console.error("Error initializing model from localStorage:", error);
   }
-  
-  // Fall back to default model if nothing is saved or if there was an error
-  console.log(`Using default model: ${DEFAULT_MODEL.name} (${DEFAULT_MODEL.id})`);
-  set({ selectedModel: DEFAULT_MODEL });
 };

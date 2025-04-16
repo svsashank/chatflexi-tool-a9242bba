@@ -26,13 +26,13 @@ import {
 } from './actions/stateActions';
 
 // Import AI_MODELS
-import { AI_MODELS, DEFAULT_MODEL } from '@/constants';
+import { AI_MODELS } from '@/constants';
 
 export const useChatStore = create<ChatStore>((set, get) => ({
   conversations: [],
   currentConversationId: null,
   isLoading: false,
-  selectedModel: DEFAULT_MODEL, // Ensure we use the default model (now GPT-4.1-2025-04-14)
+  selectedModel: AI_MODELS[0], // default to the first model
   processingUrls: null, // URL processing state
   
   // Model actions

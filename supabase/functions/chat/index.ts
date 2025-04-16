@@ -130,13 +130,8 @@ Feel free to reference this information if it's helpful, but also draw on your b
       let response;
       switch(model.provider.toLowerCase()) {
         case 'openai':
-          // Specific handling for the new GPT-4.1 model
-          if (model.id === 'gpt-4.1-2025-04-14') {
-            console.log('Using the new GPT-4.1-2025-04-14 model');
-            response = await handleOpenAIStandard(messageHistory, content, model.id, systemPrompt, messageImages, webSearchResults, allFiles);
-          }
           // Check if this is an O-series reasoning model that needs special handling
-          else if (isOSeriesReasoningModel(model.id)) {
+          if (isOSeriesReasoningModel(model.id)) {
             response = await handleOpenAIReasoningModel(messageHistory, content, model.id, systemPrompt, messageImages, webSearchResults, allFiles);
           } else {
             response = await handleOpenAIStandard(messageHistory, content, model.id, systemPrompt, messageImages, webSearchResults, allFiles);
