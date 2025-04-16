@@ -22,6 +22,14 @@ export const selectModelAction = (set: Function) => (model: AIModel) => {
     console.error('Error saving model to localStorage:', error);
   }
   
+  // Display toast for GPT-4.1 to let users know it's being implemented
+  if (model.id === 'gpt-4.1-2025-04-14') {
+    toast({
+      title: "Using GPT-4.1",
+      description: "GPT-4.1 is now being used. If issues occur, the system will automatically fall back to GPT-4o.",
+    });
+  }
+  
   set({ selectedModel: model });
 };
 

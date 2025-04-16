@@ -1,4 +1,3 @@
-
 import { corsHeaders } from "../utils/cors.ts";
 import { performBraveSearch } from "../utils/braveSearch.ts";
 
@@ -287,6 +286,14 @@ export async function handleOpenAIStandard(
   console.log(`Has images: ${images.length > 0}, image count: ${images.length}`);
   console.log(`Has files: ${files.length > 0}, file count: ${files.length}`);
   
+  // Special case for GPT-4.1 model - ensure correct model ID format
+  if (modelId === 'gpt-4.1-2025-04-14') {
+    console.log('Using GPT-4.1-2025-04-14 model - ensuring proper configuration');
+    
+    // For debugging - will help us understand if requests are being sent correctly
+    console.log('OPENAI_API_KEY available:', !!OPENAI_API_KEY);
+  }
+  
   // If files are present, augment the original content with file content
   let enhancedContent = content;
   if (files && files.length > 0) {
@@ -426,74 +433,175 @@ export async function handleOpenAIStandard(
     let inputTokens = 0;
     let outputTokens = 0;
     
-    // Make API call to OpenAI
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: modelId,
-        messages: formattedMessages,
-        temperature: 0.7,
-        max_tokens: 1000,
-        tools: tools,
-        tool_choice: "auto" // Always allow the model to use tools
-      })
-    });
+    // Make API call to OpenAI with enhanced error handling
+    console.log(`About to make API request to OpenAI with model: ${modelId}`);
+    let apiAttempts = 0;
+    const maxApiAttempts = 2;
+    let lastError;
     
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error?.message || `OpenAI API error: ${response.status}`);
-    }
-    
-    console.log(`Successfully received response from OpenAI`);
-    const data = await response.json();
-    
-    // Extract token counts
-    inputTokens = data.usage ? data.usage.prompt_tokens : 0;
-    outputTokens = data.usage ? data.usage.completion_tokens : 0;
-    
-    // Extract content and tool calls
-    responseContent = data.choices[0].message.content || '';
-    const toolCalls = data.choices[0].message.tool_calls || [];
-    
-    // Handle tool calls
-    if (toolCalls.length > 0) {
-      console.log(`Tool calls detected: ${toolCalls.length}`);
-      
-      for (const toolCall of toolCalls) {
-        console.log(`Tool call: ${JSON.stringify(toolCall)}`);
+    while (apiAttempts < maxApiAttempts) {
+      try {
+        apiAttempts++;
+        console.log(`API attempt ${apiAttempts} for model ${modelId}`);
         
-        try {
-          // Process web search tool call if we haven't done a proactive search
-          if (toolCall.function.name === "web_search" && webSearchResults.length === 0) {
-            const args = JSON.parse(toolCall.function.arguments);
-            const searchQuery = args.query || content;
-            console.log(`Performing web search for tool-requested query: ${searchQuery}`);
+        // Build request body with failsafes for newer models
+        const requestBody: any = {
+          model: modelId,
+          messages: formattedMessages,
+          temperature: 0.7,
+          max_tokens: 1000,
+          tools: tools,
+          tool_choice: "auto" // Always allow the model to use tools
+        };
+        
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${OPENAI_API_KEY}`
+          },
+          body: JSON.stringify(requestBody)
+        });
+        
+        if (!response.ok) {
+          // Get detailed error information
+          const errorData = await response.json();
+          console.error(`OpenAI API error (${response.status}) with model ${modelId}:`, JSON.stringify(errorData));
+          
+          // If we get a specific error about the model not existing, let's try a fallback
+          if (response.status === 404 && modelId === 'gpt-4.1-2025-04-14') {
+            console.log('Model not found error for gpt-4.1-2025-04-14, trying fallback to gpt-4o');
             
-            if (!searchQuery) continue;
+            // Use gpt-4o as fallback
+            requestBody.model = 'gpt-4o';
+            const fallbackResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${OPENAI_API_KEY}`
+              },
+              body: JSON.stringify(requestBody)
+            });
             
-            // Perform real search with Brave API
-            webSearchResults = await performBraveSearch(searchQuery);
-            console.log(`Received ${webSearchResults.length} search results from Brave`);
+            if (fallbackResponse.ok) {
+              console.log('Fallback to gpt-4o successful');
+              const data = await fallbackResponse.json();
+              
+              // Extract token counts
+              inputTokens = data.usage ? data.usage.prompt_tokens : 0;
+              outputTokens = data.usage ? data.usage.completion_tokens : 0;
+              
+              // Extract content and tool calls
+              responseContent = data.choices[0].message.content || '';
+              const toolCalls = data.choices[0].message.tool_calls || [];
+              
+              // Process tool calls and web search results
+              if (toolCalls.length > 0) {
+                console.log(`Tool calls detected: ${toolCalls.length}`);
+                
+                for (const toolCall of toolCalls) {
+                  console.log(`Tool call: ${JSON.stringify(toolCall)}`);
+                  
+                  try {
+                    // Process web search tool call if we haven't done a proactive search
+                    if (toolCall.function.name === "web_search" && webSearchResults.length === 0) {
+                      const args = JSON.parse(toolCall.function.arguments);
+                      const searchQuery = args.query || content;
+                      console.log(`Performing web search for tool-requested query: ${searchQuery}`);
+                      
+                      if (!searchQuery) continue;
+                      
+                      // Perform real search with Brave API
+                      webSearchResults = await performBraveSearch(searchQuery);
+                      console.log(`Received ${webSearchResults.length} search results from Brave`);
+                    }
+                    
+                    // Process file search tool call
+                    if (toolCall.function.name === "file_search") {
+                      const args = JSON.parse(toolCall.function.arguments);
+                      const searchQuery = args.query || '';
+                      
+                      if (!searchQuery) continue;
+                      
+                      // For now, we return empty file search results
+                      console.log(`Would perform file search for: ${searchQuery}`);
+                      fileSearchResults = [];
+                    }
+                  } catch (e) {
+                    console.error("Error processing tool call:", e);
+                  }
+                }
+              }
+              
+              break; // Exit the retry loop on success
+            } else {
+              throw new Error(`Fallback model also failed: ${await fallbackResponse.text()}`);
+            }
+          } else {
+            throw new Error(errorData.error?.message || `OpenAI API error: ${response.status}`);
+          }
+        } else {
+          console.log(`Successfully received response from OpenAI for model ${modelId}`);
+          const data = await response.json();
+          
+          // Extract token counts
+          inputTokens = data.usage ? data.usage.prompt_tokens : 0;
+          outputTokens = data.usage ? data.usage.completion_tokens : 0;
+          
+          // Extract content and tool calls
+          responseContent = data.choices[0].message.content || '';
+          const toolCalls = data.choices[0].message.tool_calls || [];
+          
+          // Handle tool calls
+          if (toolCalls.length > 0) {
+            console.log(`Tool calls detected: ${toolCalls.length}`);
+            
+            for (const toolCall of toolCalls) {
+              console.log(`Tool call: ${JSON.stringify(toolCall)}`);
+              
+              try {
+                // Process web search tool call if we haven't done a proactive search
+                if (toolCall.function.name === "web_search" && webSearchResults.length === 0) {
+                  const args = JSON.parse(toolCall.function.arguments);
+                  const searchQuery = args.query || content;
+                  console.log(`Performing web search for tool-requested query: ${searchQuery}`);
+                  
+                  if (!searchQuery) continue;
+                  
+                  // Perform real search with Brave API
+                  webSearchResults = await performBraveSearch(searchQuery);
+                  console.log(`Received ${webSearchResults.length} search results from Brave`);
+                }
+                
+                // Process file search tool call
+                if (toolCall.function.name === "file_search") {
+                  const args = JSON.parse(toolCall.function.arguments);
+                  const searchQuery = args.query || '';
+                  
+                  if (!searchQuery) continue;
+                  
+                  // For now, we return empty file search results
+                  console.log(`Would perform file search for: ${searchQuery}`);
+                  fileSearchResults = [];
+                }
+              } catch (e) {
+                console.error("Error processing tool call:", e);
+              }
+            }
           }
           
-          // Process file search tool call
-          if (toolCall.function.name === "file_search") {
-            const args = JSON.parse(toolCall.function.arguments);
-            const searchQuery = args.query || '';
-            
-            if (!searchQuery) continue;
-            
-            // For now, we return empty file search results
-            console.log(`Would perform file search for: ${searchQuery}`);
-            fileSearchResults = [];
-          }
-        } catch (e) {
-          console.error("Error processing tool call:", e);
+          break; // Exit the retry loop on success
         }
+      } catch (error) {
+        console.error(`API attempt ${apiAttempts} failed:`, error);
+        lastError = error;
+        
+        if (apiAttempts >= maxApiAttempts) {
+          throw error;
+        }
+        
+        // Wait before retrying
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
     }
     
@@ -574,7 +682,7 @@ export async function handleOpenAIStandard(
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
-    console.error("Error in OpenAI standard API call:", error);
+    console.error(`Error in OpenAI standard API call for model ${modelId}:`, error);
     throw error;
   }
 }
@@ -622,4 +730,3 @@ function needsWebSearch(query: string): boolean {
   
   return false;
 }
-

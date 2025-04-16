@@ -11,8 +11,14 @@ const Index = () => {
     currentConversationId, 
     loadMessagesForConversation,
     conversations,
-    // We removed the initializeSelectedModel usage here since it's only needed once in App.tsx
+    initializeSelectedModel
   } = useChatStore();
+
+  // Initialize the selected model when the page loads
+  useEffect(() => {
+    console.log("Index page: Initializing selected model");
+    initializeSelectedModel();
+  }, [initializeSelectedModel]);
 
   // Load conversations when the user is authenticated and the page loads
   useEffect(() => {
