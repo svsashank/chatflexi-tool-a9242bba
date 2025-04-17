@@ -20,7 +20,7 @@ const RLSErrorAlert: React.FC<RLSErrorAlertProps> = ({ className, onRetry }) => 
           Your profile data cannot be accessed due to a Row-Level Security policy error in the database.
         </p>
         <p className="text-xs text-muted-foreground">
-          Error: "infinite recursion detected in policy for relation profiles"
+          Error code: 42P17 - Policy recursion issue
         </p>
         {onRetry && (
           <Button variant="outline" size="sm" className="mt-2" onClick={onRetry}>

@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Cpu, ArrowLeft, LogOut, AlertTriangle } from 'lucide-react';
+import { Cpu, ArrowLeft, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -80,6 +81,7 @@ const Profile = () => {
         day: 'numeric' 
       }));
 
+      // Try to get an active session first
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
@@ -91,6 +93,7 @@ const Profile = () => {
 
       console.log("Fetching profile data with auth token");
       
+      // Catch RLS errors specifically for profiles table
       try {
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
@@ -129,6 +132,7 @@ const Profile = () => {
         setPurchasedCredits(10000); // Default value
       }
 
+      // User compute credits are in a separate table which should have normal RLS
       const { data: creditData, error: creditError } = await supabase
         .from('user_compute_credits')
         .select('total_credits')
