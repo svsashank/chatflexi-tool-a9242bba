@@ -30,7 +30,7 @@ export const isAuthenticated = async () => {
   return !!data.session?.user;
 };
 
-// NEW: Updated function that uses the edge function to safely fetch profile data
+// Updated function that uses the edge function to safely fetch profile data
 export const fetchProfileData = async () => {
   try {
     // First get auth session to get token
