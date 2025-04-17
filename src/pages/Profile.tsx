@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Cpu, ArrowLeft, LogOut } from 'lucide-react';
+import { Cpu, ArrowLeft, LogOut, Wallet, Activity } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -9,13 +9,17 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import CreditUsageBreakdown from '@/components/CreditUsageBreakdown';
 
 const Profile = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [totalCredits, setTotalCredits] = useState<number | null>(null);
+  const [purchasedCredits, setPurchasedCredits] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [joinedDate, setJoinedDate] = useState<string>('');
+  const [usageData, setUsageData] = useState<any[]>([]);
 
   // Get user initials for avatar fallback
   const getUserInitials = () => {
@@ -65,36 +69,65 @@ const Profile = () => {
         day: 'numeric' 
       }));
 
-      // Fetch user's compute credits
-      const fetchUserCredits = async () => {
+      // Fetch user's compute credits and usage data
+      const fetchUserData = async () => {
         try {
-          // Get compute credits from the database
-          const { data, error } = await supabase
+          setIsLoading(true);
+          
+          // Get used compute credits from the database
+          const { data: usedCreditsData, error: usedCreditsError } = await supabase
             .from('user_compute_credits')
             .select('total_credits')
             .eq('user_id', user.id)
             .maybeSingle();
           
-          if (error) {
-            console.error('Error fetching user compute credits:', error);
-            toast({
-              title: "Error",
-              description: "Failed to load credits data",
-              variant: "destructive",
-            });
-          } else if (data) {
-            setTotalCredits(data.total_credits || 0);
+          // Get purchased compute credits from profiles table
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('compute_points')
+            .eq('id', user.id)
+            .maybeSingle();
+            
+          // Fetch usage breakdown by model
+          const { data: usageData, error: usageError } = await supabase
+            .from('conversation_messages')
+            .select('model_id, compute_credits, input_tokens, output_tokens')
+            .eq('role', 'assistant')
+            .order('created_at', { ascending: false })
+            .limit(50);  // Limit to recent messages
+          
+          if (usedCreditsError) {
+            console.error('Error fetching user compute credits:', usedCreditsError);
           } else {
-            setTotalCredits(0);
+            setTotalCredits(usedCreditsData?.total_credits || 0);
           }
+          
+          if (profileError) {
+            console.error('Error fetching profile data:', profileError);
+          } else {
+            setPurchasedCredits(profileData?.compute_points || 0);
+          }
+          
+          if (usageError) {
+            console.error('Error fetching usage data:', usageError);
+          } else if (usageData) {
+            // Process usage data to group by model
+            setUsageData(usageData);
+          }
+          
         } catch (error) {
-          console.error('Error fetching user credits:', error);
+          console.error('Error fetching user data:', error);
+          toast({
+            title: "Error",
+            description: "Failed to load credit data",
+            variant: "destructive",
+          });
         } finally {
           setIsLoading(false);
         }
       };
 
-      fetchUserCredits();
+      fetchUserData();
     }
   }, [user]);
 
@@ -119,9 +152,21 @@ const Profile = () => {
   }
 
   // Format the credits for display
-  const displayCredits = totalCredits !== null 
+  const displayUsedCredits = totalCredits !== null 
     ? Math.round(totalCredits).toLocaleString() 
     : 'Loading...';
+    
+  const displayPurchasedCredits = purchasedCredits !== null
+    ? Math.round(purchasedCredits).toLocaleString()
+    : 'Loading...';
+    
+  const remainingCredits = purchasedCredits !== null && totalCredits !== null
+    ? Math.max(0, purchasedCredits - totalCredits)
+    : null;
+    
+  const displayRemainingCredits = remainingCredits !== null
+    ? Math.round(remainingCredits).toLocaleString()
+    : 'Calculating...';
 
   return (
     <div className="container max-w-4xl py-6 px-4 md:px-6 space-y-8">
@@ -164,41 +209,69 @@ const Profile = () => {
         <Card className="md:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
-              <Cpu size={20} className="text-cyan-400" />
-              <span>Compute Credits Usage</span>
+              <Wallet size={20} className="text-cyan-400" />
+              <span>Compute Credits</span>
             </CardTitle>
             <CardDescription>
-              Track your computational resource usage across all conversations
+              Track your computational resource availability and usage
             </CardDescription>
           </CardHeader>
-          <CardContent className="pt-4">
-            <div className="rounded-lg bg-muted p-6 flex flex-col items-center justify-center">
-              <div className="flex items-center space-x-2 mb-2">
-                <Cpu size={24} className="text-cyan-400" />
-                <span className="text-3xl font-bold">{displayCredits}</span>
-              </div>
-              <p className="text-center text-muted-foreground">
-                Total compute credits used
-              </p>
-            </div>
-            
-            <Separator className="my-6" />
-            
-            <div className="space-y-4">
-              <h3 className="font-medium">About Compute Credits</h3>
-              <p className="text-sm text-muted-foreground">
-                Compute credits represent the computational resources used when interacting 
-                with AI models. More complex models and longer conversations consume more credits.
-              </p>
-              <div className="p-4 bg-blue-50 rounded-lg border border-blue-100">
-                <h4 className="font-medium text-blue-700 mb-2">Model Flexibility</h4>
-                <p className="text-sm text-blue-600">
-                  Different AI models have varying computational costs. 
-                  More advanced models consume more credits than simpler ones.
-                  You have the flexibility to choose which model to use based 
-                  on your specific needs and credit availability.
+          <CardContent className="pt-4 space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Purchased Credits */}
+              <div className="rounded-lg bg-muted p-6 flex flex-col items-center justify-center">
+                <div className="flex items-center space-x-2 mb-2">
+                  <Wallet size={18} className="text-green-500" />
+                  <span className="text-2xl font-bold">{displayPurchasedCredits}</span>
+                </div>
+                <p className="text-center text-sm text-muted-foreground">
+                  Total purchased credits
                 </p>
               </div>
+              
+              {/* Used Credits */}
+              <div className="rounded-lg bg-muted p-6 flex flex-col items-center justify-center">
+                <div className="flex items-center space-x-2 mb-2">
+                  <Activity size={18} className="text-amber-500" />
+                  <span className="text-2xl font-bold">{displayUsedCredits}</span>
+                </div>
+                <p className="text-center text-sm text-muted-foreground">
+                  Total credits used
+                </p>
+              </div>
+              
+              {/* Remaining Credits */}
+              <div className="rounded-lg bg-muted p-6 flex flex-col items-center justify-center">
+                <div className="flex items-center space-x-2 mb-2">
+                  <Cpu size={18} className="text-blue-500" />
+                  <span className="text-2xl font-bold">{displayRemainingCredits}</span>
+                </div>
+                <p className="text-center text-sm text-muted-foreground">
+                  Remaining credits
+                </p>
+              </div>
+            </div>
+            
+            <Separator />
+            
+            {/* Credit Usage Breakdown */}
+            <div className="space-y-4">
+              <h3 className="font-medium flex items-center gap-2">
+                <Cpu size={16} className="text-cyan-400" />
+                Credit Usage Breakdown
+              </h3>
+              
+              {isLoading ? (
+                <div className="h-32 flex items-center justify-center">
+                  <p className="text-muted-foreground">Loading usage data...</p>
+                </div>
+              ) : usageData.length > 0 ? (
+                <CreditUsageBreakdown usageData={usageData} />
+              ) : (
+                <div className="p-4 bg-muted rounded-lg text-center">
+                  <p className="text-muted-foreground">No usage data available yet</p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

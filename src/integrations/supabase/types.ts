@@ -331,8 +331,10 @@ export type Database = {
       plans: {
         Row: {
           badge: string | null
+          compute_credits: number | null
           created_at: string
           description: string
+          discount_percentage: number | null
           features: Json
           highlight: boolean
           id: string
@@ -346,8 +348,10 @@ export type Database = {
         }
         Insert: {
           badge?: string | null
+          compute_credits?: number | null
           created_at?: string
           description: string
+          discount_percentage?: number | null
           features: Json
           highlight?: boolean
           id?: string
@@ -361,8 +365,10 @@ export type Database = {
         }
         Update: {
           badge?: string | null
+          compute_credits?: number | null
           created_at?: string
           description?: string
+          discount_percentage?: number | null
           features?: Json
           highlight?: boolean
           id?: string
@@ -441,6 +447,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_profile_exists: {
+        Args: { user_email: string }
+        Returns: boolean
+      }
+      create_user_profile: {
+        Args: {
+          user_email: string
+          user_name?: string
+          user_is_subscribed?: boolean
+          user_compute_points?: number
+        }
+        Returns: boolean
+      }
       update_user_compute_credits: {
         Args: { p_user_id: string; p_credits: number }
         Returns: undefined
