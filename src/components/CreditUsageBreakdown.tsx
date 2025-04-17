@@ -3,6 +3,8 @@ import React, { useMemo } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card } from '@/components/ui/card';
 import { COMPUTE_CREDITS_PER_TOKEN } from '@/utils/computeCredits';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { Info } from 'lucide-react';
 
 interface UsageDataItem {
   model_id: string;
@@ -71,49 +73,61 @@ const CreditUsageBreakdown: React.FC<CreditUsageBreakdownProps> = ({ usageData }
   }
 
   return (
-    <Card className="overflow-hidden">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Model</TableHead>
-            <TableHead className="text-right">Messages</TableHead>
-            <TableHead className="text-right">Tokens</TableHead>
-            <TableHead className="text-right">Credits Used</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {modelUsageSummary.map((model) => (
-            <TableRow key={model.modelId}>
-              <TableCell className="font-medium">{model.modelName}</TableCell>
-              <TableCell className="text-right">{model.totalMessages.toLocaleString()}</TableCell>
+    <div className="space-y-4">
+      {usageData.length < 5 && (
+        <Alert className="bg-muted/50">
+          <Info className="h-4 w-4" />
+          <AlertTitle>Limited Data</AlertTitle>
+          <AlertDescription>
+            Usage data is still being collected. More complete breakdown will appear as you use the system.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      <Card className="overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Model</TableHead>
+              <TableHead className="text-right">Messages</TableHead>
+              <TableHead className="text-right">Tokens</TableHead>
+              <TableHead className="text-right">Credits Used</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {modelUsageSummary.map((model) => (
+              <TableRow key={model.modelId}>
+                <TableCell className="font-medium">{model.modelName}</TableCell>
+                <TableCell className="text-right">{model.totalMessages.toLocaleString()}</TableCell>
+                <TableCell className="text-right">
+                  {(model.totalInputTokens + model.totalOutputTokens).toLocaleString()}
+                </TableCell>
+                <TableCell className="text-right">
+                  {Math.round(model.totalCredits).toLocaleString()}
+                </TableCell>
+              </TableRow>
+            ))}
+            {/* Total Row */}
+            <TableRow className="bg-muted/50">
+              <TableCell className="font-medium">Total</TableCell>
               <TableCell className="text-right">
-                {(model.totalInputTokens + model.totalOutputTokens).toLocaleString()}
+                {modelUsageSummary.reduce((acc, model) => acc + model.totalMessages, 0).toLocaleString()}
               </TableCell>
               <TableCell className="text-right">
-                {Math.round(model.totalCredits).toLocaleString()}
+                {modelUsageSummary
+                  .reduce((acc, model) => acc + model.totalInputTokens + model.totalOutputTokens, 0)
+                  .toLocaleString()}
+              </TableCell>
+              <TableCell className="text-right font-semibold">
+                {Math.round(
+                  modelUsageSummary.reduce((acc, model) => acc + model.totalCredits, 0)
+                ).toLocaleString()}
               </TableCell>
             </TableRow>
-          ))}
-          {/* Total Row */}
-          <TableRow className="bg-muted/50">
-            <TableCell className="font-medium">Total</TableCell>
-            <TableCell className="text-right">
-              {modelUsageSummary.reduce((acc, model) => acc + model.totalMessages, 0).toLocaleString()}
-            </TableCell>
-            <TableCell className="text-right">
-              {modelUsageSummary
-                .reduce((acc, model) => acc + model.totalInputTokens + model.totalOutputTokens, 0)
-                .toLocaleString()}
-            </TableCell>
-            <TableCell className="text-right font-semibold">
-              {Math.round(
-                modelUsageSummary.reduce((acc, model) => acc + model.totalCredits, 0)
-              ).toLocaleString()}
-            </TableCell>
-          </TableRow>
-        </TableBody>
-      </Table>
-    </Card>
+          </TableBody>
+        </Table>
+      </Card>
+    </div>
   );
 };
 

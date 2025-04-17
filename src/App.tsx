@@ -15,7 +15,14 @@ import { useChatStore } from "./store";
 import { useEffect } from "react";
 
 // Create a client
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 const AppContent = () => {
   const { initializeSelectedModel } = useChatStore();

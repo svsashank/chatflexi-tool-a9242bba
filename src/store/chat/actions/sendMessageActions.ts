@@ -1,3 +1,4 @@
+
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
@@ -109,28 +110,85 @@ export const createSendMessageAction = (set: Function, get: () => ChatStore) => 
     // Save message to database
     const { data: { session } } = await supabase.auth.getSession();
     
-    if (session?.user) {
-      const { error } = await supabase
-        .from('conversation_messages')
-        .insert({
-          id: userMessage.id,
-          conversation_id: activeConversationId,
-          content: userMessage.content,
-          role: userMessage.role,
-          model_id: userMessage.model.id,
-          model_provider: userMessage.model.provider,
-          images: userMessage.images || [],
-          created_at: userMessage.timestamp.toISOString()
-        });
+    if (!session?.user) {
+      console.warn("User not authenticated, skipping database save");
+      // Still try to generate a response despite not saving to database
+      await get().generateResponse();
+      return;
+    }
+    
+    // Check if conversation exists in database
+    const { data: existingConv, error: convCheckError } = await supabase
+      .from('conversations')
+      .select('id')
+      .eq('id', activeConversationId)
+      .maybeSingle();
+      
+    if (convCheckError) {
+      console.error('Error checking conversation:', convCheckError);
+      toast({
+        title: 'Error',
+        description: 'Failed to verify conversation in database',
+        variant: 'destructive',
+      });
+      // Continue with generating response regardless
+    }
+    
+    // Create conversation if it doesn't exist
+    if (!existingConv) {
+      const { error: createConvError } = await supabase
+        .from('conversations')
+        .insert([{
+          id: activeConversationId,
+          user_id: session.user.id,
+          title: currentConversation.title || 'New Conversation',
+          created_at: currentConversation.createdAt?.toISOString() || new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }]);
         
-      if (error) {
-        console.error('Error saving message to database:', error);
+      if (createConvError) {
+        console.error('Error creating conversation in database:', createConvError);
         toast({
           title: 'Error',
-          description: 'Could not save message to database',
+          description: 'Could not create conversation in database',
           variant: 'destructive',
         });
+        // Continue with generating response regardless
+      } else {
+        console.log('Successfully created conversation in database:', activeConversationId);
       }
+    }
+
+    // Now insert the message
+    const { error } = await supabase
+      .from('conversation_messages')
+      .insert({
+        id: userMessage.id,
+        conversation_id: activeConversationId,
+        content: userMessage.content,
+        role: userMessage.role,
+        model_id: userMessage.model.id,
+        model_provider: userMessage.model.provider,
+        images: userMessage.images || [],
+        created_at: userMessage.timestamp.toISOString()
+      });
+      
+    if (error) {
+      console.error('Error saving message to database:', error);
+      console.log('Message data that failed to save:', {
+        userId: session.user.id,
+        conversationId: activeConversationId,
+        messageId: userMessage.id,
+        error: error
+      });
+      toast({
+        title: 'Error',
+        description: 'Could not save message to database',
+        variant: 'destructive',
+      });
+      // Continue with generating response regardless
+    } else {
+      console.log('Successfully saved user message to database');
     }
 
     // Generate AI response
