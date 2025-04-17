@@ -7,37 +7,25 @@ import { useAuth } from "@/contexts/AuthContext";
 const Index = () => {
   const { user } = useAuth();
   const { 
-    loadConversationsFromDB, 
-    currentConversationId, 
+    currentConversationId,
     loadMessagesForConversation,
-    conversations,
-    // We removed the initializeSelectedModel usage here since it's only needed once in App.tsx
+    conversations
   } = useChatStore();
 
-  // Load conversations when the user is authenticated and the page loads
+  // Load messages for the current conversation when it changes
   useEffect(() => {
-    if (user) {
-      console.log("Index page: Loading conversations for authenticated user");
-      loadConversationsFromDB().catch(err => {
-        console.error("Failed to load conversations:", err);
-      });
-    }
-  }, [user, loadConversationsFromDB]);
-
-  // Load messages for the current conversation if it changes or if we have conversations but no messages
-  useEffect(() => {
-    if (currentConversationId) {
-      const currentConversation = conversations.find(c => c.id === currentConversationId);
-      const shouldLoadMessages = !currentConversation?.messages?.length;
+    if (currentConversationId && user) {
+      console.log("Index page: Loading messages for current conversation:", currentConversationId);
       
-      if (shouldLoadMessages) {
-        console.log("Index page: Loading messages for current conversation:", currentConversationId);
+      // Check if we need to load messages (if they're not already loaded)
+      const currentConversation = conversations.find(c => c.id === currentConversationId);
+      if (currentConversation && (!currentConversation.messages || currentConversation.messages.length === 0)) {
         loadMessagesForConversation(currentConversationId).catch(err => {
           console.error("Failed to load messages:", err);
         });
       }
     }
-  }, [currentConversationId, loadMessagesForConversation, conversations]);
+  }, [currentConversationId, loadMessagesForConversation, conversations, user]);
 
   return <ChatContainer />;
 };

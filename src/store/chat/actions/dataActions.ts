@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { Message, AIModel, Conversation } from "@/types";
@@ -6,42 +5,60 @@ import { ChatStore } from "../types";
 
 export const loadConversationsFromDBAction = (set: Function, get: () => ChatStore) => async () => {
   try {
-    const userId = localStorage.getItem('userId');
-    if (!userId) {
-      console.warn("No user ID found, skipping database load");
+    // Check for authentication first
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.warn("No authenticated user found, skipping database load");
       return;
     }
     
-    console.log("Loading conversations from database for user:", userId);
+    console.log("Loading conversations from database for user:", session.user.id);
     
     const { data, error } = await supabase
       .from('conversations')
       .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+      .eq('user_id', session.user.id)
+      .order('updated_at', { ascending: false });
     
     if (error) {
       console.error("Error fetching conversations:", error);
-      throw error;
+      toast({
+        title: 'Error',
+        description: 'Failed to load conversations',
+        variant: 'destructive',
+      });
+      return;
     }
     
-    if (data) {
+    if (data && data.length > 0) {
       const loadedConversations = data.map((dbConversation: any) => ({
         id: dbConversation.id,
-        title: dbConversation.title,
+        title: dbConversation.title || 'New Conversation',
         messages: [], // Messages will be loaded separately
         createdAt: new Date(dbConversation.created_at),
         updatedAt: new Date(dbConversation.updated_at),
-        contextSummary: '',
+        contextSummary: dbConversation.context_summary || '',
       }));
       
-      set({ conversations: loadedConversations });
+      set((state: ChatStore) => {
+        // Keep conversations already loaded but add any new ones
+        const existingIds = state.conversations.map(c => c.id);
+        const newConversations = loadedConversations.filter(c => !existingIds.includes(c.id));
+        
+        console.log(`Found ${newConversations.length} new conversations to add`);
+        
+        const updatedConversations = [...state.conversations, ...newConversations];
+        
+        return { 
+          conversations: updatedConversations,
+          currentConversationId: state.currentConversationId || (updatedConversations[0]?.id || null)
+        };
+      });
       
-      if (loadedConversations.length > 0 && !get().currentConversationId) {
-        set({ currentConversationId: loadedConversations[0].id });
-      }
-      
-      console.log(`Successfully loaded ${loadedConversations.length} conversations from database`);
+      console.log(`Successfully loaded ${data.length} conversations from database`);
+    } else {
+      console.log("No conversations found in database");
     }
   } catch (error) {
     console.error("Error loading conversations from database:", error);
@@ -57,6 +74,13 @@ export const loadMessagesForConversationAction = (set: Function, get: () => Chat
   try {
     if (!conversationId) {
       console.log("No conversation ID provided, skipping message load");
+      return;
+    }
+    
+    // Check if we already have messages for this conversation
+    const existingConversation = get().conversations.find(c => c.id === conversationId);
+    if (existingConversation?.messages && existingConversation.messages.length > 0) {
+      console.log(`Already have ${existingConversation.messages.length} messages for conversation ${conversationId}, skipping load`);
       return;
     }
     
@@ -110,8 +134,7 @@ export const loadMessagesForConversationAction = (set: Function, get: () => Chat
         
         if (message.web_search_results) {
           formattedMessage.webSearchResults = message.web_search_results;
-          console.log(`Found web search results for message ${message.id}:`, 
-            JSON.stringify(message.web_search_results).substring(0, 100) + '...');
+          console.log(`Found web search results for message ${message.id}`);
         }
         
         if (message.file_search_results) {
@@ -122,7 +145,7 @@ export const loadMessagesForConversationAction = (set: Function, get: () => Chat
         return formattedMessage;
       });
       
-      set((state: any) => ({
+      set((state: ChatStore) => ({
         conversations: state.conversations.map((conv: Conversation) =>
           conv.id === conversationId
             ? { ...conv, messages: formattedMessages }
