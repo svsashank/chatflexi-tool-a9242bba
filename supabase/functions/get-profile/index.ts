@@ -63,8 +63,8 @@ Deno.serve(async (req) => {
         email: user.email,
         name: user.user_metadata?.name || user.email?.split('@')[0] || 'User',
         compute_points: 10000, // Default credits
-        created_at: new Date(),
-        updated_at: new Date()
+        created_at: new Date()
+        // Removed updated_at which doesn't exist in the schema
       }
       
       // Insert the default profile
