@@ -1,7 +1,8 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { Message, AIModel, Conversation } from "@/types";
-import { ChatStore } from "../types";
+import { ChatStore } from "./types";
 
 export const loadConversationsFromDBAction = (set: Function, get: () => ChatStore) => async () => {
   try {
