@@ -1,53 +1,47 @@
 
-import { ChatStore } from '../types';
-import { AIModel } from '@/types';
+import { AI_MODELS } from "@/constants";
+import { AIModel, ChatStore } from "../types";
+import { StoreApi } from "zustand";
 
 export const selectModelAction = (set: Function) => (model: AIModel) => {
-  console.log("Selecting model:", {
-    id: model.id,
-    name: model.name,
-    provider: model.provider,
-    capabilities: model.capabilities
-  });
-  
-  // Update the selected model in the store
-  set({ selectedModel: model });
-  
-  // Save the selected model to localStorage for persistence across sessions
+  // Save selected model in localStorage
   try {
-    localStorage.setItem('selectedModel', JSON.stringify({
-      id: model.id,
-      name: model.name,
-      provider: model.provider
-    }));
+    localStorage.setItem('selectedModel', JSON.stringify(model));
   } catch (error) {
-    console.error("Error saving selected model to localStorage:", error);
+    console.error("Error saving model to localStorage:", error);
   }
+  
+  // Update store with selected model
+  set({ selectedModel: model });
 };
 
-// Function to initialize the selected model from localStorage
-export const initializeModelAction = (set: Function, get: Function) => () => {
+export const initializeModelAction = (set: Function, get: StoreApi<ChatStore>['getState']) => () => {
   try {
+    console.log("Initializing from saved model");
+    
+    // Try to get the saved model from localStorage
     const savedModel = localStorage.getItem('selectedModel');
     
     if (savedModel) {
-      const parsedModel = JSON.parse(savedModel);
-      console.log("Initializing from saved model:", parsedModel);
+      // Parse the saved model
+      const model = JSON.parse(savedModel);
+      console.log("Initializing from saved model:", model);
       
-      // Find the matching model from the available models
-      const { AI_MODELS } = require('@/constants');
-      const matchedModel = AI_MODELS.find((m: AIModel) => m.id === parsedModel.id);
+      // Validate that the parsed model matches one of our AI_MODELS
+      const foundModel = AI_MODELS.find(m => m.id === model.id);
       
-      if (matchedModel) {
-        console.log("Found matching model:", matchedModel.name);
-        set({ selectedModel: matchedModel });
-        return;
+      if (foundModel) {
+        // Set the found model in the store
+        set({ selectedModel: foundModel });
+      } else {
+        // If model not found in our list, use the default
+        set({ selectedModel: AI_MODELS[0] });
+        console.log("Saved model not found in AI_MODELS, using default");
       }
     }
-    
-    // If no saved model or no match, use the current selected model
-    console.log("Using default model:", get().selectedModel.name);
   } catch (error) {
     console.error("Error initializing model from localStorage:", error);
+    // If there's an error, use the default model
+    set({ selectedModel: AI_MODELS[0] });
   }
 };
