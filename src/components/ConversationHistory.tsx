@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { History, MessageSquare, Search, Plus, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { useChatStore } from "@/store";
@@ -18,9 +18,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { toast } from "@/components/ui/use-toast";
 
 const ConversationHistory = () => {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isOpen, setIsOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = React.useState("");
+  const [isOpen, setIsOpen] = React.useState(false);
   const { user } = useAuth();
   const { 
     conversations, 
@@ -34,22 +33,13 @@ const ConversationHistory = () => {
 
   // If user is logged in but no conversations are loaded, load them
   useEffect(() => {
-    const loadConversations = async () => {
-      if (user && conversations.length === 0 && !isLoading) {
-        console.log("ConversationHistory: No conversations found, loading from database");
-        setIsLoading(true);
-        try {
-          await loadConversationsFromDB();
-        } catch (err) {
-          console.error("Failed to load conversations:", err);
-        } finally {
-          setIsLoading(false);
-        }
-      }
-    };
-    
-    loadConversations();
-  }, [user, conversations.length, loadConversationsFromDB, isLoading]);
+    if (user && conversations.length === 0) {
+      console.log("ConversationHistory: No conversations found, loading from database");
+      loadConversationsFromDB().catch(err => {
+        console.error("Failed to load conversations:", err);
+      });
+    }
+  }, [user, conversations.length, loadConversationsFromDB]);
 
   const filteredConversations = React.useMemo(() => {
     if (!searchQuery.trim()) return conversations;
@@ -60,12 +50,6 @@ const ConversationHistory = () => {
   }, [conversations, searchQuery]);
 
   const handleConversationSelect = async (id: string) => {
-    if (id === currentConversationId) {
-      console.log("Already on this conversation, not reloading");
-      setIsOpen(false);
-      return;
-    }
-    
     console.log("Selecting conversation:", id);
     try {
       // Verify the conversation exists before setting it
@@ -82,6 +66,10 @@ const ConversationHistory = () => {
       
       // First set the current conversation ID
       await setCurrentConversationId(id);
+      
+      // Then explicitly load messages for this conversation
+      await loadMessagesForConversation(id);
+      
       setIsOpen(false); // Close the sheet on mobile after selection
     } catch (error) {
       console.error("Error selecting conversation:", error);
@@ -162,12 +150,7 @@ const ConversationHistory = () => {
           </Button>
           
           <ScrollArea className="flex-1">
-            {isLoading ? (
-              <div className="p-4 text-center">
-                <div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full mx-auto"></div>
-                <p className="text-sm text-muted-foreground mt-2">Loading conversations...</p>
-              </div>
-            ) : filteredConversations.length === 0 ? (
+            {filteredConversations.length === 0 ? (
               <div className="p-4 text-center text-sm text-muted-foreground">
                 {searchQuery ? "No conversations found" : "No conversations yet"}
               </div>

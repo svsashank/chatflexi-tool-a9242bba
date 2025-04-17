@@ -1,15 +1,15 @@
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef } from "react";
 import { useChatStore } from "@/store";
 import MessageItem from "./MessageItem";
 import { User, Hexagon, Search, Link } from "lucide-react";
 import { toast } from "sonner"; 
 
 const ChatMessages = () => {
-  const { conversations, currentConversationId, isLoading, processingUrls } = useChatStore();
+  const { conversations, currentConversationId, isLoading, processingUrls, createConversation } = useChatStore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [isAutoScrollEnabled, setIsAutoScrollEnabled] = useState(true);
+  const [isAutoScrollEnabled, setIsAutoScrollEnabled] = React.useState(true);
   const loadingRef = useRef<boolean>(false);
   
   // Use this to track and handle unusually long loading times
@@ -58,6 +58,13 @@ const ChatMessages = () => {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [currentConversation?.messages, isLoading, processingUrls, isAutoScrollEnabled]);
+  
+  // Create a new conversation if none exists
+  useEffect(() => {
+    if (!currentConversation && conversations.length === 0) {
+      createConversation();
+    }
+  }, [currentConversation, conversations.length, createConversation]);
 
   if (!currentConversation) {
     return <div className="flex-1 overflow-y-auto p-4 flex items-center justify-center">

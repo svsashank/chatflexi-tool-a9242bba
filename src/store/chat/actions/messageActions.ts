@@ -27,7 +27,6 @@ export const addMessageAction = (set: Function, get: Function) => async (content
     files,
   };
 
-  // Update local state immediately
   set(state => ({
     conversations: state.conversations.map(conv =>
       conv.id === currentConversationId
@@ -39,97 +38,52 @@ export const addMessageAction = (set: Function, get: Function) => async (content
   // Check for authentication before saving to database
   const { data: { session } } = await supabase.auth.getSession();
 
-  if (!session?.user) {
-    console.warn("User not authenticated, skipping database save");
-    return;
-  }
-  
-  try {
-    console.log("Saving user message to database for conversation:", currentConversationId);
-    
-    // First, check if conversation exists
-    const { data: existingConv, error: convCheckError } = await supabase
-      .from('conversations')
-      .select('id')
-      .eq('id', currentConversationId)
-      .maybeSingle();
+  if (session?.user) {
+    try {
+      console.log("Saving user message to database for conversation:", currentConversationId);
       
-    if (convCheckError) {
-      console.error('Error checking conversation:', convCheckError);
-      return;
-    }
-    
-    if (!existingConv) {
-      // Create the conversation first if it doesn't exist
-      const { error: createConvError } = await supabase
-        .from('conversations')
-        .insert([{
-          id: currentConversationId,
-          user_id: session.user.id,
-          title: 'New Conversation',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }]);
-        
-      if (createConvError) {
-        console.error('Error creating conversation:', createConvError);
+      // Prepare message data for the database
+      const messageData = {
+        id: newMessage.id,
+        conversation_id: currentConversationId,
+        content: newMessage.content,
+        role: newMessage.role,
+        model_id: selectedModel.id,
+        model_provider: selectedModel.provider,
+        created_at: newMessage.timestamp.toISOString(),
+      };
+
+      // Add images if present
+      if (images && images.length > 0) {
+        Object.assign(messageData, { images });
+      }
+
+      // Add files if present
+      if (files && files.length > 0) {
+        Object.assign(messageData, { files });
+      }
+
+      const { error } = await supabase
+        .from('conversation_messages')
+        .insert([messageData]);
+
+      if (error) {
+        console.error('Error saving message to database:', error);
         toast({
           title: 'Error',
-          description: 'Failed to create conversation in database',
+          description: 'Failed to save message to database',
           variant: 'destructive',
         });
-        return;
       }
-      console.log('Created new conversation in database:', currentConversationId);
-    }
-    
-    // Prepare message data for the database
-    const messageData = {
-      id: newMessage.id,
-      conversation_id: currentConversationId,
-      content: newMessage.content,
-      role: newMessage.role,
-      model_id: selectedModel.id,
-      model_provider: selectedModel.provider,
-      created_at: newMessage.timestamp.toISOString(),
-    };
-
-    // Add images if present
-    if (images && images.length > 0) {
-      Object.assign(messageData, { images });
-    }
-
-    // Add files if present
-    if (files && files.length > 0) {
-      Object.assign(messageData, { files });
-    }
-
-    const { error } = await supabase
-      .from('conversation_messages')
-      .insert([messageData]);
-
-    if (error) {
-      console.error('Error saving message to database:', error);
-      console.log('Message data that failed to save:', {
-        userId: session.user.id,
-        conversationId: currentConversationId,
-        messageId: newMessage.id,
-        error: error
-      });
+    } catch (dbError) {
+      console.error('Database error:', dbError);
       toast({
         title: 'Error',
         description: 'Failed to save message to database',
         variant: 'destructive',
       });
-    } else {
-      console.log('Successfully saved user message to database');
     }
-  } catch (dbError) {
-    console.error('Database error:', dbError);
-    toast({
-      title: 'Error',
-      description: 'Failed to save message to database',
-      variant: 'destructive',
-    });
+  } else {
+    console.warn("User not authenticated, skipping database save");
   }
 };

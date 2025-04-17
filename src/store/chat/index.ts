@@ -55,8 +55,9 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   updateConversationTitle: updateConversationTitleAction(set, get),
   
   // Database Actions
-  loadConversationsFromDB: loadConversationsFromDBAction(set, get),
-  loadMessagesForConversation: loadMessagesForConversationAction(set, get),
+  loadConversationsFromDB: async () => loadConversationsFromDBAction(set, get)(),
+  loadMessagesForConversation: async (conversationId: string) => 
+    loadMessagesForConversationAction(set, get)(conversationId),
   
   // State Management Actions
   clearConversations: clearConversationsAction(set),

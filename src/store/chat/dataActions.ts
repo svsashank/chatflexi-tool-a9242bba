@@ -1,50 +1,60 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { Message, AIModel, Conversation } from "@/types";
-import { ChatStore } from "../types";
 
-export const loadConversationsFromDBAction = (set: Function, get: () => ChatStore) => async () => {
+export const loadUserConversationsAction = (set: Function) => async () => {
   try {
-    const userId = localStorage.getItem('userId');
-    if (!userId) {
-      console.warn("No user ID found, skipping database load");
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.log("User not authenticated, skipping conversation load");
       return;
     }
     
-    console.log("Loading conversations from database for user:", userId);
-    
-    const { data, error } = await supabase
+    const { data: conversations, error } = await supabase
       .from('conversations')
       .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+      .eq('user_id', session.user.id)
+      .order('updated_at', { ascending: false });
     
     if (error) {
-      console.error("Error fetching conversations:", error);
-      throw error;
+      console.error("Error loading conversations:", error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load conversations',
+        variant: 'destructive',
+      });
+      return;
     }
     
-    if (data) {
-      const loadedConversations = data.map((dbConversation: any) => ({
-        id: dbConversation.id,
-        title: dbConversation.title,
-        messages: [], // Messages will be loaded separately
-        createdAt: new Date(dbConversation.created_at),
-        updatedAt: new Date(dbConversation.updated_at),
-        contextSummary: '',
+    console.log(`Loaded conversations: ${conversations.length}`);
+    
+    if (conversations.length > 0) {
+      const formattedConversations = conversations.map((conversation: any) => ({
+        id: conversation.id,
+        title: conversation.title || 'New Conversation',
+        messages: [],
+        createdAt: new Date(conversation.created_at),
+        updatedAt: new Date(conversation.updated_at),
+        contextSummary: conversation.context_summary || '',
       }));
       
-      set({ conversations: loadedConversations });
+      set({
+        conversations: formattedConversations,
+        currentConversationId: conversations[0].id,
+      });
       
-      if (loadedConversations.length > 0 && !get().currentConversationId) {
-        set({ currentConversationId: loadedConversations[0].id });
-      }
+      console.log(`Set first conversation as current: ${conversations[0].id}, now loading its messages`);
       
-      console.log(`Successfully loaded ${loadedConversations.length} conversations from database`);
+      setTimeout(() => {
+        const loadMessagesForConversation = (window as any).useChatStore?.getState()?.loadMessagesForConversation;
+        if (typeof loadMessagesForConversation === 'function') {
+          loadMessagesForConversation(conversations[0].id);
+        }
+      }, 0);
     }
   } catch (error) {
-    console.error("Error loading conversations from database:", error);
+    console.error("Error in loadUserConversations:", error);
     toast({
       title: 'Error',
       description: 'Failed to load conversations',
@@ -53,7 +63,7 @@ export const loadConversationsFromDBAction = (set: Function, get: () => ChatStor
   }
 };
 
-export const loadMessagesForConversationAction = (set: Function, get: () => ChatStore) => async (conversationId: string) => {
+export const loadMessagesForConversationAction = (set: Function) => async (conversationId: string) => {
   try {
     if (!conversationId) {
       console.log("No conversation ID provided, skipping message load");

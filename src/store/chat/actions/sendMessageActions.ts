@@ -1,202 +1,138 @@
 
 import { v4 as uuidv4 } from 'uuid';
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/components/ui/use-toast";
-import { sendMessageToLLM } from "@/services/llmService";
-import { Message, AIModel } from '@/types';
 import { ChatStore } from '../types';
+import { AIModel, Message } from '@/types';
+import { extractUrls } from '@/utils/urlUtils';
+import { supabase } from '@/integrations/supabase/client';
 
-// Helper function to generate a conversation title from the initial message
-const generateTitleFromMessage = (message: string): string => {
-  // Trim the message to ensure we don't have leading/trailing whitespace
-  const trimmedMessage = message.trim();
-  
-  // If the message is short enough, use it directly
-  if (trimmedMessage.length <= 30) {
-    return trimmedMessage;
-  }
-  
-  // Otherwise, take the first 27 characters and add ellipsis
-  return `${trimmedMessage.substring(0, 27)}...`;
-};
-
-export const createSendMessageAction = (set: Function, get: () => ChatStore) => async (
-  content: string,
-  images: string[] = [],
-  files: string[] = []
+export const createSendMessageAction = (
+  set: (state: Partial<ChatStore> | ((state: ChatStore) => Partial<ChatStore>)) => void,
+  get: () => ChatStore
 ) => {
-  try {
-    // Check if the message is empty and contains no attachments
-    if (content.trim() === '' && images.length === 0 && files.length === 0) {
-      toast({
-        title: "Empty Message",
-        description: "Please enter a message or add an attachment",
-        variant: "destructive",
-      });
+  return async (content: string, images: string[] = [], files: string[] = []) => {
+    const { 
+      currentConversationId, 
+      conversations, 
+      selectedModel, 
+      generateResponse, 
+      setProcessingUrls, 
+      handleError,
+      createConversation 
+    } = get();
+    
+    // If no conversation exists, create one first
+    if (!currentConversationId || !conversations.find(c => c.id === currentConversationId)) {
+      console.log("No active conversation, creating a new one before sending message");
+      await createConversation();
+      // After creating a new conversation, proceed with the current one
+    }
+    
+    const updatedCurrentConversationId = get().currentConversationId;
+    
+    if (!updatedCurrentConversationId) {
+      handleError("Error: Could not create or find a conversation");
       return;
     }
-
-    const { selectedModel, conversations, currentConversationId } = get();
-    let activeConversationId = currentConversationId;
     
-    // Create a new conversation if there isn't one already
-    if (!activeConversationId) {
-      // Create new conversation first
-      await get().createConversation();
-      activeConversationId = get().currentConversationId;
+    const userId = localStorage.getItem('userId') || undefined;
+    const timestamp = new Date();
+    const messageId = uuidv4();
+    
+    // Extract URLs from user message
+    const urls = extractUrls(content);
+    let enhancedContent = content;
+    let webContentFiles: string[] = [];
+
+    // If URLs are found, try to fetch their content
+    if (urls.length > 0) {
+      // Show URL processing in the chat UI
+      setProcessingUrls(`Found ${urls.length} URL(s) in your message. Fetching content...`);
       
-      if (!activeConversationId) {
-        throw new Error("Failed to create a new conversation");
+      try {
+        // Use our edge function to fetch webpage content with BeautifulSoup/cheerio
+        const { data: scrapedData, error: scrapingError } = await supabase.functions.invoke('fetch-webpage', {
+          body: { urls }
+        });
+
+        if (scrapingError) {
+          console.error('Error fetching webpage content:', scrapingError);
+          setProcessingUrls(`Could not fetch content from URLs: ${scrapingError.message}`);
+          setTimeout(() => setProcessingUrls(null), 4000);
+        } else if (scrapedData && scrapedData.webContent) {
+          // For each fetched URL, create a "file" with the webpage content
+          Object.entries(scrapedData.webContent).forEach(([url, content]) => {
+            if (content) {
+              webContentFiles.push(`URL: ${url}\n${content}`);
+              
+              // Update the processing message with success
+              setProcessingUrls(`Successfully extracted content from ${url}`);
+            }
+          });
+          
+          // Clear the processing message after a brief delay
+          setTimeout(() => setProcessingUrls(null), 2000);
+        }
+      } catch (error) {
+        console.error('Error invoking fetch-webpage function:', error);
+        setProcessingUrls('Could not fetch webpage content due to an error');
+        setTimeout(() => setProcessingUrls(null), 4000);
       }
     }
     
-    // Find the current conversation
-    const currentConversation = conversations.find(c => c.id === activeConversationId);
-    if (!currentConversation) {
-      throw new Error(`Conversation with ID ${activeConversationId} not found`);
-    }
+    // Combine original files with web content files
+    const allFiles = [...files, ...webContentFiles];
     
-    // New message object for the user's message
-    const userMessage: Message = {
-      id: uuidv4(),
+    // For debugging: Log what's being sent to the model
+    console.log('Sending message to model:', {
       content,
+      modelId: selectedModel.id,
+      modelProvider: selectedModel.provider,
+      imagesCount: images.length,
+      filesCount: allFiles.length,
+      urlsFound: urls.length,
+      filesPreview: allFiles.length > 0 ? allFiles.map(f => f.substring(0, 100) + '...') : []
+    });
+    
+    // Create a properly typed new message
+    const newMessage: Message = {
+      id: messageId,
+      content: enhancedContent,
       role: 'user',
       model: selectedModel,
-      timestamp: new Date()
+      timestamp,
+      images,
+      files: allFiles
     };
     
-    // Add images or files if they exist
-    if (images && images.length > 0) {
-      userMessage.images = images;
-    }
-    
-    if (files && files.length > 0) {
-      userMessage.files = files;
-    }
-    
-    // Add message to state
-    set((state: ChatStore) => ({
-      conversations: state.conversations.map(conv =>
-        conv.id === activeConversationId
-          ? {
-              ...conv,
-              messages: [...conv.messages, userMessage],
-              updatedAt: new Date()
-            }
-          : conv
-      ),
-      isLoading: true
-    }));
-    
-    // Check if this is the first message in the conversation and update the title if needed
-    const isFirstMessage = currentConversation.messages.length === 0;
-    
-    if (isFirstMessage && currentConversation.title === 'New Conversation') {
-      const newTitle = generateTitleFromMessage(content);
-      
-      // Update conversation title in state
-      set((state: ChatStore) => ({
-        conversations: state.conversations.map(conv =>
-          conv.id === activeConversationId
-            ? { ...conv, title: newTitle }
-            : conv
-        ),
-      }));
-      
-      // Update title in database
-      get().updateConversationTitle(activeConversationId, newTitle);
-    }
-    
-    // Save message to database
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (!session?.user) {
-      console.warn("User not authenticated, skipping database save");
-      // Still try to generate a response despite not saving to database
-      await get().generateResponse();
-      return;
-    }
-    
-    // Check if conversation exists in database
-    const { data: existingConv, error: convCheckError } = await supabase
-      .from('conversations')
-      .select('id')
-      .eq('id', activeConversationId)
-      .maybeSingle();
-      
-    if (convCheckError) {
-      console.error('Error checking conversation:', convCheckError);
-      toast({
-        title: 'Error',
-        description: 'Failed to verify conversation in database',
-        variant: 'destructive',
-      });
-      // Continue with generating response regardless
-    }
-    
-    // Create conversation if it doesn't exist
-    if (!existingConv) {
-      const { error: createConvError } = await supabase
-        .from('conversations')
-        .insert([{
-          id: activeConversationId,
-          user_id: session.user.id,
-          title: currentConversation.title || 'New Conversation',
-          created_at: currentConversation.createdAt?.toISOString() || new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }]);
-        
-      if (createConvError) {
-        console.error('Error creating conversation in database:', createConvError);
-        toast({
-          title: 'Error',
-          description: 'Could not create conversation in database',
-          variant: 'destructive',
-        });
-        // Continue with generating response regardless
-      } else {
-        console.log('Successfully created conversation in database:', activeConversationId);
-      }
-    }
-
-    // Now insert the message
-    const { error } = await supabase
-      .from('conversation_messages')
-      .insert({
-        id: userMessage.id,
-        conversation_id: activeConversationId,
-        content: userMessage.content,
-        role: userMessage.role,
-        model_id: userMessage.model.id,
-        model_provider: userMessage.model.provider,
-        images: userMessage.images || [],
-        created_at: userMessage.timestamp.toISOString()
+    // Add user message
+    set((state: ChatStore) => {
+      const updatedConversations = state.conversations.map(conv => {
+        if (conv.id === updatedCurrentConversationId) {
+          // Debug logging to ensure files are being properly added
+          if (allFiles && allFiles.length > 0) {
+            console.log(`Adding ${allFiles.length} files to message ${messageId}`);
+            console.log(`First file content starts with: ${allFiles[0].substring(0, 150)}...`);
+          }
+          
+          if (images && images.length > 0) {
+            console.log(`Adding ${images.length} images to message ${messageId}`);
+          }
+          
+          return {
+            ...conv,
+            messages: [...conv.messages, newMessage],
+            updatedAt: timestamp
+          };
+        }
+        return conv;
       });
       
-    if (error) {
-      console.error('Error saving message to database:', error);
-      console.log('Message data that failed to save:', {
-        userId: session.user.id,
-        conversationId: activeConversationId,
-        messageId: userMessage.id,
-        error: error
-      });
-      toast({
-        title: 'Error',
-        description: 'Could not save message to database',
-        variant: 'destructive',
-      });
-      // Continue with generating response regardless
-    } else {
-      console.log('Successfully saved user message to database');
-    }
-
-    // Generate AI response
-    await get().generateResponse();
-
-  } catch (error) {
-    console.error('Error in sendMessage:', error);
-    set({ isLoading: false });
-    get().handleError('Failed to send message');
-  }
+      return { conversations: updatedConversations };
+    });
+    
+    // Generate AI response with a small delay to ensure UI updates first
+    setTimeout(() => {
+      generateResponse();
+    }, 100);
+  };
 };
