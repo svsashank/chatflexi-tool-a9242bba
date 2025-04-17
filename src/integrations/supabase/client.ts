@@ -30,47 +30,70 @@ export const isAuthenticated = async () => {
   return !!data.session?.user;
 };
 
-// Helper to safely fetch profile data
-export const fetchProfileData = async (userId: string) => {
-  if (!userId) {
-    console.error("No user ID provided to fetchProfileData");
-    return { data: null, error: new Error("No user ID provided") };
-  }
+// NEW: Updated function that uses the edge function to safely fetch profile data
+export const fetchProfileData = async () => {
+  try {
+    // First get auth session to get token
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    
+    if (sessionError || !session) {
+      console.error("Session error:", sessionError);
+      return { 
+        data: null, 
+        error: new Error(sessionError?.message || "No active session") 
+      };
+    }
+    
+    const token = session.access_token;
+    
+    if (!token) {
+      return { data: null, error: new Error("No access token available") };
+    }
+    
+    // Call our edge function instead of directly querying the database
+    console.log("Fetching profile data via edge function");
+    const response = await fetch(
+      `${SUPABASE_URL}/functions/v1/get-profile`,
+      {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
 
-  console.log(`Fetching profile data for user: ${userId}`);
-  
-  // Use direct service URL to avoid potential middleware issues
-  const response = await fetch(
-    `${SUPABASE_URL}/rest/v1/profiles?id=eq.${userId}&select=compute_points`,
-    {
-      method: 'GET',
-      headers: {
-        'apikey': SUPABASE_PUBLISHABLE_KEY,
-        'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token || ''}`,
-        'Content-Type': 'application/json'
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Profile data fetch error (${response.status}):`, errorText);
+      
+      try {
+        const errorJson = JSON.parse(errorText);
+        return { 
+          data: null, 
+          error: new Error(errorJson.message || errorJson.error || `Failed with status ${response.status}`) 
+        };
+      } catch (e) {
+        return { 
+          data: null, 
+          error: new Error(`Failed with status ${response.status}: ${errorText.substring(0, 100)}`) 
+        };
       }
     }
-  );
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error(`Profile data fetch error (${response.status}):`, errorText);
+    const result = await response.json();
+    console.log("Profile data retrieved:", result);
     
-    try {
-      const errorJson = JSON.parse(errorText);
-      return { 
-        data: null, 
-        error: new Error(errorJson.message || `Failed with status ${response.status}`) 
-      };
-    } catch (e) {
-      return { 
-        data: null, 
-        error: new Error(`Failed with status ${response.status}: ${errorText.substring(0, 100)}`) 
-      };
+    if (result.data) {
+      return { data: [result.data], error: null };
+    } else {
+      return { data: [], error: null };
     }
+  } catch (error) {
+    console.error("Error in fetchProfileData:", error);
+    return { 
+      data: null, 
+      error: new Error(error.message || "Unknown error fetching profile data") 
+    };
   }
-
-  const data = await response.json();
-  console.log("Profile data retrieved:", data);
-  return { data, error: null };
 };

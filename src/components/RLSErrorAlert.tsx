@@ -10,21 +10,26 @@ interface RLSErrorAlertProps {
   onRetry?: () => void;
   errorCode?: string;
   errorMessage?: string;
+  isAuthError?: boolean;
 }
 
 const RLSErrorAlert: React.FC<RLSErrorAlertProps> = ({ 
   className, 
   onRetry,
   errorCode = "42P17",
-  errorMessage = "Policy recursion issue"
+  errorMessage = "Policy recursion issue",
+  isAuthError = false
 }) => {
   return (
     <Alert variant="error" className={className}>
       <AlertTriangle className="h-4 w-4" />
-      <AlertTitle>Database Permission Error</AlertTitle>
+      <AlertTitle>{isAuthError ? "Authentication Error" : "Database Permission Error"}</AlertTitle>
       <AlertDescription className="space-y-2">
         <p>
-          Your profile data cannot be accessed due to a Row-Level Security policy error in the database.
+          {isAuthError 
+            ? "You need to sign in again to access your profile data."
+            : "Your profile data cannot be accessed due to a Row-Level Security policy error in the database."
+          }
         </p>
         <p className="text-xs text-muted-foreground">
           Error code: {errorCode} - {errorMessage}
@@ -35,9 +40,9 @@ const RLSErrorAlert: React.FC<RLSErrorAlertProps> = ({
               Retry Loading
             </Button>
           )}
-          <Button variant="ghost" size="sm" asChild>
+          <Button variant={isAuthError ? "default" : "ghost"} size="sm" asChild>
             <Link to="/auth">
-              Re-authenticate
+              {isAuthError ? "Sign In" : "Re-authenticate"}
             </Link>
           </Button>
         </div>

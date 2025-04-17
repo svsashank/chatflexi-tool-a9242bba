@@ -24,6 +24,7 @@ const Profile = () => {
   const [joinedDate, setJoinedDate] = useState<string>('');
   const [profileError, setProfileError] = useState<string | null>(null);
   const [isRLSError, setIsRLSError] = useState(false);
+  const [isAuthError, setIsAuthError] = useState(false);
   const [errorDetails, setErrorDetails] = useState<{code?: string, message?: string}>({});
   
   useEffect(() => {
@@ -74,6 +75,7 @@ const Profile = () => {
     setIsLoading(true);
     setProfileError(null);
     setIsRLSError(false);
+    setIsAuthError(false);
     setErrorDetails({});
 
     try {
@@ -85,12 +87,13 @@ const Profile = () => {
         day: 'numeric' 
       }));
 
-      // Try to get an active session first and verify it's valid
+      // Get an active session to verify authentication
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
         console.error("No active session found when fetching profile data");
-        setProfileError("Authentication issue. Please try signing in again.");
+        setProfileError("Authentication issue. Please sign in again.");
+        setIsAuthError(true);
         setIsLoading(false);
         return;
       }
@@ -99,13 +102,14 @@ const Profile = () => {
       console.log(`Access token present: ${!!session.access_token}`);
       console.log(`Access token expires: ${new Date(session.expires_at! * 1000).toISOString()}`);
       
-      // Get profile data using our helper function
-      const { data: profileData, error: profileError } = await fetchProfileData(user.id);
+      // Get profile data using our new edge function approach
+      const { data: profileData, error: profileError } = await fetchProfileData();
       
       if (profileError) {
         console.error('Error fetching profile data:', profileError);
         setProfileError(profileError.message);
         
+        // Check for specific error messages that would indicate an RLS error
         if (profileError.message.includes('infinite recursion') || 
             profileError.message.includes('42P17')) {
           setIsRLSError(true);
@@ -116,6 +120,19 @@ const Profile = () => {
           toast({
             title: "Database Permission Error",
             description: "There's an issue with the database security policies. Default values are being used.",
+            variant: "destructive",
+          });
+        } else if (profileError.message.includes('Unauthorized') || 
+                  profileError.message.includes('JWT') ||
+                  profileError.message.includes('session')) {
+          setIsAuthError(true);
+          setErrorDetails({
+            code: "401",
+            message: "Authentication error"
+          });
+          toast({
+            title: "Authentication Error",
+            description: "Please sign in again to access your profile.",
             variant: "destructive",
           });
         } else {
@@ -235,6 +252,13 @@ const Profile = () => {
           onRetry={fetchUserData} 
           errorCode={errorDetails.code}
           errorMessage={errorDetails.message}
+        />
+      ) : isAuthError ? (
+        <RLSErrorAlert 
+          onRetry={fetchUserData} 
+          errorCode={errorDetails.code}
+          errorMessage={errorDetails.message}
+          isAuthError={true}
         />
       ) : profileError ? (
         <Alert variant="warning">
