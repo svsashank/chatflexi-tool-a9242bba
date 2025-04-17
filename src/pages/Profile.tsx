@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Cpu, ArrowLeft, LogOut } from 'lucide-react';
@@ -10,7 +9,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { supabase, fetchProfileData } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import { Progress } from '@/components/ui/progress';
-import CreditUsageBreakdown from '@/components/CreditUsageBreakdown';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Info } from "lucide-react";
 import RLSErrorAlert from '@/components/RLSErrorAlert';
@@ -347,8 +345,6 @@ const Profile = () => {
             </div>
           </CardContent>
         </Card>
-
-        <CreditUsageBreakdown className="md:col-span-3" />
       </div>
     </div>
   );
