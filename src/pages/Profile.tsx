@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Cpu, ArrowLeft, LogOut } from 'lucide-react';
@@ -9,11 +8,14 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
+import { Progress } from '@/components/ui/progress';
+import CreditUsageBreakdown from '@/components/CreditUsageBreakdown';
 
 const Profile = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [totalCredits, setTotalCredits] = useState<number | null>(null);
+  const [purchasedCredits, setPurchasedCredits] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [joinedDate, setJoinedDate] = useState<string>('');
 
@@ -65,36 +67,55 @@ const Profile = () => {
         day: 'numeric' 
       }));
 
-      // Fetch user's compute credits
-      const fetchUserCredits = async () => {
+      const fetchUserData = async () => {
         try {
-          // Get compute credits from the database
-          const { data, error } = await supabase
+          // Get purchased compute credits from profiles table
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('compute_points')
+            .eq('id', user.id)
+            .maybeSingle();
+          
+          if (profileError) {
+            console.error('Error fetching profile data:', profileError);
+            toast({
+              title: "Error",
+              description: "Failed to load profile data",
+              variant: "destructive",
+            });
+          } else if (profileData) {
+            setPurchasedCredits(profileData.compute_points || 0);
+            console.log("Purchased credits from profile:", profileData.compute_points);
+          }
+
+          // Get used compute credits from user_compute_credits table
+          const { data: creditData, error: creditError } = await supabase
             .from('user_compute_credits')
             .select('total_credits')
             .eq('user_id', user.id)
             .maybeSingle();
           
-          if (error) {
-            console.error('Error fetching user compute credits:', error);
+          if (creditError) {
+            console.error('Error fetching user compute credits:', creditError);
             toast({
               title: "Error",
               description: "Failed to load credits data",
               variant: "destructive",
             });
-          } else if (data) {
-            setTotalCredits(data.total_credits || 0);
+          } else if (creditData) {
+            setTotalCredits(creditData.total_credits || 0);
+            console.log("Used credits:", creditData.total_credits);
           } else {
             setTotalCredits(0);
           }
         } catch (error) {
-          console.error('Error fetching user credits:', error);
+          console.error('Error fetching user data:', error);
         } finally {
           setIsLoading(false);
         }
       };
 
-      fetchUserCredits();
+      fetchUserData();
     }
   }, [user]);
 
@@ -119,9 +140,23 @@ const Profile = () => {
   }
 
   // Format the credits for display
-  const displayCredits = totalCredits !== null 
+  const displayUsedCredits = totalCredits !== null 
     ? Math.round(totalCredits).toLocaleString() 
     : 'Loading...';
+
+  const displayPurchasedCredits = purchasedCredits !== null
+    ? purchasedCredits.toLocaleString()
+    : 'Loading...';
+
+  // Calculate usage percentage
+  const usagePercentage = (totalCredits && purchasedCredits && purchasedCredits > 0)
+    ? Math.min(Math.round((totalCredits / purchasedCredits) * 100), 100)
+    : 0;
+
+  // Calculate remaining credits
+  const remainingCredits = (purchasedCredits !== null && totalCredits !== null)
+    ? Math.max(0, purchasedCredits - totalCredits)
+    : null;
 
   return (
     <div className="container max-w-4xl py-6 px-4 md:px-6 space-y-8">
@@ -171,15 +206,31 @@ const Profile = () => {
               Track your computational resource usage across all conversations
             </CardDescription>
           </CardHeader>
-          <CardContent className="pt-4">
-            <div className="rounded-lg bg-muted p-6 flex flex-col items-center justify-center">
-              <div className="flex items-center space-x-2 mb-2">
-                <Cpu size={24} className="text-cyan-400" />
-                <span className="text-3xl font-bold">{displayCredits}</span>
+          <CardContent className="pt-4 space-y-6">
+            {/* Credits Summary */}
+            <div className="space-y-4">
+              <div className="rounded-lg bg-muted p-6">
+                <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+                  <div className="flex items-center space-x-2">
+                    <Cpu size={24} className="text-cyan-400" />
+                    <span className="text-3xl font-bold">{displayUsedCredits}</span>
+                    <span className="text-muted-foreground text-sm">/ {displayPurchasedCredits}</span>
+                  </div>
+                  <div className="text-sm text-muted-foreground whitespace-nowrap">
+                    Credits used / available
+                  </div>
+                </div>
+                
+                <div className="mt-4 space-y-2">
+                  <div className="flex justify-between text-sm mb-1">
+                    <span>{usagePercentage}% used</span>
+                    <span>{remainingCredits !== null 
+                      ? remainingCredits.toLocaleString() 
+                      : '...'} remaining</span>
+                  </div>
+                  <Progress value={usagePercentage} className="h-2" />
+                </div>
               </div>
-              <p className="text-center text-muted-foreground">
-                Total compute credits used
-              </p>
             </div>
             
             <Separator className="my-6" />
@@ -202,6 +253,9 @@ const Profile = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Credit Usage Breakdown */}
+        <CreditUsageBreakdown className="md:col-span-3" />
       </div>
     </div>
   );
