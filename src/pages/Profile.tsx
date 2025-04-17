@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Link, useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, fetchProfileData } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import { Progress } from '@/components/ui/progress';
 import CreditUsageBreakdown from '@/components/CreditUsageBreakdown';
@@ -24,10 +24,12 @@ const Profile = () => {
   const [joinedDate, setJoinedDate] = useState<string>('');
   const [profileError, setProfileError] = useState<string | null>(null);
   const [isRLSError, setIsRLSError] = useState(false);
+  const [errorDetails, setErrorDetails] = useState<{code?: string, message?: string}>({});
   
   useEffect(() => {
     if (user?.id) {
       localStorage.setItem('userId', user.id);
+      console.log("User ID stored in localStorage:", user.id);
     }
   }, [user]);
 
@@ -72,8 +74,10 @@ const Profile = () => {
     setIsLoading(true);
     setProfileError(null);
     setIsRLSError(false);
+    setErrorDetails({});
 
     try {
+      console.log("User authenticated, beginning profile data fetch", user.id);
       const createdAt = new Date(user.created_at);
       setJoinedDate(createdAt.toLocaleDateString('en-US', { 
         year: 'numeric', 
@@ -81,58 +85,57 @@ const Profile = () => {
         day: 'numeric' 
       }));
 
-      // Try to get an active session first
+      // Try to get an active session first and verify it's valid
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
-        console.warn("No active session found when fetching profile data");
+        console.error("No active session found when fetching profile data");
         setProfileError("Authentication issue. Please try signing in again.");
         setIsLoading(false);
         return;
       }
 
-      console.log("Fetching profile data with auth token");
+      console.log(`Session found. User ID: ${session.user.id}`);
+      console.log(`Access token present: ${!!session.access_token}`);
+      console.log(`Access token expires: ${new Date(session.expires_at! * 1000).toISOString()}`);
       
-      // Catch RLS errors specifically for profiles table
-      try {
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('compute_points')
-          .eq('id', user.id)
-          .maybeSingle();
+      // Get profile data using our helper function
+      const { data: profileData, error: profileError } = await fetchProfileData(user.id);
+      
+      if (profileError) {
+        console.error('Error fetching profile data:', profileError);
+        setProfileError(profileError.message);
         
-        if (profileError) {
-          console.error('Error fetching profile data:', profileError);
-          setProfileError(profileError.message);
-          
-          if (profileError.message.includes('infinite recursion detected in policy')) {
-            setIsRLSError(true);
-            toast({
-              title: "Database Permission Error",
-              description: "There's an issue with the database security policies. Default values are being used.",
-              variant: "destructive",
-            });
-          } else {
-            toast({
-              title: "Profile Data Notice",
-              description: "Some profile data couldn't be retrieved. Using default values.",
-              variant: "default",
-            });
-          }
-          setPurchasedCredits(10000); // Default value
-        } else if (profileData) {
-          setPurchasedCredits(profileData.compute_points || 0);
-          console.log("Purchased credits from profile:", profileData.compute_points);
+        if (profileError.message.includes('infinite recursion') || 
+            profileError.message.includes('42P17')) {
+          setIsRLSError(true);
+          setErrorDetails({
+            code: "42P17",
+            message: "Infinite recursion detected in policy"
+          });
+          toast({
+            title: "Database Permission Error",
+            description: "There's an issue with the database security policies. Default values are being used.",
+            variant: "destructive",
+          });
         } else {
-          setPurchasedCredits(10000); // Default value
+          toast({
+            title: "Profile Data Notice",
+            description: "Some profile data couldn't be retrieved. Using default values.",
+            variant: "default",
+          });
         }
-      } catch (err) {
-        console.error("Error in profile fetch:", err);
-        setProfileError("Failed to fetch profile data");
+        setPurchasedCredits(10000); // Default value
+      } else if (profileData && profileData.length > 0) {
+        setPurchasedCredits(profileData[0].compute_points || 0);
+        console.log("Purchased credits from profile:", profileData[0].compute_points);
+      } else {
+        console.log("No profile data returned, using default values");
         setPurchasedCredits(10000); // Default value
       }
 
       // User compute credits are in a separate table which should have normal RLS
+      console.log("Fetching user compute credits");
       const { data: creditData, error: creditError } = await supabase
         .from('user_compute_credits')
         .select('total_credits')
@@ -150,10 +153,19 @@ const Profile = () => {
         setTotalCredits(creditData.total_credits || 0);
         console.log("Used credits:", creditData.total_credits);
       } else {
+        console.log("No credit data found, setting to 0");
         setTotalCredits(0);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching user data:', error);
+      setProfileError(error.message || "Unknown error occurred");
+      toast({
+        title: "Error",
+        description: "Failed to load profile data",
+        variant: "destructive",
+      });
+      setPurchasedCredits(10000); // Default fallback
+      setTotalCredits(0); // Default fallback
     } finally {
       setIsLoading(false);
     }
@@ -219,14 +231,19 @@ const Profile = () => {
       </div>
 
       {isRLSError ? (
-        <RLSErrorAlert onRetry={fetchUserData} />
+        <RLSErrorAlert 
+          onRetry={fetchUserData} 
+          errorCode={errorDetails.code}
+          errorMessage={errorDetails.message}
+        />
       ) : profileError ? (
         <Alert variant="warning">
           <Info className="h-4 w-4" />
           <AlertTitle>Profile Data Notice</AlertTitle>
           <AlertDescription>
-            There was an issue retrieving your complete profile data. Some information might be using default values.
-            <Button variant="link" className="p-0 h-auto text-sm" onClick={fetchUserData}>Retry</Button>
+            There was an issue retrieving your complete profile data: {profileError}.
+            Some information might be using default values.
+            <Button variant="link" className="p-0 h-auto text-sm ml-2" onClick={fetchUserData}>Retry</Button>
           </AlertDescription>
         </Alert>
       ) : null}

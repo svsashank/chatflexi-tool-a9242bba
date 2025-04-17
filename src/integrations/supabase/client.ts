@@ -14,6 +14,63 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
-    storageKey: 'supabase.auth.token'
+    storageKey: 'supabase.auth.token',
+    // Debug logging for auth issues
+    debug: true
   }
 });
+
+// Helper function to check if a user is authenticated
+export const isAuthenticated = async () => {
+  const { data, error } = await supabase.auth.getSession();
+  if (error) {
+    console.error("Error checking authentication:", error);
+    return false;
+  }
+  return !!data.session?.user;
+};
+
+// Helper to safely fetch profile data
+export const fetchProfileData = async (userId: string) => {
+  if (!userId) {
+    console.error("No user ID provided to fetchProfileData");
+    return { data: null, error: new Error("No user ID provided") };
+  }
+
+  console.log(`Fetching profile data for user: ${userId}`);
+  
+  // Use direct service URL to avoid potential middleware issues
+  const response = await fetch(
+    `${SUPABASE_URL}/rest/v1/profiles?id=eq.${userId}&select=compute_points`,
+    {
+      method: 'GET',
+      headers: {
+        'apikey': SUPABASE_PUBLISHABLE_KEY,
+        'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token || ''}`,
+        'Content-Type': 'application/json'
+      }
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`Profile data fetch error (${response.status}):`, errorText);
+    
+    try {
+      const errorJson = JSON.parse(errorText);
+      return { 
+        data: null, 
+        error: new Error(errorJson.message || `Failed with status ${response.status}`) 
+      };
+    } catch (e) {
+      return { 
+        data: null, 
+        error: new Error(`Failed with status ${response.status}: ${errorText.substring(0, 100)}`) 
+      };
+    }
+  }
+
+  const data = await response.json();
+  console.log("Profile data retrieved:", data);
+  return { data, error: null };
+};
