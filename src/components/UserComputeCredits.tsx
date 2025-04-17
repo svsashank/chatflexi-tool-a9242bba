@@ -8,6 +8,7 @@ import { toast } from '@/components/ui/use-toast';
 const UserComputeCredits = () => {
   const [totalCredits, setTotalCredits] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchUserCredits = async () => {
@@ -26,6 +27,7 @@ const UserComputeCredits = () => {
           
           if (error) {
             console.error('Error fetching user compute credits:', error);
+            setError(error.message);
             toast({
               title: "Error",
               description: "Failed to load credits data",
@@ -43,6 +45,7 @@ const UserComputeCredits = () => {
               
             if (insertError) {
               console.error('Error creating user compute credits record:', insertError);
+              setError(insertError.message);
               toast({
                 title: "Error",
                 description: "Failed to initialize credits record",
@@ -59,6 +62,7 @@ const UserComputeCredits = () => {
         }
       } catch (error) {
         console.error('Error fetching user credits:', error);
+        setError(error instanceof Error ? error.message : 'Unknown error');
       } finally {
         setIsLoading(false);
       }
@@ -98,6 +102,13 @@ const UserComputeCredits = () => {
     return <div className="flex items-center gap-1 text-xs text-muted-foreground">
       <Zap size={14} className="text-amber-500" />
       <span>Loading...</span>
+    </div>;
+  }
+
+  if (error) {
+    return <div className="flex items-center gap-1 text-xs text-red-500">
+      <Zap size={14} className="text-amber-500" />
+      <span>Error loading credits</span>
     </div>;
   }
 

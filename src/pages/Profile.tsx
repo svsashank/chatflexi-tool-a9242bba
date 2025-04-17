@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Cpu, ArrowLeft, LogOut } from 'lucide-react';
@@ -10,6 +11,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import { Progress } from '@/components/ui/progress';
 import CreditUsageBreakdown from '@/components/CreditUsageBreakdown';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Info } from "lucide-react";
 
 const Profile = () => {
   const { user, signOut } = useAuth();
@@ -18,6 +21,7 @@ const Profile = () => {
   const [purchasedCredits, setPurchasedCredits] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [joinedDate, setJoinedDate] = useState<string>('');
+  const [profileError, setProfileError] = useState<string | null>(null);
 
   // Get user initials for avatar fallback
   const getUserInitials = () => {
@@ -70,22 +74,34 @@ const Profile = () => {
       const fetchUserData = async () => {
         try {
           // Get purchased compute credits from profiles table
-          const { data: profileData, error: profileError } = await supabase
-            .from('profiles')
-            .select('compute_points')
-            .eq('id', user.id)
-            .maybeSingle();
-          
-          if (profileError) {
-            console.error('Error fetching profile data:', profileError);
-            toast({
-              title: "Error",
-              description: "Failed to load profile data",
-              variant: "destructive",
-            });
-          } else if (profileData) {
-            setPurchasedCredits(profileData.compute_points || 0);
-            console.log("Purchased credits from profile:", profileData.compute_points);
+          try {
+            const { data: profileData, error: profileError } = await supabase
+              .from('profiles')
+              .select('compute_points')
+              .eq('id', user.id)
+              .maybeSingle();
+            
+            if (profileError) {
+              console.error('Error fetching profile data:', profileError);
+              setProfileError(profileError.message);
+              toast({
+                title: "Profile Data Notice",
+                description: "Some profile data couldn't be retrieved. Using default values.",
+                variant: "default",
+              });
+              // Set a default value for purchased credits
+              setPurchasedCredits(10000); // Default value
+            } else if (profileData) {
+              setPurchasedCredits(profileData.compute_points || 0);
+              console.log("Purchased credits from profile:", profileData.compute_points);
+            } else {
+              // If no profile data, use default
+              setPurchasedCredits(10000); // Default value
+            }
+          } catch (err) {
+            console.error("Error in profile fetch:", err);
+            setProfileError("Failed to fetch profile data");
+            setPurchasedCredits(10000); // Default value
           }
 
           // Get used compute credits from user_compute_credits table
@@ -99,7 +115,7 @@ const Profile = () => {
             console.error('Error fetching user compute credits:', creditError);
             toast({
               title: "Error",
-              description: "Failed to load credits data",
+              description: "Failed to load credits usage data",
               variant: "destructive",
             });
           } else if (creditData) {
@@ -174,6 +190,16 @@ const Profile = () => {
           Sign Out
         </Button>
       </div>
+
+      {profileError && (
+        <Alert variant="warning">
+          <Info className="h-4 w-4" />
+          <AlertTitle>Profile Data Notice</AlertTitle>
+          <AlertDescription>
+            There was an issue retrieving your complete profile data. Some information might be using default values.
+          </AlertDescription>
+        </Alert>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* User Info Card */}
