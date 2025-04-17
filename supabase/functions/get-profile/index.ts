@@ -40,12 +40,12 @@ Deno.serve(async (req) => {
       )
     }
     
-    // Now query the profiles table directly with admin privileges, bypassing RLS
+    // Query the profiles table by email (primary lookup method)
     const { data: profileData, error: profileError } = await supabaseAdmin
       .from('profiles')
       .select('*')
-      .eq('id', user.id)
-      .maybeSingle() // Use maybeSingle instead of single to handle case where no profile exists
+      .eq('email', user.email)
+      .maybeSingle()
     
     if (profileError) {
       console.error('Profile fetch error:', profileError)
@@ -55,41 +55,35 @@ Deno.serve(async (req) => {
       )
     }
     
-    // If no profile exists, create a default one
+    // If no profile found by email, try looking up by id as fallback
     if (!profileData) {
-      console.log(`No profile found for user ${user.id}, creating default profile`)
-      const defaultProfile = {
-        id: user.id,
-        email: user.email,
-        name: user.user_metadata?.name || user.email?.split('@')[0] || 'User',
-        compute_points: 10000, // Default credits
-        created_at: new Date()
-        // Removed updated_at which doesn't exist in the schema
+      console.log(`No profile found for email ${user.email}, trying user ID lookup`)
+      const { data: idProfileData, error: idProfileError } = await supabaseAdmin
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .maybeSingle()
+      
+      if (idProfileError) {
+        console.error('Profile ID lookup error:', idProfileError)
       }
       
-      // Insert the default profile
-      const { data: newProfile, error: insertError } = await supabaseAdmin
-        .from('profiles')
-        .insert(defaultProfile)
-        .select('*')
-        .single()
-      
-      if (insertError) {
-        console.error('Error creating default profile:', insertError)
-        // Just return the default profile even if insert failed
+      if (idProfileData) {
+        // Found profile by ID, return it
         return new Response(
-          JSON.stringify({ data: defaultProfile }),
+          JSON.stringify({ data: idProfileData }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
         )
       }
       
+      // No profile found at all - return error
       return new Response(
-        JSON.stringify({ data: newProfile }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+        JSON.stringify({ error: 'Profile not found' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 404 }
       )
     }
     
-    // Return the profile data
+    // Return the profile data found by email
     return new Response(
       JSON.stringify({ data: profileData }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }

@@ -86,6 +86,9 @@ export const fetchProfileData = async () => {
     
     if (result.data) {
       return { data: [result.data], error: null };
+    } else if (result.error === 'Profile not found') {
+      console.error("Profile not found for current user");
+      return { data: null, error: new Error("Profile not found. Please contact support.") };
     } else {
       return { data: [], error: null };
     }
@@ -97,3 +100,4 @@ export const fetchProfileData = async () => {
     };
   }
 };
+
