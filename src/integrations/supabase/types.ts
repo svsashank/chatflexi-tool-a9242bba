@@ -460,6 +460,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      get_profile_role: {
+        Args: { user_id: string }
+        Returns: string
+      }
       update_user_compute_credits: {
         Args: { p_user_id: string; p_credits: number }
         Returns: undefined

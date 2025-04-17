@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Cpu, ArrowLeft, LogOut, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -24,20 +23,23 @@ const Profile = () => {
   const [joinedDate, setJoinedDate] = useState<string>('');
   const [profileError, setProfileError] = useState<string | null>(null);
   const [isRLSError, setIsRLSError] = useState(false);
+  
+  useEffect(() => {
+    if (user?.id) {
+      localStorage.setItem('userId', user.id);
+    }
+  }, [user]);
 
-  // Get user initials for avatar fallback
   const getUserInitials = () => {
     if (!user) return '?';
     
     const name = user.user_metadata?.name || user.email || '';
     if (!name) return '?';
     
-    // If it's an email and no name is available, use first letter of email
     if (name.includes('@') && !user.user_metadata?.name) {
       return name.charAt(0).toUpperCase();
     }
     
-    // Otherwise get initials from name
     return name
       .split(' ')
       .map(n => n.charAt(0).toUpperCase())
@@ -63,9 +65,14 @@ const Profile = () => {
     }
   };
 
-  useEffect(() => {
-    if (user) {
-      // Format the date when user was created
+  const fetchUserData = useCallback(async () => {
+    if (!user) return;
+    
+    setIsLoading(true);
+    setProfileError(null);
+    setIsRLSError(false);
+
+    try {
       const createdAt = new Date(user.created_at);
       setJoinedDate(createdAt.toLocaleDateString('en-US', { 
         year: 'numeric', 
@@ -73,80 +80,86 @@ const Profile = () => {
         day: 'numeric' 
       }));
 
-      const fetchUserData = async () => {
-        try {
-          // Get purchased compute credits from profiles table
-          try {
-            const { data: profileData, error: profileError } = await supabase
-              .from('profiles')
-              .select('compute_points')
-              .eq('id', user.id)
-              .maybeSingle();
-            
-            if (profileError) {
-              console.error('Error fetching profile data:', profileError);
-              setProfileError(profileError.message);
-              
-              // Check if it's an RLS infinite recursion error
-              if (profileError.message.includes('infinite recursion detected in policy')) {
-                setIsRLSError(true);
-                toast({
-                  title: "Database Permission Error",
-                  description: "There's an issue with the database security policies. Default values are being used.",
-                  variant: "destructive",
-                });
-              } else {
-                toast({
-                  title: "Profile Data Notice",
-                  description: "Some profile data couldn't be retrieved. Using default values.",
-                  variant: "default",
-                });
-              }
-              // Set a default value for purchased credits
-              setPurchasedCredits(10000); // Default value
-            } else if (profileData) {
-              setPurchasedCredits(profileData.compute_points || 0);
-              console.log("Purchased credits from profile:", profileData.compute_points);
-            } else {
-              // If no profile data, use default
-              setPurchasedCredits(10000); // Default value
-            }
-          } catch (err) {
-            console.error("Error in profile fetch:", err);
-            setProfileError("Failed to fetch profile data");
-            setPurchasedCredits(10000); // Default value
-          }
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        console.warn("No active session found when fetching profile data");
+        setProfileError("Authentication issue. Please try signing in again.");
+        setIsLoading(false);
+        return;
+      }
 
-          // Get used compute credits from user_compute_credits table
-          const { data: creditData, error: creditError } = await supabase
-            .from('user_compute_credits')
-            .select('total_credits')
-            .eq('user_id', user.id)
-            .maybeSingle();
+      console.log("Fetching profile data with auth token");
+      
+      try {
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('compute_points')
+          .eq('id', user.id)
+          .maybeSingle();
+        
+        if (profileError) {
+          console.error('Error fetching profile data:', profileError);
+          setProfileError(profileError.message);
           
-          if (creditError) {
-            console.error('Error fetching user compute credits:', creditError);
+          if (profileError.message.includes('infinite recursion detected in policy')) {
+            setIsRLSError(true);
             toast({
-              title: "Error",
-              description: "Failed to load credits usage data",
+              title: "Database Permission Error",
+              description: "There's an issue with the database security policies. Default values are being used.",
               variant: "destructive",
             });
-          } else if (creditData) {
-            setTotalCredits(creditData.total_credits || 0);
-            console.log("Used credits:", creditData.total_credits);
           } else {
-            setTotalCredits(0);
+            toast({
+              title: "Profile Data Notice",
+              description: "Some profile data couldn't be retrieved. Using default values.",
+              variant: "default",
+            });
           }
-        } catch (error) {
-          console.error('Error fetching user data:', error);
-        } finally {
-          setIsLoading(false);
+          setPurchasedCredits(10000); // Default value
+        } else if (profileData) {
+          setPurchasedCredits(profileData.compute_points || 0);
+          console.log("Purchased credits from profile:", profileData.compute_points);
+        } else {
+          setPurchasedCredits(10000); // Default value
         }
-      };
+      } catch (err) {
+        console.error("Error in profile fetch:", err);
+        setProfileError("Failed to fetch profile data");
+        setPurchasedCredits(10000); // Default value
+      }
 
-      fetchUserData();
+      const { data: creditData, error: creditError } = await supabase
+        .from('user_compute_credits')
+        .select('total_credits')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      if (creditError) {
+        console.error('Error fetching user compute credits:', creditError);
+        toast({
+          title: "Error",
+          description: "Failed to load credits usage data",
+          variant: "destructive",
+        });
+      } else if (creditData) {
+        setTotalCredits(creditData.total_credits || 0);
+        console.log("Used credits:", creditData.total_credits);
+      } else {
+        setTotalCredits(0);
+      }
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+    } finally {
+      setIsLoading(false);
     }
   }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      fetchUserData();
+    }
+  }, [user, fetchUserData]);
 
   if (!user) {
     return (
@@ -168,7 +181,6 @@ const Profile = () => {
     );
   }
 
-  // Format the credits for display
   const displayUsedCredits = totalCredits !== null 
     ? Math.round(totalCredits).toLocaleString() 
     : 'Loading...';
@@ -177,12 +189,10 @@ const Profile = () => {
     ? purchasedCredits.toLocaleString()
     : 'Loading...';
 
-  // Calculate usage percentage
   const usagePercentage = (totalCredits && purchasedCredits && purchasedCredits > 0)
     ? Math.min(Math.round((totalCredits / purchasedCredits) * 100), 100)
     : 0;
 
-  // Calculate remaining credits
   const remainingCredits = (purchasedCredits !== null && totalCredits !== null)
     ? Math.max(0, purchasedCredits - totalCredits)
     : null;
@@ -205,19 +215,19 @@ const Profile = () => {
       </div>
 
       {isRLSError ? (
-        <RLSErrorAlert />
+        <RLSErrorAlert onRetry={fetchUserData} />
       ) : profileError ? (
         <Alert variant="warning">
           <Info className="h-4 w-4" />
           <AlertTitle>Profile Data Notice</AlertTitle>
           <AlertDescription>
             There was an issue retrieving your complete profile data. Some information might be using default values.
+            <Button variant="link" className="p-0 h-auto text-sm" onClick={fetchUserData}>Retry</Button>
           </AlertDescription>
         </Alert>
       ) : null}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* User Info Card */}
         <Card className="md:col-span-1">
           <CardHeader className="flex flex-row items-start space-x-4 pb-2">
             <Avatar className="h-16 w-16 flex-shrink-0">
@@ -236,7 +246,6 @@ const Profile = () => {
           </CardContent>
         </Card>
 
-        {/* Compute Credits Card */}
         <Card className="md:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
@@ -248,7 +257,6 @@ const Profile = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-4 space-y-6">
-            {/* Credits Summary */}
             <div className="space-y-4">
               <div className="rounded-lg bg-muted p-6">
                 <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
@@ -295,7 +303,6 @@ const Profile = () => {
           </CardContent>
         </Card>
 
-        {/* Credit Usage Breakdown */}
         <CreditUsageBreakdown className="md:col-span-3" />
       </div>
     </div>
