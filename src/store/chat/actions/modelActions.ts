@@ -1,6 +1,7 @@
 
 import { AI_MODELS } from "@/constants";
-import { AIModel, ChatStore } from "../types";
+import { AIModel } from "@/types"; // Updated import path to get AIModel from the correct location
+import { ChatStore } from "../types";
 import { StoreApi } from "zustand";
 
 export const selectModelAction = (set: Function) => (model: AIModel) => {
