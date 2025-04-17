@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Cpu, ArrowLeft, LogOut } from 'lucide-react';
+import { Cpu, ArrowLeft, LogOut, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -13,6 +13,7 @@ import { Progress } from '@/components/ui/progress';
 import CreditUsageBreakdown from '@/components/CreditUsageBreakdown';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Info } from "lucide-react";
+import RLSErrorAlert from '@/components/RLSErrorAlert';
 
 const Profile = () => {
   const { user, signOut } = useAuth();
@@ -22,6 +23,7 @@ const Profile = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [joinedDate, setJoinedDate] = useState<string>('');
   const [profileError, setProfileError] = useState<string | null>(null);
+  const [isRLSError, setIsRLSError] = useState(false);
 
   // Get user initials for avatar fallback
   const getUserInitials = () => {
@@ -84,11 +86,22 @@ const Profile = () => {
             if (profileError) {
               console.error('Error fetching profile data:', profileError);
               setProfileError(profileError.message);
-              toast({
-                title: "Profile Data Notice",
-                description: "Some profile data couldn't be retrieved. Using default values.",
-                variant: "default",
-              });
+              
+              // Check if it's an RLS infinite recursion error
+              if (profileError.message.includes('infinite recursion detected in policy')) {
+                setIsRLSError(true);
+                toast({
+                  title: "Database Permission Error",
+                  description: "There's an issue with the database security policies. Default values are being used.",
+                  variant: "destructive",
+                });
+              } else {
+                toast({
+                  title: "Profile Data Notice",
+                  description: "Some profile data couldn't be retrieved. Using default values.",
+                  variant: "default",
+                });
+              }
               // Set a default value for purchased credits
               setPurchasedCredits(10000); // Default value
             } else if (profileData) {
@@ -191,7 +204,9 @@ const Profile = () => {
         </Button>
       </div>
 
-      {profileError && (
+      {isRLSError ? (
+        <RLSErrorAlert />
+      ) : profileError ? (
         <Alert variant="warning">
           <Info className="h-4 w-4" />
           <AlertTitle>Profile Data Notice</AlertTitle>
@@ -199,7 +214,7 @@ const Profile = () => {
             There was an issue retrieving your complete profile data. Some information might be using default values.
           </AlertDescription>
         </Alert>
-      )}
+      ) : null}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* User Info Card */}
