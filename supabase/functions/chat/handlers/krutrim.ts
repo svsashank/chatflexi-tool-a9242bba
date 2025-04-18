@@ -16,7 +16,10 @@ export async function handleKrutrim(messageHistory: any[], content: string, mode
     // Add summarization hint to prompt better files handling
     enhancedContent = `${content}\n\nHere are the contents of the provided files:\n\n`;
     
-    // Process files more efficiently
+    // Process files more efficiently with a limit on total size
+    const MAX_TOTAL_FILE_SIZE = 50000; // Limiting total file content to improve performance
+    let totalSize = 0;
+    
     for (let i = 0; i < files.length; i++) {
       try {
         const fileContent = String(files[i]);
@@ -30,16 +33,27 @@ export async function handleKrutrim(messageHistory: any[], content: string, mode
         let extractedContent = '';
         
         if (contentMatch && contentMatch[1]) {
-          // Get only first 10,000 chars for better performance
-          extractedContent = contentMatch[1].substring(0, 10000);
-          if (contentMatch[1].length > 10000) {
+          // Calculate available size for this file
+          const availableSize = Math.max(1000, MAX_TOTAL_FILE_SIZE - totalSize);
+          // Get only first part for better performance
+          extractedContent = contentMatch[1].substring(0, availableSize);
+          totalSize += extractedContent.length;
+          
+          if (contentMatch[1].length > availableSize) {
             extractedContent += "... (content truncated for efficiency)";
           }
         } else {
-          extractedContent = fileContent;
+          extractedContent = fileContent.substring(0, 1000);
+          totalSize += extractedContent.length;
         }
         
         enhancedContent += `--- ${fileName} ---\n${extractedContent}\n\n`;
+        
+        // If we've reached our limit, stop processing more files
+        if (totalSize >= MAX_TOTAL_FILE_SIZE) {
+          enhancedContent += "... (additional files omitted for performance) ...\n\n";
+          break;
+        }
       } catch (error) {
         console.error(`Error processing file ${i}:`, error);
       }
@@ -61,9 +75,9 @@ export async function handleKrutrim(messageHistory: any[], content: string, mode
   ];
   
   try {
-    // Set fetch timeout
+    // Set fetch timeout - reduced to improve perceived responsiveness
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 50000); // 50-second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30-second timeout instead of 50
     
     const response = await fetch('https://cloud.olakrutrim.com/v1/chat/completions', {
       method: 'POST',
@@ -76,7 +90,8 @@ export async function handleKrutrim(messageHistory: any[], content: string, mode
         model: "DeepSeek-R1", // Hardcoded as per requirement
         messages: formattedMessages,
         temperature: 0.7,
-        max_tokens: 25000,
+        max_tokens: 16000, // Reduced from 25000 for faster responses
+        stream: false, // Ensure streaming is off for now
       })
     });
     

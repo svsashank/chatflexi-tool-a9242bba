@@ -1,4 +1,3 @@
-
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -45,11 +44,21 @@ export const generateResponseAction = (set: Function, get: Function) => async ()
     });
     
     try {
+      // Set a timeout to update UI with a progress indicator for better UX
+      const progressTimeout = setTimeout(() => {
+        set(state => ({
+          processingStatus: "thinking" // This will be used by MessageItem to show a thinking indicator
+        }));
+      }, 1000);
+      
       const aiResponse = await sendMessageToLLM(
         lastMessage.content,
         selectedModel,
         currentConversation.messages
       );
+      
+      // Clear the progress timeout
+      clearTimeout(progressTimeout);
       
       if (!aiResponse) {
         handleError('Failed to generate a response. Please try again.');
@@ -97,6 +106,7 @@ export const generateResponseAction = (set: Function, get: Function) => async ()
             : conv
         ),
         isLoading: false,
+        processingStatus: null // Reset processing status
       }));
 
       // Check for authentication before saving to database
@@ -104,8 +114,8 @@ export const generateResponseAction = (set: Function, get: Function) => async ()
 
       if (session?.user) {
         try {
-          // Save to database in the background - don't block the UI
-          saveMessageToDatabase(
+          // Use EdgeRuntime.waitUntil for background processing if available in runtime
+          const saveTask = saveMessageToDatabase(
             session.user.id, 
             currentConversationId, 
             newMessage, 
@@ -114,6 +124,17 @@ export const generateResponseAction = (set: Function, get: Function) => async ()
             computeCredits,
             lastMessage
           );
+          
+          // If we're in an environment with EdgeRuntime, use waitUntil
+          // This won't be available in browser, but will be in Supabase Edge Functions
+          if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
+            EdgeRuntime.waitUntil(saveTask);
+          } else {
+            // Otherwise just call the function without blocking UI
+            saveTask.catch(err => {
+              console.error('Background database save error:', err);
+            });
+          }
         } catch (dbError) {
           console.error('Database error:', dbError);
           toast.error('Failed to save message to database');
@@ -137,11 +158,14 @@ export const generateResponseAction = (set: Function, get: Function) => async ()
     const handleError = get().handleError;
     handleError('Failed to generate response. Please try again.');
   } finally {
-    set({ isLoading: false });
+    set({ 
+      isLoading: false,
+      processingStatus: null // Reset processing status
+    });
   }
 };
 
-// Separate function to save message to database to improve UI responsiveness
+// Separate function to save message to database asynchronously
 async function saveMessageToDatabase(
   userId: string, 
   conversationId: string, 
@@ -223,6 +247,7 @@ async function saveMessageToDatabase(
       Object.assign(messageInsertData, {
         web_search_results: message.webSearchResults
       });
+      console.log('Adding web search results to the database');
     }
     
     // Add file search results if they exist

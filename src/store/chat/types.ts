@@ -1,33 +1,40 @@
+import { AIModel } from "@/types/ai-models";
+import { Message } from "@/types/message";
+import { Conversation } from "@/types/conversation";
 
-import { Conversation as ConversationType, AIModel, Message } from '@/types';
-
-export type Conversation = ConversationType;
-
-export interface ChatStore {
+export type ChatStore = {
   conversations: Conversation[];
   currentConversationId: string | null;
   isLoading: boolean;
+  processingStatus: string | null; // Add processing status for detailed UI indicators
   selectedModel: AIModel;
-  processingUrls: string | null; // Add the URL processing state
+  processingUrls: string | null;
   
-  // Actions
-  setCurrentConversationId: (id: string) => Promise<void>;
-  createConversation: () => Promise<void>;
-  deleteConversation: (id: string) => Promise<void>;
-  updateConversationTitle: (id: string, title: string) => Promise<void>;
-  sendMessage: (
-    content: string, 
-    images?: string[], 
-    files?: string[]
-  ) => void;
-  generateResponse: () => Promise<void>;
-  regenerateMessage: () => Promise<void>;
+  // Model actions
   setSelectedModel: (model: AIModel) => void;
   initializeSelectedModel: () => void;
+  
+  // Message state actions
   setProcessingUrls: (message: string | null) => void;
-  clearConversations: () => void;
+  
+  // Message Actions
+  addMessage: (message: Message) => void;
+  sendMessage: (content: string, images?: string[], files?: string[]) => void;
+  regenerateMessage: () => void;
+  generateResponse: () => Promise<void>;
+  
+  // Conversation Actions
+  createConversation: () => Promise<string>;
+  setCurrentConversationId: (id: string) => void;
+  deleteConversation: (id: string) => void;
+  updateConversationTitle: (id: string, title: string) => void;
+  
+  // Database Actions
   loadConversationsFromDB: () => Promise<void>;
   loadMessagesForConversation: (conversationId: string) => Promise<void>;
+  
+  // State Management Actions
+  clearConversations: () => void;
   handleError: (message: string) => void;
-  retryRequest: () => Promise<void>; // Add retry action
-}
+  retryRequest: () => void;
+};

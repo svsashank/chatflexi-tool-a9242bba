@@ -32,6 +32,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   conversations: [],
   currentConversationId: null,
   isLoading: false,
+  processingStatus: null, // New field for detailed processing state
   selectedModel: AI_MODELS[0], // default to the first model
   processingUrls: null, // URL processing state
   
