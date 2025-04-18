@@ -5,167 +5,98 @@ import { sendMessageToLLM } from '@/services/llmService';
 import { calculateComputeCredits } from '@/utils/computeCredits';
 import { updateContextSummary } from '../utils';
 
-// Performance monitoring
-const perfMarkers = new Map();
-
 export const generateResponseAction = (set: Function, get: Function) => async () => {
+  // Prevent duplicate response generation
   if (get().isLoading) {
-    console.log("Already generating a response, skipping duplicate request");
+    console.log("Response generation already in progress");
     return;
   }
   
   set({ isLoading: true });
   
-  // Start performance timing
-  const perfId = `response-${Date.now()}`;
-  perfMarkers.set(perfId, performance.now());
-  
   try {
     const currentConversationId = get().currentConversationId;
     const currentConversation = get().conversations.find(c => c.id === currentConversationId);
     const selectedModel = get().selectedModel;
-    const handleError = get().handleError;
 
     if (!currentConversationId || !currentConversation) {
-      handleError('No active conversation found');
+      toast.error('No active conversation found');
+      set({ isLoading: false });
       return;
     }
 
     const lastMessage = currentConversation.messages[currentConversation.messages.length - 1];
     if (!lastMessage || lastMessage.role !== 'user') {
-      handleError('Please send a message first');
+      toast.error('Please send a message first');
+      set({ isLoading: false });
       return;
     }
 
-    console.log("Generating response for message:", {
-      content: lastMessage.content.substring(0, 50) + (lastMessage.content.length > 50 ? '...' : ''),
-      hasImages: lastMessage.images && lastMessage.images.length > 0,
-      hasFiles: lastMessage.files && lastMessage.files.length > 0,
-    });
-    
-    try {
-      // Set a timeout to update UI with a progress indicator for better UX
-      const progressTimeout = setTimeout(() => {
-        set(state => ({
-          processingStatus: "thinking" // This will be used by MessageItem to show a thinking indicator
-        }));
-      }, 1000);
-      
-      const aiResponse = await sendMessageToLLM(
-        lastMessage.content,
-        selectedModel,
-        currentConversation.messages
-      );
-      
-      // Clear the progress timeout
-      clearTimeout(progressTimeout);
-      
-      if (!aiResponse) {
-        handleError('Failed to generate a response. Please try again.');
-        return;
-      }
-      
-      if (aiResponse.content.startsWith('Error:')) {
-        handleError(aiResponse.content);
-        return;
-      }
+    const aiResponse = await sendMessageToLLM(
+      lastMessage.content,
+      selectedModel,
+      currentConversation.messages
+    );
 
-      // Extract token counts and calculate compute credits
-      const tokens = aiResponse.tokens || { input: 0, output: 0 };
-      const computeCredits = calculateComputeCredits(
-        tokens.input, 
-        tokens.output, 
-        selectedModel.id
-      );
-      
-      // Create the new message object with all necessary data
-      const newMessage = {
-        id: uuidv4(),
-        content: aiResponse.content,
-        role: 'assistant' as const,
-        model: selectedModel,
-        timestamp: new Date(),
-        tokens: tokens,
-        computeCredits: computeCredits,
-        webSearchResults: aiResponse.webSearchResults || [],
-        fileSearchResults: aiResponse.fileSearchResults || [],
-      };
+    const tokens = aiResponse.tokens || { input: 0, output: 0 };
+    const computeCredits = calculateComputeCredits(
+      tokens.input, 
+      tokens.output, 
+      selectedModel.id
+    );
 
-      const updatedContextSummary = updateContextSummary(currentConversation.contextSummary, newMessage);
+    const newMessage = {
+      id: uuidv4(),
+      content: aiResponse.content,
+      role: 'assistant' as const,
+      model: selectedModel,
+      timestamp: new Date(),
+      tokens,
+      computeCredits,
+      webSearchResults: aiResponse.webSearchResults || [],
+      fileSearchResults: aiResponse.fileSearchResults || [],
+    };
 
-      // Update state with the new message - do this first for better UX
-      set(state => ({
-        conversations: state.conversations.map(conv =>
-          conv.id === currentConversationId
-            ? {
+    const updatedContextSummary = updateContextSummary(currentConversation.contextSummary, newMessage);
+
+    // Update state with the new message
+    set(state => ({
+      conversations: state.conversations.map(conv =>
+        conv.id === currentConversationId
+          ? {
               ...conv,
               messages: [...conv.messages, newMessage],
               updatedAt: new Date(),
               contextSummary: updatedContextSummary,
             }
-            : conv
-        ),
-        isLoading: false,
-        processingStatus: null // Reset processing status
-      }));
+          : conv
+      ),
+      isLoading: false
+    }));
 
-      // Check for authentication before saving to database
-      const { data: { session } } = await supabase.auth.getSession();
-
-      if (session?.user) {
-        try {
-          // Use EdgeRuntime.waitUntil for background processing if available in runtime
-          const saveTask = saveMessageToDatabase(
-            session.user.id, 
-            currentConversationId, 
-            newMessage, 
-            selectedModel, 
-            currentConversation, 
-            computeCredits,
-            lastMessage
-          );
-          
-          // If we're in an environment with EdgeRuntime, use waitUntil
-          // This won't be available in browser, but will be in Supabase Edge Functions
-          if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
-            EdgeRuntime.waitUntil(saveTask);
-          } else {
-            // Otherwise just call the function without blocking UI
-            saveTask.catch(err => {
-              console.error('Background database save error:', err);
-            });
-          }
-        } catch (dbError) {
-          console.error('Database error:', dbError);
-          toast.error('Failed to save message to database');
-        }
-      } else {
-        console.warn("User not authenticated, skipping database save");
-      }
-      
-      // Log performance metrics
-      if (perfMarkers.has(perfId)) {
-        const duration = performance.now() - perfMarkers.get(perfId);
-        console.log(`Response generation completed in ${duration.toFixed(2)}ms`);
-        perfMarkers.delete(perfId);
-      }
-    } catch (error) {
-      console.error('Error in response generation:', error);
-      handleError('Failed to generate response. Please try again.');
+    // Asynchronously save to database without blocking UI
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      saveMessageToDatabase(
+        session.user.id, 
+        currentConversationId, 
+        newMessage, 
+        selectedModel, 
+        currentConversation, 
+        computeCredits,
+        lastMessage
+      ).catch(err => {
+        console.error('Background database save error:', err);
+      });
     }
   } catch (error) {
-    console.error('Error in generateResponseAction:', error);
-    const handleError = get().handleError;
-    handleError('Failed to generate response. Please try again.');
-  } finally {
-    set({ 
-      isLoading: false,
-      processingStatus: null // Reset processing status
-    });
+    console.error('Error in response generation:', error);
+    toast.error('Failed to generate response. Please try again.');
+    set({ isLoading: false });
   }
 };
 
-// Separate function to save message to database asynchronously
+// Existing saveMessageToDatabase function remains the same
 async function saveMessageToDatabase(
   userId: string, 
   conversationId: string, 

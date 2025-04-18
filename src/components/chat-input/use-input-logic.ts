@@ -1,10 +1,8 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { useChatStore } from '@/store';
 import { toast } from 'sonner';
 import { extractTextFromPDF } from '@/utils/pdfExtractor';
 
-// Track ongoing file processes to prevent duplicate work
 const processingFiles = new Set<string>();
 
 export const useInputLogic = () => {
@@ -26,7 +24,6 @@ export const useInputLogic = () => {
     processingUrls 
   } = useChatStore();
 
-  // Close attachment menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (attachmentMenuRef.current && !attachmentMenuRef.current.contains(event.target as Node)) {
@@ -102,15 +99,21 @@ export const useInputLogic = () => {
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files || files.length === 0) return;
+    if (!files) return;
 
     setProcessingFile(true);
     setProcessingUrls("Processing documents. Please wait...");
 
     let successCount = 0;
     let failCount = 0;
+
     const filesToProcess = Array.from(files).filter(file => {
-      // Check if we're already processing this file
+      if (file.size > 25 * 1024 * 1024) {
+        toast.warning(`File ${file.name} exceeds 25MB limit.`);
+        failCount++;
+        return false;
+      }
+      
       if (processingFiles.has(file.name + file.size)) {
         return false;
       }
@@ -119,54 +122,22 @@ export const useInputLogic = () => {
     });
 
     try {
-      // Process files in parallel for better performance
       await Promise.all(filesToProcess.map(async (file) => {
         try {
-          if (file.size > 10 * 1024 * 1024) {
-            setProcessingUrls(`File ${file.name} exceeds 10MB limit.`);
-            failCount++;
-            return;
-          }
+          let fileContent = '';
 
           if (file.type === 'application/pdf') {
             setProcessingUrls(`Extracting text from PDF: ${file.name}...`);
-            
-            try {
-              const pdfText = await extractTextFromPDF(file);
-              
-              if (pdfText.trim()) {
-                // Truncate to avoid memory issues
-                const maxLength = 100000; 
-                const truncatedText = pdfText.length > maxLength ? 
-                  pdfText.substring(0, maxLength) + '...(content truncated)' : 
-                  pdfText;
-                
-                const fileContent = `File: ${file.name}\nContent: ${truncatedText}`;
-                setUploadedFiles(prev => [...prev, fileContent]);
-                setProcessingUrls(`Successfully extracted text from ${file.name}`);
-                successCount++;
-              } else {
-                setProcessingUrls(`No text content found in ${file.name}`);
-                failCount++;
-              }
-            } catch (pdfError) {
-              console.error(`PDF extraction failed:`, pdfError);
-              setProcessingUrls(`Error extracting text from ${file.name}: ${pdfError instanceof Error ? pdfError.message : 'Unknown error'}`);
-              failCount++;
-            }
+            fileContent = await extractTextFromPDF(file);
           } else if (file.type.startsWith('text/')) {
-            const textContent = await file.text();
-            const maxLength = 100000;
-            const truncatedText = textContent.length > maxLength ? 
-              textContent.substring(0, maxLength) + '...(content truncated)' : 
-              textContent;
-            
-            const fileData = `File: ${file.name}\nContent: ${truncatedText}`;
+            fileContent = await file.text();
+          }
+
+          if (fileContent) {
+            const fileData = `File: ${file.name}\nContent: ${fileContent}`;
             setUploadedFiles(prev => [...prev, fileData]);
-            setProcessingUrls(`File ${file.name} uploaded successfully`);
             successCount++;
           } else {
-            setProcessingUrls(`File type ${file.type} content cannot be extracted. Only the filename will be used.`);
             setUploadedFiles(prev => [...prev, `File: ${file.name} (Binary content type: ${file.type})`]);
             successCount++;
           }
@@ -174,14 +145,10 @@ export const useInputLogic = () => {
           console.error(`Error processing file ${file.name}:`, error);
           failCount++;
         } finally {
-          // Remove file from processing set regardless of success/failure
           processingFiles.delete(file.name + file.size);
         }
       }));
     } finally {
-      // Clear input value to allow reuploading same file
-      if (imageInputRef.current) imageInputRef.current.value = '';
-      
       if (successCount > 0) {
         setProcessingUrls(`Successfully processed ${successCount} file(s)`);
       }
@@ -189,7 +156,6 @@ export const useInputLogic = () => {
         setProcessingUrls(`Failed to process ${failCount} file(s)`);
       }
       
-      // Clear processing message after a short delay
       setTimeout(() => setProcessingUrls(null), 2000);
       setProcessingFile(false);
       setShowAttachments(false);

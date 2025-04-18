@@ -1,6 +1,6 @@
-import { AIModel } from "@/types/ai-models";
-import { Message } from "@/types/message";
-import { Conversation } from "@/types/conversation";
+import { AIModel } from '@/types';
+import { Message } from '@/types';
+import { Conversation } from '@/types';
 
 export type ChatStore = {
   conversations: Conversation[];
