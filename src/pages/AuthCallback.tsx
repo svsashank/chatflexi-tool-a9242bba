@@ -5,6 +5,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useChatStore } from '@/store';
 import { toast } from '@/components/ui/use-toast';
 
+// Global key to track auth callback processing
+const AUTH_CALLBACK_PROCESSED_KEY = 'auth_callback_processed';
+
 const AuthCallback = () => {
   const navigate = useNavigate();
   const { loadConversationsFromDB, createConversation, clearConversations } = useChatStore();
@@ -19,8 +22,7 @@ const AuthCallback = () => {
     }
     
     // Flag to prevent duplicate processing across renders
-    const callbackProcessedKey = 'auth_callback_processed';
-    if (sessionStorage.getItem(callbackProcessedKey) === 'true') {
+    if (sessionStorage.getItem(AUTH_CALLBACK_PROCESSED_KEY) === 'true') {
       console.log("Auth callback already processed in this session, redirecting to home");
       navigate('/', { replace: true });
       return;
@@ -28,12 +30,15 @@ const AuthCallback = () => {
     
     // Mark as processed immediately to prevent race conditions
     callbackProcessedRef.current = true;
-    sessionStorage.setItem(callbackProcessedKey, 'true');
+    sessionStorage.setItem(AUTH_CALLBACK_PROCESSED_KEY, 'true');
     
     // Handle the OAuth callback
     const handleAuthCallback = async () => {
       try {
         console.log("Processing auth callback");
+        
+        // Use getSession instead of directly calling another auth method
+        // to minimize additional auth calls
         const { data, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -64,6 +69,7 @@ const AuthCallback = () => {
               await createConversation();
             }
             
+            // Redirect to home page
             navigate('/', { replace: true });
           } catch (err) {
             console.error('Error loading conversations:', err);
@@ -87,10 +93,6 @@ const AuthCallback = () => {
 
     handleAuthCallback();
     
-    // Clean up function
-    return () => {
-      // Nothing to clean up
-    };
   }, [navigate, loadConversationsFromDB, createConversation, clearConversations]);
 
   return (

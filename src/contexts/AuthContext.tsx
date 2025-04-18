@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -16,8 +17,12 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Use sessionStorage to track initialization across tab refreshes
+// Global flag to track auth initialization across the app
 const AUTH_INITIALIZED_KEY = 'auth_listener_initialized';
+// Global flag to track when toast was last shown
+const LAST_SIGNIN_TOAST_KEY = 'last_signin_toast';
+// Time window in milliseconds to prevent duplicate toasts (5 minutes)
+const TOAST_THROTTLE_MS = 5 * 60 * 1000;
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -53,16 +58,27 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, [loadConversationsFromDB, createConversation]);
 
+  // Function to check if we should show signin toast
+  const shouldShowSignInToast = () => {
+    const lastToastTime = localStorage.getItem(LAST_SIGNIN_TOAST_KEY);
+    
+    if (!lastToastTime) return true;
+    
+    const now = Date.now();
+    const timeSinceLastToast = now - parseInt(lastToastTime);
+    return timeSinceLastToast > TOAST_THROTTLE_MS;
+  };
+
   useEffect(() => {
     // Fix: Store the proper subscription object
-    let subscription: { subscription: any } | null = null;
+    let authSubscription: { subscription: any } | null = null;
     let isInitializing = !sessionStorage.getItem(AUTH_INITIALIZED_KEY);
 
     const initializeAuth = async () => {
       try {
         console.log("Initializing auth context");
 
-        // Set up auth state listener FIRST - Fix: Store the proper subscription object
+        // Set up auth state listener FIRST
         const { data } = supabase.auth.onAuthStateChange(
           async (event, newSession) => {
             console.log("Auth state change event:", event, !!newSession);
@@ -73,11 +89,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             
             if (event === 'SIGNED_IN' && newSession) {
               // Only show sign-in toast if this isn't the initial session retrieval
-              if (!isInitializing) {
+              // AND if we haven't shown a toast recently
+              if (!isInitializing && shouldShowSignInToast()) {
                 toast({
                   title: "Signed in successfully",
                   description: `Welcome${newSession.user?.user_metadata?.name ? `, ${newSession.user.user_metadata.name}` : ''}!`,
                 });
+                
+                // Update last toast time
+                localStorage.setItem(LAST_SIGNIN_TOAST_KEY, Date.now().toString());
               }
               
               // Safely load conversations using setTimeout to avoid Supabase deadlocks
@@ -102,10 +122,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           }
         );
         
-        // Store the subscription correctly - Fix: assign the correct data structure
-        subscription = { subscription: data.subscription };
+        // Store the subscription correctly
+        authSubscription = { subscription: data.subscription };
 
-        // THEN check for existing session
+        // THEN check for existing session, but only once
         const { data: { session: initialSession } } = await supabase.auth.getSession();
         setSession(initialSession);
         setUser(initialSession?.user ?? null);
@@ -126,12 +146,27 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
     };
 
-    initializeAuth();
+    // Only initialize auth if it hasn't been initialized yet
+    if (!sessionStorage.getItem(AUTH_INITIALIZED_KEY)) {
+      initializeAuth();
+    } else {
+      // Just get the current session without setting up a new listener
+      supabase.auth.getSession().then(({ data: { session: existingSession } }) => {
+        setSession(existingSession);
+        setUser(existingSession?.user ?? null);
+        setLoading(false);
+        
+        if (existingSession?.user && !conversationsLoadedRef.current) {
+          setTimeout(() => safeLoadConversations(), 0);
+        }
+      });
+    }
 
-    // Cleanup function - Fix: properly unsubscribe from auth listener
+    // Cleanup function
     return () => {
-      if (subscription?.subscription) {
-        subscription.subscription.unsubscribe();
+      // Only unsubscribe if we created a subscription in this instance
+      if (authSubscription?.subscription) {
+        authSubscription.subscription.unsubscribe();
       }
     };
   }, [toast, safeLoadConversations, clearConversations, createConversation]);

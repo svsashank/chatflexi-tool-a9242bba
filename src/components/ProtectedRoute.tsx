@@ -5,12 +5,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useChatStore } from '@/store';
 import { toast } from '@/components/ui/use-toast';
 
+// Flag to track if we've attempted to load conversations in this session
+const CONVERSATIONS_LOADED_KEY = 'conversations_loaded_protected_route';
+
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
   const { loadConversationsFromDB, createConversation, conversations } = useChatStore();
-
-  // Use sessionStorage to track if conversations have been loaded
-  const conversationsLoadedKey = 'conversations_loaded_protected_route';
   
   useEffect(() => {
     // Flag to prevent multiple operations in a single effect cycle
@@ -24,7 +24,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
       try {
         if (user && !loading) {
           // Check if we've already loaded conversations in this session
-          const alreadyLoaded = sessionStorage.getItem(conversationsLoadedKey);
+          const alreadyLoaded = sessionStorage.getItem(CONVERSATIONS_LOADED_KEY);
           
           if (alreadyLoaded === 'true') {
             console.log("ProtectedRoute: Conversations already loaded in this session");
@@ -51,10 +51,10 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
           }
           
           // Mark as loaded in this session
-          sessionStorage.setItem(conversationsLoadedKey, 'true');
+          sessionStorage.setItem(CONVERSATIONS_LOADED_KEY, 'true');
         } else if (!loading && !user) {
           // Clear the loaded flag when user is not authenticated
-          sessionStorage.removeItem(conversationsLoadedKey);
+          sessionStorage.removeItem(CONVERSATIONS_LOADED_KEY);
         }
       } catch (error) {
         console.error("Error initializing conversations:", error);
@@ -70,7 +70,8 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     };
     
     // Only run the initialization when auth state is settled (not loading)
-    if (!loading) {
+    // AND user is authenticated (prevent unnecessary calls when not logged in)
+    if (!loading && user) {
       initConversations();
     }
     

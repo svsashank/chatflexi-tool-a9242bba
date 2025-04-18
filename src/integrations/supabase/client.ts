@@ -16,8 +16,8 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     autoRefreshToken: true,
     detectSessionInUrl: true,
     storageKey: 'supabase.auth.token',
-    // Only enable debug logging in development
-    debug: process.env.NODE_ENV === 'development'
+    // Explicitly set no debug mode in production
+    debug: false
   }
 });
 
