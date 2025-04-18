@@ -1,163 +1,209 @@
-
 import { v4 as uuidv4 } from 'uuid';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { Conversation } from '@/types';
+import { ChatStore } from '../types';
 
-// Create a new conversation
-export const createConversationAction = (set, get) => async () => {
-  // Prevent duplicate conversation creation
-  if (get().isLoading) {
-    console.log("Conversation creation already in progress, skipping");
-    return get().currentConversationId;
-  }
-  
-  const newId = uuidv4();
-  const currentTime = new Date();
-  
-  // Update local state immediately
-  set((state) => ({
-    conversations: [
-      {
-        id: newId,
-        title: "New Conversation",
-        messages: [],
-        createdAt: currentTime,
-        updatedAt: currentTime,
-        contextSummary: ""
-      },
-      ...state.conversations,
-    ],
-    currentConversationId: newId,
-  }));
-  
-  // Check for authentication before saving to database
-  const { data: { session } } = await supabase.auth.getSession();
-  
-  if (session?.user) {
-    try {
+// Keep track of loading states to prevent duplicate requests
+const loadingStates = {
+  creating: false,
+  deleting: new Set<string>(),
+  updating: new Set<string>(),
+};
+
+export const createConversationAction = (set: Function, get: () => ChatStore) => async () => {
+  try {
+    // Prevent multiple simultaneous creation requests
+    if (loadingStates.creating) {
+      console.log("Already creating a conversation, please wait");
+      return;
+    }
+    
+    loadingStates.creating = true;
+    console.log("Creating new conversation...");
+    
+    const newConversation: Conversation = {
+      id: uuidv4(),
+      title: 'New Conversation',
+      messages: [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      contextSummary: '',
+    };
+
+    // Get current user
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (session?.user) {
+      // Store in database
       const { error } = await supabase
         .from('conversations')
-        .insert([{
-          id: newId,
+        .insert({
+          id: newConversation.id,
           user_id: session.user.id,
-          title: "New Conversation",
-          created_at: currentTime.toISOString(),
-          updated_at: currentTime.toISOString()
-        }]);
+          title: newConversation.title,
+          created_at: newConversation.createdAt.toISOString(),
+          updated_at: newConversation.updatedAt.toISOString()
+        });
         
       if (error) {
-        console.error("Error saving conversation to database:", error);
-        toast.error("Failed to save conversation to database");
+        console.error('Error creating conversation in database:', error);
+        toast.error('Could not create a new conversation');
+        loadingStates.creating = false;
+        return null;
       } else {
         console.log("Successfully saved new conversation to database");
       }
-    } catch (error) {
-      console.error("Error saving conversation to database:", error);
-      toast.error("Failed to save conversation to database");
     }
-  } else {
-    console.log("User not authenticated, skipping database save");
+
+    // Update local state first for better UX
+    set((state: ChatStore) => ({
+      conversations: [newConversation, ...state.conversations],
+      currentConversationId: newConversation.id,
+    }));
+
+    console.log("New conversation created and set as current with ID:", newConversation.id);
+    loadingStates.creating = false;
+    return newConversation.id;
+  } catch (error) {
+    console.error('Error creating conversation:', error);
+    toast.error('Could not create a new conversation');
+    loadingStates.creating = false;
+    return null;
   }
-  
-  console.log(`New conversation created and set as current with ID: ${newId}`);
-  return newId;
 };
 
-// Set the current conversation ID
-export const setCurrentConversationIdAction = (set, get) => (id) => {
-  const conversations = get().conversations;
-  const conversation = conversations.find(c => c.id === id);
+export const setCurrentConversationIdAction = (set: Function, get: () => ChatStore) => async (id: string) => {
+  if (!id) {
+    console.error("Invalid conversation ID provided");
+    return;
+  }
   
-  if (conversation) {
-    set({ 
-      currentConversationId: id,
-      isLoading: false 
+  console.log("Setting current conversation to:", id);
+  
+  // Verify the conversation exists in our state before setting it
+  const conversation = get().conversations.find(conv => conv.id === id);
+  if (!conversation) {
+    console.error(`Conversation with id ${id} not found in state`);
+    console.log("Available conversations:", get().conversations.map(c => c.id));
+    return;
+  }
+  
+  // Set the conversation as current immediately for better UX
+  set({ currentConversationId: id });
+  
+  try {
+    // Load messages in the background
+    await get().loadMessagesForConversation(id);
+  } catch (error) {
+    console.error(`Error loading messages for conversation ${id}:`, error);
+    // Don't revert the current conversation ID, as the user has already switched
+    // Just inform them of the error
+    toast.error('Could not load messages for this conversation');
+  }
+};
+
+export const deleteConversationAction = (set: Function, get: () => ChatStore) => async (id: string) => {
+  const { conversations, currentConversationId } = get();
+  
+  // Don't delete if it's the only conversation
+  if (conversations.length <= 1) {
+    console.log("Can't delete the only conversation");
+    toast.error("You need at least one conversation");
+    return;
+  }
+  
+  // Prevent multiple delete operations on the same conversation
+  if (loadingStates.deleting.has(id)) {
+    console.log(`Already deleting conversation ${id}, please wait`);
+    return;
+  }
+  
+  try {
+    loadingStates.deleting.add(id);
+    
+    // Optimistically update UI first for better UX
+    const updatedConversations = conversations.filter(conv => conv.id !== id);
+    const newCurrentId = id === currentConversationId ? updatedConversations[0].id : currentConversationId;
+    
+    set({
+      conversations: updatedConversations,
+      currentConversationId: newCurrentId,
     });
-  } else {
-    console.error(`Conversation with ID ${id} not found`);
-  }
-};
-
-// Delete a conversation
-export const deleteConversationAction = (set, get) => async (id) => {
-  const conversations = get().conversations;
-  const currentConversationId = get().currentConversationId;
-  
-  // Update state first (optimistic update)
-  const remainingConversations = conversations.filter(c => c.id !== id);
-  
-  set({ 
-    conversations: remainingConversations,
-    currentConversationId: id === currentConversationId 
-      ? (remainingConversations[0]?.id || null) 
-      : currentConversationId
-  });
-  
-  // Check for authentication before deleting from database
-  const { data: { session } } = await supabase.auth.getSession();
-  
-  if (session?.user) {
-    try {
-      // Delete messages first due to foreign key constraints
-      const { error: messagesError } = await supabase
-        .from('conversation_messages')
-        .delete()
-        .eq('conversation_id', id);
-      
-      if (messagesError) {
-        console.error("Error deleting conversation messages from database:", messagesError);
-      }
-      
-      // Then delete the conversation
-      const { error: conversationError } = await supabase
-        .from('conversations')
-        .delete()
-        .eq('id', id)
-        .eq('user_id', session.user.id);
-      
-      if (conversationError) {
-        console.error("Error deleting conversation from database:", conversationError);
-        toast.error("Failed to delete conversation from database");
-      }
-    } catch (error) {
-      console.error("Error deleting conversation from database:", error);
-      toast.error("Failed to delete conversation from database");
-    }
-  }
-  
-  // If we deleted the current conversation, create a new one if there are none left
-  if (id === currentConversationId && remainingConversations.length === 0) {
-    await get().createConversation();
-  }
-};
-
-// Update the title of a conversation
-export const updateConversationTitleAction = (set, get) => async (id, title) => {
-  // Update state
-  set(state => ({
-    conversations: state.conversations.map(c =>
-      c.id === id ? { ...c, title, updatedAt: new Date() } : c
-    )
-  }));
-  
-  // Check for authentication before updating in database
-  const { data: { session } } = await supabase.auth.getSession();
-  
-  if (session?.user) {
-    try {
+    
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (session?.user) {
+      // Delete from database
       const { error } = await supabase
         .from('conversations')
-        .update({ title, updated_at: new Date().toISOString() })
+        .delete()
         .eq('id', id)
         .eq('user_id', session.user.id);
-      
+        
       if (error) {
-        console.error("Error updating conversation title in database:", error);
-        toast.error("Failed to update conversation title in database");
+        console.error('Error deleting conversation from database:', error);
+        
+        // Revert the change if database update fails
+        set({ conversations });
+        toast.error('Could not delete conversation');
+        loadingStates.deleting.delete(id);
+        return;
+      } else {
+        console.log("Successfully deleted conversation from database");
+        toast.success('Conversation deleted');
       }
-    } catch (error) {
-      console.error("Error updating conversation title in database:", error);
-      toast.error("Failed to update conversation title in database");
     }
+    
+    console.log("Conversation deleted. New current conversation:", newCurrentId);
+    loadingStates.deleting.delete(id);
+  } catch (error) {
+    console.error('Error deleting conversation:', error);
+    toast.error('Could not delete conversation');
+    loadingStates.deleting.delete(id);
+  }
+};
+
+export const updateConversationTitleAction = (set: Function, get: () => ChatStore) => async (id: string, title: string) => {
+  if (loadingStates.updating.has(id)) {
+    console.log(`Already updating conversation ${id}, please wait`);
+    return;
+  }
+  
+  try {
+    loadingStates.updating.add(id);
+    
+    // Update locally first for responsive UI
+    set((state: ChatStore) => ({
+      conversations: state.conversations.map(conv => 
+        conv.id === id ? { ...conv, title, updatedAt: new Date() } : conv
+      )
+    }));
+    
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (session?.user) {
+      const { error } = await supabase
+        .from('conversations')
+        .update({ 
+          title,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .eq('user_id', session.user.id);
+        
+      if (error) {
+        console.error('Error updating conversation title:', error);
+        toast.error('Could not update conversation title');
+      } else {
+        console.log("Successfully updated conversation title");
+      }
+    }
+    
+    loadingStates.updating.delete(id);
+  } catch (error) {
+    console.error('Error updating conversation title:', error);
+    toast.error('Could not update conversation title');
+    loadingStates.updating.delete(id);
   }
 };

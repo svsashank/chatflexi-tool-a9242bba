@@ -1,16 +1,44 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 import { Message, AIModel, Conversation } from "@/types";
 import { ChatStore } from "../types";
+
+// Global cache that persists between component renders
+const conversationsLoadState = {
+  loaded: false,
+  loading: false,
+  lastError: null,
+  lastLoadTime: 0
+};
 
 // Track which conversations have already had their messages loaded
 const loadedMessagesCache = new Set<string>();
 // Track pending load requests to prevent duplicates
 const pendingLoads = new Map<string, Promise<void>>();
 
+// How frequently we should allow refreshing data from the database (in milliseconds)
+const REFRESH_THRESHOLD = 60000; // 1 minute
+
 export const loadConversationsFromDBAction = (set: Function, get: () => ChatStore) => async () => {
   try {
+    // Prevent multiple simultaneous calls
+    if (conversationsLoadState.loading) {
+      console.log("Already loading conversations, ignoring duplicate request");
+      return;
+    }
+    
+    // Check if we loaded recently and don't need to reload
+    const now = Date.now();
+    const timeSinceLastLoad = now - conversationsLoadState.lastLoadTime;
+    
+    if (conversationsLoadState.loaded && 
+        timeSinceLastLoad < REFRESH_THRESHOLD && 
+        get().conversations.length > 0) {
+      console.log(`Conversations were loaded ${timeSinceLastLoad}ms ago, skipping reload`);
+      return;
+    }
+    
     // Get current user session
     const { data: { session } } = await supabase.auth.getSession();
     const userId = session?.user?.id;
@@ -20,12 +48,8 @@ export const loadConversationsFromDBAction = (set: Function, get: () => ChatStor
       return;
     }
     
-    // If we already have conversations, don't reload them
-    if (get().conversations.length > 0) {
-      console.log("Already have conversations in state, skipping database load");
-      return;
-    }
-    
+    // Set loading state
+    conversationsLoadState.loading = true;
     console.log("Loading conversations from database for user:", userId);
     
     // Use efficient query with pagination if there are many conversations
@@ -38,7 +62,10 @@ export const loadConversationsFromDBAction = (set: Function, get: () => ChatStor
     
     if (error) {
       console.error("Error fetching conversations:", error);
-      throw error;
+      conversationsLoadState.lastError = error;
+      conversationsLoadState.loading = false;
+      toast.error('Failed to load conversations');
+      return;
     }
     
     if (data) {
@@ -59,18 +86,30 @@ export const loadConversationsFromDBAction = (set: Function, get: () => ChatStor
         set({ currentConversationId: loadedConversations[0].id });
         
         // Preload messages for the first conversation for better UX
-        await loadMessagesForConversationAction(set, get)(loadedConversations[0].id);
+        try {
+          await loadMessagesForConversationAction(set, get)(loadedConversations[0].id);
+        } catch (msgError) {
+          console.error("Failed to preload messages for first conversation:", msgError);
+        }
       }
       
+      // Update loading state
+      conversationsLoadState.loaded = true;
+      conversationsLoadState.lastLoadTime = now;
+      conversationsLoadState.loading = false;
       console.log(`Successfully loaded ${loadedConversations.length} conversations from database`);
+    } else {
+      // Handle case where no conversations were found
+      conversationsLoadState.loaded = true;
+      conversationsLoadState.lastLoadTime = now;
+      conversationsLoadState.loading = false;
+      console.log("No conversations found in database");
     }
   } catch (error) {
     console.error("Error loading conversations from database:", error);
-    toast({
-      title: 'Error',
-      description: 'Failed to load conversations',
-      variant: 'destructive',
-    });
+    conversationsLoadState.lastError = error;
+    conversationsLoadState.loading = false;
+    toast.error('Failed to load conversations');
   }
 };
 
@@ -83,42 +122,52 @@ export const loadMessagesForConversationAction = (set: Function, get: () => Chat
     
     // Check if we've already loaded messages for this conversation in this session
     if (loadedMessagesCache.has(conversationId)) {
-      console.log(`Already loaded messages for conversation ${conversationId} in this session, skipping load`);
-      return;
+      const existingMessages = get().conversations.find(c => c.id === conversationId)?.messages;
+      if (existingMessages?.length > 0) {
+        console.log(`Already loaded ${existingMessages.length} messages for conversation ${conversationId}, using cached data`);
+        return;
+      } else {
+        console.log(`Cache marked messages as loaded but none found, reloading for conversation ${conversationId}`);
+      }
     }
     
     // Check if we're already loading messages for this conversation
     if (pendingLoads.has(conversationId)) {
       console.log(`Already loading messages for conversation ${conversationId}, waiting for completion`);
-      await pendingLoads.get(conversationId);
-      return;
-    }
-    
-    // Check if we already have messages for this conversation
-    const existingConversation = get().conversations.find(c => c.id === conversationId);
-    if (existingConversation?.messages?.length > 0) {
-      console.log(`Already have ${existingConversation.messages.length} messages for conversation ${conversationId}, skipping load`);
-      loadedMessagesCache.add(conversationId);
-      return;
+      try {
+        await pendingLoads.get(conversationId);
+        return;
+      } catch (e) {
+        console.error("Error waiting for pending load:", e);
+        // Continue with a fresh load attempt
+      }
     }
     
     // Create a promise for this load operation
     const loadPromise = (async () => {
       console.log(`Loading messages for conversation ${conversationId}...`);
       
-      const { data: messages, error } = await supabase
+      // Use a timeout to prevent infinite waiting
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error("Message loading timed out")), 10000);
+      });
+      
+      // The actual database query
+      const queryPromise = supabase
         .from('conversation_messages')
         .select('*')
         .eq('conversation_id', conversationId)
         .order('created_at', { ascending: true });
       
+      // Race the timeout against the actual query
+      const { data: messages, error } = await Promise.race([
+        queryPromise,
+        timeoutPromise.then(() => { throw new Error("Message loading timed out"); })
+      ]) as any;
+      
       if (error) {
         console.error(`Error loading messages for conversation ${conversationId}:`, error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load messages',
-          variant: 'destructive',
-        });
+        toast.error('Failed to load messages');
         return;
       }
       
@@ -162,15 +211,20 @@ export const loadMessagesForConversationAction = (set: Function, get: () => Chat
           return formattedMessage;
         });
         
-        set((state: any) => ({
-          conversations: state.conversations.map((conv: Conversation) =>
-            conv.id === conversationId
-              ? { ...conv, messages: formattedMessages }
-              : conv
-          ),
-        }));
-        
-        console.log(`Updated state with ${formattedMessages.length} messages for conversation ${conversationId}`);
+        // Check if the conversation still exists in state before updating
+        if (get().conversations.some(conv => conv.id === conversationId)) {
+          set((state: any) => ({
+            conversations: state.conversations.map((conv: Conversation) =>
+              conv.id === conversationId
+                ? { ...conv, messages: formattedMessages }
+                : conv
+            ),
+          }));
+          
+          console.log(`Updated state with ${formattedMessages.length} messages for conversation ${conversationId}`);
+        } else {
+          console.warn(`Conversation ${conversationId} no longer exists in state, skipping message update`);
+        }
       } else {
         console.log(`No messages found for conversation ${conversationId}`);
       }
@@ -183,20 +237,52 @@ export const loadMessagesForConversationAction = (set: Function, get: () => Chat
     pendingLoads.set(conversationId, loadPromise);
     
     // Wait for it to complete
-    await loadPromise;
-    
-    // Remove from pending loads
-    pendingLoads.delete(conversationId);
+    try {
+      await loadPromise;
+    } catch (error) {
+      console.error(`Error loading messages for conversation ${conversationId}:`, error);
+      toast.error('Failed to load messages');
+    } finally {
+      // Remove from pending loads
+      pendingLoads.delete(conversationId);
+    }
     
   } catch (error) {
     console.error(`Error in loadMessagesForConversation:`, error);
     // Remove from pending loads in case of error
     pendingLoads.delete(conversationId);
     
-    toast({
-      title: 'Error',
-      description: 'Failed to load messages',
-      variant: 'destructive',
-    });
+    toast.error('Failed to load messages');
+  }
+};
+
+// Explicitly clear the conversation cache
+export const clearConversationCache = () => {
+  conversationsLoadState.loaded = false;
+  conversationsLoadState.lastLoadTime = 0;
+  loadedMessagesCache.clear();
+  pendingLoads.clear();
+  console.log("Conversation cache cleared");
+};
+
+// Add this action to the store
+export const refreshConversationsAction = (set: Function, get: () => ChatStore) => async () => {
+  try {
+    // Force refresh by clearing cache first
+    clearConversationCache();
+    
+    // Then reload
+    await loadConversationsFromDBAction(set, get)();
+    
+    // If we have a current conversation, reload its messages
+    const currentId = get().currentConversationId;
+    if (currentId) {
+      await loadMessagesForConversationAction(set, get)(currentId);
+    }
+    
+    toast.success("Conversations refreshed");
+  } catch (error) {
+    console.error("Error refreshing conversations:", error);
+    toast.error("Failed to refresh conversations");
   }
 };

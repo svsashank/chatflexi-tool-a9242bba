@@ -18,6 +18,7 @@ import {
 import {
   loadConversationsFromDBAction,
   loadMessagesForConversationAction,
+  refreshConversationsAction,
 } from './actions/dataActions';
 import {
   clearConversationsAction, 
@@ -32,9 +33,9 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   conversations: [],
   currentConversationId: null,
   isLoading: false,
-  processingStatus: null, // New field for detailed processing state
-  selectedModel: AI_MODELS[0], // default to the first model
-  processingUrls: null, // URL processing state
+  processingStatus: null,
+  selectedModel: AI_MODELS[0],
+  processingUrls: null,
   
   // Model actions
   setSelectedModel: selectModelAction(set),
@@ -47,21 +48,18 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   addMessage: addMessageAction(set, get),
   sendMessage: createSendMessageAction(set, get),
   regenerateMessage: createRegenerateMessageAction(set, get),
-  generateResponse: async () => await generateResponseAction(set, get)(),
+  generateResponse: generateResponseAction(set, get),
   
   // Conversation Actions
-  createConversation: async () => {
-    const id = await createConversationAction(set, get)();
-    return id;
-  },
+  createConversation: createConversationAction(set, get),
   setCurrentConversationId: setCurrentConversationIdAction(set, get),
   deleteConversation: deleteConversationAction(set, get),
   updateConversationTitle: updateConversationTitleAction(set, get),
   
   // Database Actions
-  loadConversationsFromDB: async () => loadConversationsFromDBAction(set, get)(),
-  loadMessagesForConversation: async (conversationId: string) => 
-    loadMessagesForConversationAction(set, get)(conversationId),
+  loadConversationsFromDB: loadConversationsFromDBAction(set, get),
+  loadMessagesForConversation: loadMessagesForConversationAction(set, get),
+  refreshConversations: refreshConversationsAction(set, get),
   
   // State Management Actions
   clearConversations: clearConversationsAction(set),

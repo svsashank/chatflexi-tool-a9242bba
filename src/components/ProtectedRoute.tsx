@@ -1,20 +1,21 @@
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useChatStore } from '@/store';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from 'sonner';
 
-// Don't use localStorage for this flag anymore, track it in memory
-const hasLoadedConversations = new Set<string>();
+// Global flag to track initialization across route changes
+const initializedUsers = new Set<string>();
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
   const { loadConversationsFromDB, createConversation, conversations } = useChatStore();
   const initAttemptedRef = useRef(false);
+  const [isInitializing, setIsInitializing] = useState(false);
   
   useEffect(() => {
-    // Skip if already attempted in this component instance or user is not authenticated
+    // Skip if already attempted in this component instance or user is not authenticated or still loading
     if (initAttemptedRef.current || !user || loading) {
       return;
     }
@@ -24,15 +25,16 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     
     const initConversations = async () => {
       try {
-        // Check if we've already loaded conversations for this user
-        if (hasLoadedConversations.has(user.id)) {
-          console.log(`ProtectedRoute: Conversations already loaded for user ${user.id}`);
+        // Check if we've already initialized this user in the current session
+        if (initializedUsers.has(user.id)) {
+          console.log(`ProtectedRoute: User ${user.id} already initialized`);
           return;
         }
         
+        setIsInitializing(true);
         console.log("ProtectedRoute: Initializing conversations for authenticated user");
         
-        // Only load conversations if we don't already have them
+        // Load conversations if we don't already have them
         if (conversations.length === 0) {
           console.log("No conversations in state, loading from database");
           await loadConversationsFromDB();
@@ -46,20 +48,18 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
             await createConversation();
           }
           
-          // Mark as loaded for this user
-          hasLoadedConversations.add(user.id);
+          // Mark as initialized for this user
+          initializedUsers.add(user.id);
         } else {
           console.log(`Already have ${conversations.length} conversations in state, not reloading`);
-          // Still mark as loaded
-          hasLoadedConversations.add(user.id);
+          // Still mark as initialized
+          initializedUsers.add(user.id);
         }
       } catch (error) {
         console.error("Error initializing conversations:", error);
-        toast({
-          title: 'Error',
-          description: 'Could not load your conversations',
-          variant: 'destructive',
-        });
+        toast.error('Could not load your conversations. Please try refreshing the page.');
+      } finally {
+        setIsInitializing(false);
       }
     };
     
@@ -67,6 +67,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     
   }, [user, loading, loadConversationsFromDB, createConversation, conversations]);
 
+  // Show loading state while auth is being resolved
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -75,10 +76,22 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     );
   }
 
+  // Show initializing state while conversations are being loaded
+  if (user && isInitializing) {
+    return (
+      <div className="flex h-screen items-center justify-center flex-col">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
+        <p className="text-sm text-muted-foreground">Loading your conversations...</p>
+      </div>
+    );
+  }
+
+  // Redirect to auth if no user
   if (!user) {
     return <Navigate to="/auth" replace />;
   }
 
+  // Render children when authenticated and initialization is complete
   return <>{children}</>;
 };
 
