@@ -15,13 +15,13 @@ const AuthCallback = () => {
   const callbackProcessedRef = useRef(false);
 
   useEffect(() => {
-    // Flag to prevent duplicate processing with a ref
+    // Skip if already processed in this component instance
     if (callbackProcessedRef.current) {
       console.log("Auth callback already processed by this component instance");
       return;
     }
     
-    // Flag to prevent duplicate processing across renders
+    // Skip if already processed in this session
     if (sessionStorage.getItem(AUTH_CALLBACK_PROCESSED_KEY) === 'true') {
       console.log("Auth callback already processed in this session, redirecting to home");
       navigate('/', { replace: true });
@@ -37,8 +37,7 @@ const AuthCallback = () => {
       try {
         console.log("Processing auth callback");
         
-        // Use getSession instead of directly calling another auth method
-        // to minimize additional auth calls
+        // Use getSession to check if authentication was successful
         const { data, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -54,30 +53,10 @@ const AuthCallback = () => {
         
         if (data.session) {
           console.log("Auth callback successful, loading conversations");
-          try {
-            // First, reset the conversation state to clear any existing unauthenticated conversations
-            clearConversations();
-            
-            // Then load user's conversations after successful authentication
-            await loadConversationsFromDB();
-            
-            // Check current state after loading
-            const currentConversations = useChatStore.getState().conversations;
-            
-            // Create a new conversation if none were loaded
-            if (currentConversations.length === 0) {
-              await createConversation();
-            }
-            
-            // Redirect to home page
-            navigate('/', { replace: true });
-          } catch (err) {
-            console.error('Error loading conversations:', err);
-            // Still navigate to home even if conversation loading fails
-            // The ProtectedRoute will try again
-            navigate('/', { replace: true });
-          }
+          // Navigate first to avoid multiple redirects - the ProtectedRoute will handle loading conversations
+          navigate('/', { replace: true });
         } else {
+          console.log("No session found after auth callback");
           navigate('/auth', { replace: true });
         }
       } catch (err) {

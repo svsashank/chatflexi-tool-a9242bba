@@ -1,4 +1,5 @@
-import React, { createContext, useContext } from 'react';
+
+import React, { createContext, useContext, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
@@ -20,12 +21,15 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const { user, session, loading } = useAuthInitialization();
   const { toast } = useToast();
-  const { createConversation, loadConversationsFromDB, clearConversations } = useChatStore();
+  // Destructure only what we need - prevent unnecessary dependency on the whole store
+  const { createConversation, loadConversationsFromDB } = useChatStore();
 
+  // Login function - no need to manage state as the auth listener will handle it
   const signIn = async (email: string, password: string) => {
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
+      // Success toast displayed only once after successful auth state change
     } catch (error: any) {
       toast({
         title: "Sign in failed",

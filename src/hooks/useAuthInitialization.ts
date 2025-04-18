@@ -1,66 +1,62 @@
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Session, User } from '@supabase/supabase-js';
 
+// Use a consistent key across components
 const AUTH_INITIALIZED_KEY = 'auth_listener_initialized';
 
 export const useAuthInitialization = () => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-
-  const initializeAuth = useCallback(async () => {
-    // Prevent multiple initializations
-    if (sessionStorage.getItem(AUTH_INITIALIZED_KEY) === 'true') {
-      console.log('Auth already initialized, skipping');
+  // Use a ref to track initialization across renders
+  const isInitializedRef = useRef(false);
+  
+  useEffect(() => {
+    // Skip if already initialized in this component instance
+    if (isInitializedRef.current) {
       return;
     }
-
-    try {
-      // Set up auth state listener
-      const { data: { subscription } } = supabase.auth.onAuthStateChange(
-        (event, newSession) => {
-          // Only update if session has actually changed
-          if (JSON.stringify(session) !== JSON.stringify(newSession)) {
-            setSession(newSession);
-            setUser(newSession?.user ?? null);
-          }
-        }
-      );
-
-      // Check for existing session
-      const { data: { session: initialSession } } = await supabase.auth.getSession();
-      
-      // Update state only if session exists and is different
-      if (initialSession && JSON.stringify(session) !== JSON.stringify(initialSession)) {
-        setSession(initialSession);
-        setUser(initialSession.user);
+    
+    // Mark as initialized in this component instance
+    isInitializedRef.current = true;
+    
+    let cleanup: (() => void) | undefined;
+    
+    const initializeAuth = async () => {
+      try {
+        // First set up the auth state listener
+        const { data } = supabase.auth.onAuthStateChange((event, newSession) => {
+          console.log(`Auth state changed: ${event}`);
+          setSession(newSession);
+          setUser(newSession?.user ?? null);
+        });
+        
+        // Then check for an existing session
+        const { data: sessionData } = await supabase.auth.getSession();
+        setSession(sessionData.session);
+        setUser(sessionData.session?.user ?? null);
+        
+        // Store cleanup function
+        cleanup = data.subscription.unsubscribe;
+      } catch (error) {
+        console.error('Auth initialization error:', error);
+      } finally {
+        // Always set loading to false regardless of outcome
+        setLoading(false);
       }
-
-      // Mark as initialized
-      sessionStorage.setItem(AUTH_INITIALIZED_KEY, 'true');
-      
-      setLoading(false);
-
-      // Return unsubscribe function
-      return () => {
-        subscription.unsubscribe();
-        sessionStorage.removeItem(AUTH_INITIALIZED_KEY);
-      };
-
-    } catch (error) {
-      console.error('Auth initialization error:', error);
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    const cleanup = initializeAuth();
-    return () => {
-      cleanup.then(unsubscribe => unsubscribe && unsubscribe());
     };
-  }, [initializeAuth]);
+    
+    initializeAuth();
+    
+    // Return cleanup function to unsubscribe when component unmounts
+    return () => {
+      if (cleanup) {
+        cleanup();
+      }
+    };
+  }, []); // Empty dependency array - only run once
 
   return { user, session, loading };
 };
