@@ -1,15 +1,13 @@
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Session, User } from '@supabase/supabase-js';
-
-// Use a consistent key across components
-const AUTH_INITIALIZED_KEY = 'auth_listener_initialized';
 
 export const useAuthInitialization = () => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  
   // Use a ref to track initialization across renders
   const isInitializedRef = useRef(false);
   
@@ -26,24 +24,41 @@ export const useAuthInitialization = () => {
     
     const initializeAuth = async () => {
       try {
+        // Set loading state
+        setLoading(true);
+        
+        console.log("Initializing auth state");
+        
         // First set up the auth state listener
         const { data } = supabase.auth.onAuthStateChange((event, newSession) => {
           console.log(`Auth state changed: ${event}`);
+          
+          // Update state with the new session
           setSession(newSession);
           setUser(newSession?.user ?? null);
+          
+          // Complete loading once we have a definitive auth state
+          if (event !== 'INITIAL_SESSION') {
+            setLoading(false);
+          }
         });
         
         // Then check for an existing session
         const { data: sessionData } = await supabase.auth.getSession();
-        setSession(sessionData.session);
-        setUser(sessionData.session?.user ?? null);
+        
+        // Only set session if we got data back
+        if (sessionData) {
+          setSession(sessionData.session);
+          setUser(sessionData.session?.user ?? null);
+        }
         
         // Store cleanup function
         cleanup = data.subscription.unsubscribe;
+        
+        // Complete loading after initial check
+        setLoading(false);
       } catch (error) {
         console.error('Auth initialization error:', error);
-      } finally {
-        // Always set loading to false regardless of outcome
         setLoading(false);
       }
     };
@@ -53,6 +68,7 @@ export const useAuthInitialization = () => {
     // Return cleanup function to unsubscribe when component unmounts
     return () => {
       if (cleanup) {
+        console.log("Cleaning up auth listener");
         cleanup();
       }
     };

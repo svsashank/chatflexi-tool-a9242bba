@@ -6,7 +6,10 @@ import { ChatStore } from "../types";
 
 export const loadConversationsFromDBAction = (set: Function, get: () => ChatStore) => async () => {
   try {
-    const userId = localStorage.getItem('userId');
+    // Get current user session
+    const { data: { session } } = await supabase.auth.getSession();
+    const userId = session?.user?.id;
+    
     if (!userId) {
       console.warn("No user ID found, skipping database load");
       return;
@@ -29,7 +32,7 @@ export const loadConversationsFromDBAction = (set: Function, get: () => ChatStor
       const loadedConversations = data.map((dbConversation: any) => ({
         id: dbConversation.id,
         title: dbConversation.title,
-        messages: [], // Messages will be loaded separately
+        messages: [], // Messages will be loaded separately when needed
         createdAt: new Date(dbConversation.created_at),
         updatedAt: new Date(dbConversation.updated_at),
         contextSummary: '',
@@ -39,6 +42,9 @@ export const loadConversationsFromDBAction = (set: Function, get: () => ChatStor
       
       if (loadedConversations.length > 0 && !get().currentConversationId) {
         set({ currentConversationId: loadedConversations[0].id });
+        
+        // Preload messages for the first conversation for better UX
+        await loadMessagesForConversationAction(set, get)(loadedConversations[0].id);
       }
       
       console.log(`Successfully loaded ${loadedConversations.length} conversations from database`);
@@ -57,6 +63,13 @@ export const loadMessagesForConversationAction = (set: Function, get: () => Chat
   try {
     if (!conversationId) {
       console.log("No conversation ID provided, skipping message load");
+      return;
+    }
+    
+    // Check if we already have messages for this conversation
+    const existingConversation = get().conversations.find(c => c.id === conversationId);
+    if (existingConversation?.messages?.length > 0) {
+      console.log(`Already have ${existingConversation.messages.length} messages for conversation ${conversationId}, skipping load`);
       return;
     }
     
@@ -105,18 +118,14 @@ export const loadMessagesForConversationAction = (set: Function, get: () => Chat
         
         if (message.images && message.images.length > 0) {
           formattedMessage.images = message.images;
-          console.log(`Found ${message.images.length} images for message ${message.id}`);
         }
         
         if (message.web_search_results) {
           formattedMessage.webSearchResults = message.web_search_results;
-          console.log(`Found web search results for message ${message.id}:`, 
-            JSON.stringify(message.web_search_results).substring(0, 100) + '...');
         }
         
         if (message.file_search_results) {
           formattedMessage.fileSearchResults = message.file_search_results;
-          console.log(`Found file search results for message ${message.id}`);
         }
         
         return formattedMessage;

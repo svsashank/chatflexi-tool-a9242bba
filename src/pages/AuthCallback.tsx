@@ -5,12 +5,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useChatStore } from '@/store';
 import { toast } from '@/components/ui/use-toast';
 
-// Global key to track auth callback processing
-const AUTH_CALLBACK_PROCESSED_KEY = 'auth_callback_processed';
-
 const AuthCallback = () => {
   const navigate = useNavigate();
-  const { loadConversationsFromDB, createConversation, clearConversations } = useChatStore();
+  const { loadConversationsFromDB, createConversation } = useChatStore();
   // Use a ref to track if the callback has been processed
   const callbackProcessedRef = useRef(false);
 
@@ -21,16 +18,8 @@ const AuthCallback = () => {
       return;
     }
     
-    // Skip if already processed in this session
-    if (sessionStorage.getItem(AUTH_CALLBACK_PROCESSED_KEY) === 'true') {
-      console.log("Auth callback already processed in this session, redirecting to home");
-      navigate('/', { replace: true });
-      return;
-    }
-    
     // Mark as processed immediately to prevent race conditions
     callbackProcessedRef.current = true;
-    sessionStorage.setItem(AUTH_CALLBACK_PROCESSED_KEY, 'true');
     
     // Handle the OAuth callback
     const handleAuthCallback = async () => {
@@ -52,8 +41,9 @@ const AuthCallback = () => {
         }
         
         if (data.session) {
-          console.log("Auth callback successful, loading conversations");
-          // Navigate first to avoid multiple redirects - the ProtectedRoute will handle loading conversations
+          console.log("Auth callback successful, navigating to home");
+          
+          // Navigate to the home page - conversation loading will be handled by the ProtectedRoute
           navigate('/', { replace: true });
         } else {
           console.log("No session found after auth callback");
@@ -72,7 +62,7 @@ const AuthCallback = () => {
 
     handleAuthCallback();
     
-  }, [navigate, loadConversationsFromDB, createConversation, clearConversations]);
+  }, [navigate, loadConversationsFromDB, createConversation]);
 
   return (
     <div className="flex h-screen w-full items-center justify-center">

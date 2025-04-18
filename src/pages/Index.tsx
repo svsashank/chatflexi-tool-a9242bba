@@ -1,5 +1,5 @@
 
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import ChatContainer from "@/components/ChatContainer";
 import { useChatStore } from "@/store";
 import { useAuth } from "@/contexts/AuthContext";
@@ -11,12 +11,15 @@ const Index = () => {
     currentConversationId, 
     loadMessagesForConversation,
     conversations,
-    // We removed the initializeSelectedModel usage here since it's only needed once in App.tsx
   } = useChatStore();
+  
+  // Track if we've already loaded conversations in this component instance
+  const loadedRef = useRef(false);
 
   // Load conversations when the user is authenticated and the page loads
   useEffect(() => {
-    if (user) {
+    if (user && !loadedRef.current) {
+      loadedRef.current = true;
       console.log("Index page: Loading conversations for authenticated user");
       loadConversationsFromDB().catch(err => {
         console.error("Failed to load conversations:", err);
@@ -28,7 +31,7 @@ const Index = () => {
   useEffect(() => {
     if (currentConversationId) {
       const currentConversation = conversations.find(c => c.id === currentConversationId);
-      const shouldLoadMessages = !currentConversation?.messages?.length;
+      const shouldLoadMessages = currentConversation && (!currentConversation.messages || currentConversation.messages.length === 0);
       
       if (shouldLoadMessages) {
         console.log("Index page: Loading messages for current conversation:", currentConversationId);
