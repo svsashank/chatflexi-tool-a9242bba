@@ -93,24 +93,37 @@ export const sendMessageToLLM = async (
     const maxAttempts = 3; // Increase the number of retry attempts
     let lastError;
     
-    // Use AbortController to set a timeout
+    // Use AbortController for timeout, but handle it separately from the Supabase call
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
     
     while (attempts < maxAttempts) {
       try {
-        const { data, error } = await supabase.functions.invoke('chat', {
-          body: { 
-            model,
-            content,
-            messages: messageHistory,
-            images,  // Pass images for API compatibility
-            files    // Pass files for file processing
-          },
-          signal: controller.signal
+        // Create a promise that will reject when the controller aborts
+        const timeoutPromise = new Promise((_, reject) => {
+          controller.signal.addEventListener('abort', () => {
+            reject(new Error('Request timed out after 30 seconds'));
+          });
         });
         
+        // Race between the actual API call and the timeout
+        const result = await Promise.race([
+          supabase.functions.invoke('chat', {
+            body: { 
+              model,
+              content,
+              messages: messageHistory,
+              images,
+              files
+            }
+          }),
+          timeoutPromise
+        ]);
+        
         clearTimeout(timeoutId);
+        
+        // Type assertion since we know this is from the supabase call if we get here
+        const { data, error } = result as { data: any, error: any };
         
         if (error) {
           console.error(`Attempt ${attempts + 1}: Error with ${model.provider} API:`, error);

@@ -18,6 +18,22 @@ const ChatMessages = () => {
   const [isAutoScrollEnabled, setIsAutoScrollEnabled] = React.useState(true);
   const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
+  // Get the current conversation once and store it
+  const currentConversation = React.useMemo(() => 
+    conversations.find(conv => conv.id === currentConversationId),
+    [conversations, currentConversationId]
+  );
+
+  // Calculate lastAssistantIndex only when conversation messages change
+  const lastAssistantIndex = React.useMemo(() => {
+    if (!currentConversation?.messages) return -1;
+    
+    return currentConversation.messages
+      .map((msg, index) => ({ role: msg.role, index }))
+      .filter(item => item.role === 'assistant')
+      .pop()?.index ?? -1;
+  }, [currentConversation?.messages]);
+  
   // Optimize loading detection with useCallback to prevent recreations
   const handleLoadingTimeout = useCallback(() => {
     toast.error("Response is taking longer than expected. You may need to try again.");
@@ -42,12 +58,6 @@ const ChatMessages = () => {
       }
     };
   }, [isLoading, handleLoadingTimeout]);
-
-  // Memoize current conversation lookup for performance
-  const currentConversation = React.useMemo(() => 
-    conversations.find(conv => conv.id === currentConversationId),
-    [conversations, currentConversationId]
-  );
 
   // Handle scroll events to determine if auto-scroll should be enabled
   useEffect(() => {
@@ -97,14 +107,6 @@ const ChatMessages = () => {
       </div>
     </div>;
   }
-
-  // Memoize the computation of lastAssistantIndex to prevent recalculation on every render
-  const lastAssistantIndex = React.useMemo(() => {
-    return currentConversation.messages
-      .map((msg, index) => ({ role: msg.role, index }))
-      .filter(item => item.role === 'assistant')
-      .pop()?.index;
-  }, [currentConversation.messages]);
 
   return (
     <div ref={containerRef} className="flex-1 overflow-y-auto p-4 space-y-6">
