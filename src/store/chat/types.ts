@@ -1,3 +1,4 @@
+
 import { AIModel } from '@/types';
 import { Message } from '@/types';
 import { Conversation } from '@/types';
@@ -32,6 +33,7 @@ export type ChatStore = {
   // Database Actions
   loadConversationsFromDB: () => Promise<void>;
   loadMessagesForConversation: (conversationId: string) => Promise<void>;
+  refreshConversations: () => Promise<void>;
   
   // State Management Actions
   clearConversations: () => void;
