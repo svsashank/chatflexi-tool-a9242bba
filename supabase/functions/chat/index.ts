@@ -13,10 +13,34 @@ import { handleGoogle } from "./handlers/google.ts";
 import { handleXAI } from "./handlers/xai.ts";
 import { handleKrutrim } from "./handlers/krutrim.ts";
 
+// Simple in-memory cache for system prompts to avoid regeneration
+const systemPromptCache = new Map();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 // Helper to extract URLs from text
 function extractUrls(text: string): string[] {
   const urlRegex = /(https?:\/\/[^\s]+)/g;
   return text.match(urlRegex) || [];
+}
+
+// Get cached system prompt or generate a new one
+function getCachedOrGenerateSystemPrompt(messageHistory: any[]) {
+  // Use the last few messages as the cache key
+  const cacheKey = messageHistory.slice(-3).map(m => `${m.role}:${m.content?.substring(0, 50)}`).join('|');
+  const cached = systemPromptCache.get(cacheKey);
+  
+  if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
+    console.log('Using cached system prompt');
+    return cached.prompt;
+  }
+  
+  const prompt = generateSystemPrompt(messageHistory);
+  systemPromptCache.set(cacheKey, {
+    prompt,
+    timestamp: Date.now()
+  });
+  
+  return prompt;
 }
 
 serve(async (req) => {
@@ -26,6 +50,7 @@ serve(async (req) => {
   }
 
   try {
+    const startTime = Date.now();
     const { content, model, messages, images, files } = await req.json();
     
     // Prepare conversation history in the format the APIs expect
@@ -36,22 +61,13 @@ serve(async (req) => {
     const messageFiles = files || [];
     
     console.log(`Request received for provider: ${model.provider}, model: ${model.id}`);
-    if (messageImages && messageImages.length > 0) {
-      console.log(`Request includes ${messageImages.length} images`);
-    }
-    if (messageFiles && messageFiles.length > 0) {
-      console.log(`Request includes ${messageFiles.length} files`);
-      console.log(`First file preview: ${messageFiles[0].substring(0, 100)}...`);
-    }
     
-    // Extract URLs from the user's message
-    const urls = extractUrls(content);
+    // Extract URLs from the user's message - only if necessary
     let webContentFiles: string[] = [];
+    const urls = content ? extractUrls(content) : [];
     
     // If URLs are found and not already included in the files, fetch their content
     if (urls.length > 0) {
-      console.log(`Found ${urls.length} URLs in the message, checking if they need to be fetched`);
-      
       // Check if the URLs have already been processed (in the files array)
       const existingUrls = messageFiles
         .filter(file => file.startsWith('URL:'))
@@ -66,14 +82,23 @@ serve(async (req) => {
       if (urlsToFetch.length > 0) {
         console.log(`Fetching content for ${urlsToFetch.length} new URLs`);
         
-        // Fetch content for each URL
-        for (const url of urlsToFetch) {
-          const urlContent = await fetchUrlContent(url);
-          if (urlContent) {
-            webContentFiles.push(`URL: ${url}\nContent: ${urlContent}`);
-            console.log(`Added content from URL: ${url} (${urlContent.length} characters)`);
+        // Fetch content for each URL concurrently
+        const fetchPromises = urlsToFetch.map(async (url) => {
+          try {
+            const urlContent = await fetchUrlContent(url);
+            if (urlContent) {
+              return `URL: ${url}\nContent: ${urlContent}`;
+            }
+            return null;
+          } catch (e) {
+            console.error(`Error fetching URL ${url}:`, e);
+            return null;
           }
-        }
+        });
+        
+        // Wait for all fetch operations to complete
+        const fetchedContents = await Promise.all(fetchPromises);
+        webContentFiles = fetchedContents.filter(Boolean) as string[];
       }
     }
     
@@ -88,22 +113,19 @@ serve(async (req) => {
     const hasExplicitUrls = urls.length > 0 || messageFiles.some(file => file.startsWith('URL:'));
     
     // Only perform search if we don't have explicit URLs and the query likely needs search
-    if (!hasExplicitUrls) {
+    // and content is not empty
+    if (!hasExplicitUrls && content) {
       const shouldSearch = shouldPerformWebSearch(content);
       
       if (shouldSearch) {
-        console.log(`Query "${content}" analyzed and determined to need web search, performing search...`);
+        console.log(`Query needs web search, performing search...`);
+        // Perform search in parallel with other operations
         webSearchResults = await performBraveSearch(content);
-        console.log(`Search returned ${webSearchResults.length} results`);
-      } else {
-        console.log(`Query "${content}" analyzed and determined NOT to need web search - model likely has this knowledge`);
       }
-    } else {
-      console.log(`URLs already provided or extracted from message, skipping web search`);
     }
     
-    // Add a system prompt based on the conversation context
-    let systemPrompt = generateSystemPrompt(messageHistory);
+    // Add a system prompt based on the conversation context - use cached when possible
+    let systemPrompt = getCachedOrGenerateSystemPrompt(messageHistory);
     
     // Enhance the system prompt with search results as supplementary information
     if (webSearchResults.length > 0) {
@@ -117,12 +139,9 @@ ${webSearchResults.map((result, index) => `
 [${index + 1}] ${result.title}
 URL: ${result.url}
 ${result.snippet}
-`).join('\n')}
-
-Feel free to reference this information if it's helpful, but also draw on your broader knowledge to provide a comprehensive response to the user's question.`;
+`).join('\n')}`;
       
       systemPrompt = systemPrompt + "\n" + searchContext;
-      console.log("Enhanced system prompt with search results as supplementary information");
     }
     
     // Format varies by provider
@@ -152,6 +171,9 @@ Feel free to reference this information if it's helpful, but also draw on your b
         default:
           throw new Error(`Provider ${model.provider} not supported`);
       }
+      
+      const totalTime = Date.now() - startTime;
+      console.log(`Request processed in ${totalTime}ms`);
       
       // Validate that we got a proper response
       if (response) {

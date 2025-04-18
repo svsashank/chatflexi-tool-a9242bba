@@ -1,38 +1,52 @@
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useCallback } from "react";
 import { useChatStore } from "@/store";
 import MessageItem from "./MessageItem";
 import { User, Hexagon, Search, Link } from "lucide-react";
 import { toast } from "sonner"; 
 
 const ChatMessages = () => {
-  const { conversations, currentConversationId, isLoading, processingUrls, createConversation } = useChatStore();
+  const { 
+    conversations, 
+    currentConversationId, 
+    isLoading, 
+    processingUrls, 
+    createConversation 
+  } = useChatStore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isAutoScrollEnabled, setIsAutoScrollEnabled] = React.useState(true);
-  const loadingRef = useRef<boolean>(false);
+  const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
-  // Use this to track and handle unusually long loading times
+  // Optimize loading detection with useCallback to prevent recreations
+  const handleLoadingTimeout = useCallback(() => {
+    toast.error("Response is taking longer than expected. You may need to try again.");
+  }, []);
+  
+  // Optimize the loading timeout with cleanup
   useEffect(() => {
-    if (isLoading && !loadingRef.current) {
-      loadingRef.current = true;
-      // Set a timeout to check if loading takes too long
-      const timeoutId = setTimeout(() => {
-        if (isLoading) {
-          toast.error("Response is taking longer than expected. You may need to try again.");
-        }
-      }, 15000); // 15 seconds
+    if (isLoading) {
+      // Clear any existing timeout to prevent duplicate notifications
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+      }
       
-      return () => {
-        clearTimeout(timeoutId);
-      };
-    } else if (!isLoading) {
-      loadingRef.current = false;
+      // Set a new timeout
+      loadingTimeoutRef.current = setTimeout(handleLoadingTimeout, 15000);
     }
-  }, [isLoading]);
+    
+    return () => {
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+        loadingTimeoutRef.current = null;
+      }
+    };
+  }, [isLoading, handleLoadingTimeout]);
 
-  const currentConversation = conversations.find(
-    (conv) => conv.id === currentConversationId
+  // Memoize current conversation lookup for performance
+  const currentConversation = React.useMemo(() => 
+    conversations.find(conv => conv.id === currentConversationId),
+    [conversations, currentConversationId]
   );
 
   // Handle scroll events to determine if auto-scroll should be enabled
@@ -52,12 +66,22 @@ const ChatMessages = () => {
     }
   }, []);
 
-  // Scroll to bottom when messages change or when loading state changes
-  useEffect(() => {
+  // Optimize scroll behavior with useCallback
+  const scrollToBottom = useCallback(() => {
     if (isAutoScrollEnabled && messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
-  }, [currentConversation?.messages, isLoading, processingUrls, isAutoScrollEnabled]);
+  }, [isAutoScrollEnabled]);
+
+  // Scroll to bottom when messages change or when loading state changes
+  useEffect(() => {
+    scrollToBottom();
+  }, [
+    currentConversation?.messages, 
+    isLoading, 
+    processingUrls, 
+    scrollToBottom
+  ]);
   
   // Create a new conversation if none exists
   useEffect(() => {
@@ -74,11 +98,13 @@ const ChatMessages = () => {
     </div>;
   }
 
-  // Find the last assistant message index to display total credits
-  const lastAssistantIndex = currentConversation.messages
-    .map((msg, index) => ({ role: msg.role, index }))
-    .filter(item => item.role === 'assistant')
-    .pop()?.index;
+  // Memoize the computation of lastAssistantIndex to prevent recalculation on every render
+  const lastAssistantIndex = React.useMemo(() => {
+    return currentConversation.messages
+      .map((msg, index) => ({ role: msg.role, index }))
+      .filter(item => item.role === 'assistant')
+      .pop()?.index;
+  }, [currentConversation.messages]);
 
   return (
     <div ref={containerRef} className="flex-1 overflow-y-auto p-4 space-y-6">
@@ -171,4 +197,4 @@ const ChatMessages = () => {
   );
 };
 
-export default ChatMessages;
+export default React.memo(ChatMessages);
