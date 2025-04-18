@@ -3,10 +3,10 @@ import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import { updateContextSummary } from '../utils';
+import { Message } from '@/types';
 
-export const addMessageAction = (set: Function, get: Function) => async (content: string, images: string[] = [], files: string[] = []) => {
+export const addMessageAction = (set: Function, get: Function) => (message: Message) => {
   const currentConversationId = get().currentConversationId;
-  const selectedModel = get().selectedModel;
 
   if (!currentConversationId) {
     toast({
@@ -17,50 +17,45 @@ export const addMessageAction = (set: Function, get: Function) => async (content
     return;
   }
 
-  const newMessage = {
-    id: uuidv4(),
-    content,
-    role: 'user' as const,
-    model: selectedModel,
-    timestamp: new Date(),
-    images,
-    files,
-  };
-
   set(state => ({
     conversations: state.conversations.map(conv =>
       conv.id === currentConversationId
-        ? { ...conv, messages: [...conv.messages, newMessage] }
+        ? { ...conv, messages: [...conv.messages, message] }
         : conv
     )
   }));
 
   // Check for authentication before saving to database
+  saveMessageToDatabase(currentConversationId, message);
+};
+
+// Helper function to save message to database
+async function saveMessageToDatabase(conversationId: string, message: Message) {
   const { data: { session } } = await supabase.auth.getSession();
 
   if (session?.user) {
     try {
-      console.log("Saving user message to database for conversation:", currentConversationId);
+      console.log("Saving user message to database for conversation:", conversationId);
       
       // Prepare message data for the database
       const messageData = {
-        id: newMessage.id,
-        conversation_id: currentConversationId,
-        content: newMessage.content,
-        role: newMessage.role,
-        model_id: selectedModel.id,
-        model_provider: selectedModel.provider,
-        created_at: newMessage.timestamp.toISOString(),
+        id: message.id,
+        conversation_id: conversationId,
+        content: message.content,
+        role: message.role,
+        model_id: message.model.id,
+        model_provider: message.model.provider,
+        created_at: message.timestamp.toISOString(),
       };
 
       // Add images if present
-      if (images && images.length > 0) {
-        Object.assign(messageData, { images });
+      if (message.images && message.images.length > 0) {
+        Object.assign(messageData, { images: message.images });
       }
 
       // Add files if present
-      if (files && files.length > 0) {
-        Object.assign(messageData, { files });
+      if (message.files && message.files.length > 0) {
+        Object.assign(messageData, { files: message.files });
       }
 
       const { error } = await supabase
@@ -86,4 +81,4 @@ export const addMessageAction = (set: Function, get: Function) => async (content
   } else {
     console.warn("User not authenticated, skipping database save");
   }
-};
+}

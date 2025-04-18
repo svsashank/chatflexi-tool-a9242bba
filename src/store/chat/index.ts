@@ -47,10 +47,13 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   addMessage: addMessageAction(set, get),
   sendMessage: createSendMessageAction(set, get),
   regenerateMessage: createRegenerateMessageAction(set, get),
-  generateResponse: async () => generateResponseAction(set, get)(),
+  generateResponse: async () => await generateResponseAction(set, get)(),
   
   // Conversation Actions
-  createConversation: createConversationAction(set, get),
+  createConversation: async () => {
+    const id = await createConversationAction(set, get)();
+    return id;
+  },
   setCurrentConversationId: setCurrentConversationIdAction(set, get),
   deleteConversation: deleteConversationAction(set, get),
   updateConversationTitle: updateConversationTitleAction(set, get),

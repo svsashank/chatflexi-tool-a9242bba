@@ -70,7 +70,6 @@ export const sendMessageToLLM = async (
     console.error(`Error with ${model.provider} API:`, error);
     
     toast({
-      title: "Response Failed",
       description: error.message || 'An unexpected error occurred',
       variant: "destructive",
     });

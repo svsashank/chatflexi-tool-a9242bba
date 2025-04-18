@@ -17,7 +17,8 @@ export const createSendMessageAction = (
       generateResponse, 
       setProcessingUrls, 
       handleError,
-      createConversation 
+      createConversation,
+      addMessage
     } = get();
     
     // If no conversation exists, create one first
@@ -104,31 +105,8 @@ export const createSendMessageAction = (
       files: allFiles
     };
     
-    // Add user message
-    set((state: ChatStore) => {
-      const updatedConversations = state.conversations.map(conv => {
-        if (conv.id === updatedCurrentConversationId) {
-          // Debug logging to ensure files are being properly added
-          if (allFiles && allFiles.length > 0) {
-            console.log(`Adding ${allFiles.length} files to message ${messageId}`);
-            console.log(`First file content starts with: ${allFiles[0].substring(0, 150)}...`);
-          }
-          
-          if (images && images.length > 0) {
-            console.log(`Adding ${images.length} images to message ${messageId}`);
-          }
-          
-          return {
-            ...conv,
-            messages: [...conv.messages, newMessage],
-            updatedAt: timestamp
-          };
-        }
-        return conv;
-      });
-      
-      return { conversations: updatedConversations };
-    });
+    // Add user message using the addMessage action
+    addMessage(newMessage);
     
     // Generate AI response with a small delay to ensure UI updates first
     setTimeout(() => {
