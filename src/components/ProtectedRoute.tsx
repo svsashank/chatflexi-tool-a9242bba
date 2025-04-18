@@ -5,8 +5,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useChatStore } from '@/store';
 import { toast } from '@/components/ui/use-toast';
 
-// Flag to track if we've attempted to load conversations in this browser session
-const CONVERSATIONS_LOADED_KEY = 'conversations_loaded_session';
+// Don't use localStorage for this flag anymore, track it in memory
+const hasLoadedConversations = new Set<string>();
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
@@ -24,6 +24,12 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     
     const initConversations = async () => {
       try {
+        // Check if we've already loaded conversations for this user
+        if (hasLoadedConversations.has(user.id)) {
+          console.log(`ProtectedRoute: Conversations already loaded for user ${user.id}`);
+          return;
+        }
+        
         console.log("ProtectedRoute: Initializing conversations for authenticated user");
         
         // Only load conversations if we don't already have them
@@ -40,10 +46,12 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
             await createConversation();
           }
           
-          // Mark as loaded in this browser session
-          localStorage.setItem(CONVERSATIONS_LOADED_KEY, 'true');
+          // Mark as loaded for this user
+          hasLoadedConversations.add(user.id);
         } else {
           console.log(`Already have ${conversations.length} conversations in state, not reloading`);
+          // Still mark as loaded
+          hasLoadedConversations.add(user.id);
         }
       } catch (error) {
         console.error("Error initializing conversations:", error);
@@ -55,14 +63,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
       }
     };
     
-    // Check if we've already loaded conversations in this browser session
-    const alreadyLoaded = localStorage.getItem(CONVERSATIONS_LOADED_KEY);
-    if (alreadyLoaded !== 'true') {
-      // Execute conversation initialization if not already loaded
-      initConversations();
-    } else {
-      console.log("ProtectedRoute: Conversations already loaded in this browser session");
-    }
+    initConversations();
     
   }, [user, loading, loadConversationsFromDB, createConversation, conversations]);
 

@@ -4,6 +4,9 @@ import { toast } from "@/components/ui/use-toast";
 import { Message, AIModel, Conversation } from "@/types";
 import { ChatStore } from "../types";
 
+// Track which conversations have already had their messages loaded
+const loadedMessagesCache = new Set<string>();
+
 export const loadConversationsFromDBAction = (set: Function, get: () => ChatStore) => async () => {
   try {
     // Get current user session
@@ -12,6 +15,12 @@ export const loadConversationsFromDBAction = (set: Function, get: () => ChatStor
     
     if (!userId) {
       console.warn("No user ID found, skipping database load");
+      return;
+    }
+    
+    // If we already have conversations, don't reload them
+    if (get().conversations.length > 0) {
+      console.log("Already have conversations in state, skipping database load");
       return;
     }
     
@@ -66,10 +75,17 @@ export const loadMessagesForConversationAction = (set: Function, get: () => Chat
       return;
     }
     
+    // Check if we've already loaded messages for this conversation in this session
+    if (loadedMessagesCache.has(conversationId)) {
+      console.log(`Already loaded messages for conversation ${conversationId} in this session, skipping load`);
+      return;
+    }
+    
     // Check if we already have messages for this conversation
     const existingConversation = get().conversations.find(c => c.id === conversationId);
     if (existingConversation?.messages?.length > 0) {
       console.log(`Already have ${existingConversation.messages.length} messages for conversation ${conversationId}, skipping load`);
+      loadedMessagesCache.add(conversationId);
       return;
     }
     
@@ -139,9 +155,13 @@ export const loadMessagesForConversationAction = (set: Function, get: () => Chat
         ),
       }));
       
+      // Mark this conversation as having its messages loaded
+      loadedMessagesCache.add(conversationId);
+      
       console.log(`Updated state with ${formattedMessages.length} messages for conversation ${conversationId}`);
     } else {
       console.log(`No messages found for conversation ${conversationId}`);
+      loadedMessagesCache.add(conversationId);
     }
   } catch (error) {
     console.error(`Error in loadMessagesForConversation:`, error);

@@ -7,18 +7,16 @@ import { useChatStore } from "@/store";
 
 const ChatContainer = () => {
   const { 
-    conversations, 
     currentConversationId, 
     selectedModel,
   } = useChatStore();
   
-  const hasMessages = conversations.find(
-    conv => conv.id === currentConversationId
-  )?.messages.length > 0;
-  
   // Make sure the selected model is initialized when the chat container mounts
   useEffect(() => {
-    console.log("ChatContainer mounted, current selected model:", selectedModel.name);
+    // Use less verbose logging to reduce console noise
+    if (selectedModel?.name) {
+      console.log("ChatContainer mounted, current selected model:", selectedModel.name);
+    }
   }, [selectedModel]);
 
   return (

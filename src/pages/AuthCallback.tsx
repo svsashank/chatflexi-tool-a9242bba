@@ -2,12 +2,10 @@
 import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { useChatStore } from '@/store';
 import { toast } from '@/components/ui/use-toast';
 
 const AuthCallback = () => {
   const navigate = useNavigate();
-  const { loadConversationsFromDB, createConversation } = useChatStore();
   // Use a ref to track if the callback has been processed
   const callbackProcessedRef = useRef(false);
 
@@ -62,7 +60,7 @@ const AuthCallback = () => {
 
     handleAuthCallback();
     
-  }, [navigate, loadConversationsFromDB, createConversation]);
+  }, [navigate]);
 
   return (
     <div className="flex h-screen w-full items-center justify-center">

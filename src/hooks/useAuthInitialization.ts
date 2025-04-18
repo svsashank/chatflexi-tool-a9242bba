@@ -31,7 +31,10 @@ export const useAuthInitialization = () => {
         
         // First set up the auth state listener
         const { data } = supabase.auth.onAuthStateChange((event, newSession) => {
-          console.log(`Auth state changed: ${event}`);
+          // Only log meaningful auth state changes, not every event
+          if (event !== 'INITIAL_SESSION') {
+            console.log(`Auth state changed: ${event}`);
+          }
           
           // Update state with the new session
           setSession(newSession);

@@ -1,12 +1,29 @@
-
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { Conversation } from '@/types';
 import { ChatStore } from '../types';
 
+// Track if a creation is in progress
+let isCreatingConversation = false;
+
 export const createConversationAction = (set: Function, get: () => ChatStore) => async () => {
+  // Prevent multiple simultaneous conversation creations
+  if (isCreatingConversation) {
+    console.log("Conversation creation already in progress, skipping");
+    return;
+  }
+  
   try {
+    isCreatingConversation = true;
+    
+    // First check if we already have conversations
+    if (get().conversations.length > 0 && get().currentConversationId) {
+      console.log("Already have conversations, no need to create a new one");
+      isCreatingConversation = false;
+      return;
+    }
+    
     const newConversation: Conversation = {
       id: uuidv4(),
       title: 'New Conversation',
@@ -58,6 +75,8 @@ export const createConversationAction = (set: Function, get: () => ChatStore) =>
       description: 'Could not create a new conversation',
       variant: 'destructive',
     });
+  } finally {
+    isCreatingConversation = false;
   }
 };
 
@@ -75,7 +94,7 @@ export const setCurrentConversationIdAction = (set: Function, get: () => ChatSto
   // Set the conversation as current
   set({ currentConversationId: id });
   
-  // Always load messages when switching conversations to ensure we have the latest data
+  // Load messages when switching conversations to ensure we have the latest data
   console.log(`Loading messages for conversation ${id}`);
   await get().loadMessagesForConversation(id);
 };
