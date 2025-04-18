@@ -13,26 +13,36 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const conversationsLoadedKey = 'conversations_loaded_protected_route';
   
   useEffect(() => {
-    if (user && !loading) {
-      // Check if we've already loaded conversations in this session
-      const alreadyLoaded = sessionStorage.getItem(conversationsLoadedKey);
+    // Flag to prevent multiple operations in a single effect cycle
+    let isOperationInProgress = false;
+    
+    const initConversations = async () => {
+      // Early return if an operation is already in progress
+      if (isOperationInProgress) return;
+      isOperationInProgress = true;
       
-      if (alreadyLoaded === 'true') {
-        console.log("ProtectedRoute: Conversations already loaded in this session");
-        return;
-      }
-      
-      // Load user's conversations when authenticated
-      const initConversations = async () => {
-        console.log("ProtectedRoute: Initializing conversations for authenticated user");
-        try {
+      try {
+        if (user && !loading) {
+          // Check if we've already loaded conversations in this session
+          const alreadyLoaded = sessionStorage.getItem(conversationsLoadedKey);
+          
+          if (alreadyLoaded === 'true') {
+            console.log("ProtectedRoute: Conversations already loaded in this session");
+            return;
+          }
+          
+          console.log("ProtectedRoute: Initializing conversations for authenticated user");
+          
           // Only load conversations if we don't already have them
           if (conversations.length === 0) {
             console.log("No conversations in state, loading from database");
             await loadConversationsFromDB();
             
+            // Get fresh state after loading
+            const currentConversations = useChatStore.getState().conversations;
+            
             // Only create a new conversation if none were loaded
-            if (conversations.length === 0) {
+            if (currentConversations.length === 0) {
               console.log("No conversations found, creating a new one");
               await createConversation();
             }
@@ -42,21 +52,28 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
           
           // Mark as loaded in this session
           sessionStorage.setItem(conversationsLoadedKey, 'true');
-        } catch (error) {
-          console.error("Error initializing conversations:", error);
-          toast({
-            title: 'Error',
-            description: 'Could not load your conversations',
-            variant: 'destructive',
-          });
+        } else if (!loading && !user) {
+          // Clear the loaded flag when user is not authenticated
+          sessionStorage.removeItem(conversationsLoadedKey);
         }
-      };
-      
+      } catch (error) {
+        console.error("Error initializing conversations:", error);
+        toast({
+          title: 'Error',
+          description: 'Could not load your conversations',
+          variant: 'destructive',
+        });
+      } finally {
+        // Reset the operation flag when done
+        isOperationInProgress = false;
+      }
+    };
+    
+    // Only run the initialization when auth state is settled (not loading)
+    if (!loading) {
       initConversations();
-    } else if (!loading && !user) {
-      // Clear the loaded flag when user is not authenticated
-      sessionStorage.removeItem(conversationsLoadedKey);
     }
+    
   }, [user, loading, loadConversationsFromDB, createConversation, conversations]);
 
   if (loading) {

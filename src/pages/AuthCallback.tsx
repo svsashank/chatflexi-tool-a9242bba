@@ -1,5 +1,5 @@
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useChatStore } from '@/store';
@@ -8,24 +8,27 @@ import { toast } from '@/components/ui/use-toast';
 const AuthCallback = () => {
   const navigate = useNavigate();
   const { loadConversationsFromDB, createConversation, clearConversations } = useChatStore();
+  // Use a ref to track if the callback has been processed
+  const callbackProcessedRef = useRef(false);
 
   useEffect(() => {
-    // Handle the OAuth callback once
-    const processCallbackOnce = () => {
-      // Flag to prevent duplicate processing
-      const callbackProcessedKey = 'auth_callback_processed';
-      if (sessionStorage.getItem(callbackProcessedKey) === 'true') {
-        console.log("Auth callback already processed, redirecting to home");
-        navigate('/', { replace: true });
-        return;
-      }
-      
-      // Mark as processed immediately to prevent race conditions
-      sessionStorage.setItem(callbackProcessedKey, 'true');
-      
-      // Handle the actual auth callback
-      handleAuthCallback();
-    };
+    // Flag to prevent duplicate processing with a ref
+    if (callbackProcessedRef.current) {
+      console.log("Auth callback already processed by this component instance");
+      return;
+    }
+    
+    // Flag to prevent duplicate processing across renders
+    const callbackProcessedKey = 'auth_callback_processed';
+    if (sessionStorage.getItem(callbackProcessedKey) === 'true') {
+      console.log("Auth callback already processed in this session, redirecting to home");
+      navigate('/', { replace: true });
+      return;
+    }
+    
+    // Mark as processed immediately to prevent race conditions
+    callbackProcessedRef.current = true;
+    sessionStorage.setItem(callbackProcessedKey, 'true');
     
     // Handle the OAuth callback
     const handleAuthCallback = async () => {
@@ -53,8 +56,11 @@ const AuthCallback = () => {
             // Then load user's conversations after successful authentication
             await loadConversationsFromDB();
             
+            // Check current state after loading
+            const currentConversations = useChatStore.getState().conversations;
+            
             // Create a new conversation if none were loaded
-            if (useChatStore.getState().conversations.length === 0) {
+            if (currentConversations.length === 0) {
               await createConversation();
             }
             
@@ -79,7 +85,12 @@ const AuthCallback = () => {
       }
     };
 
-    processCallbackOnce();
+    handleAuthCallback();
+    
+    // Clean up function
+    return () => {
+      // Nothing to clean up
+    };
   }, [navigate, loadConversationsFromDB, createConversation, clearConversations]);
 
   return (

@@ -55,15 +55,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [loadConversationsFromDB, createConversation]);
 
   useEffect(() => {
-    let authListenerSubscription: { unsubscribe: () => void } | null = null;
+    // Fix: Correctly declare variable to hold the subscription object
+    let subscription: { data: { subscription: any } } | null = null;
     let isInitializing = !sessionStorage.getItem(AUTH_INITIALIZED_KEY);
 
     const initializeAuth = async () => {
       try {
         console.log("Initializing auth context");
 
-        // Set up auth state listener FIRST
-        authListenerSubscription = supabase.auth.onAuthStateChange(
+        // Set up auth state listener FIRST - Fix: Store the proper subscription object
+        const { data } = supabase.auth.onAuthStateChange(
           async (event, newSession) => {
             console.log("Auth state change event:", event, !!newSession);
             
@@ -101,6 +102,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             isInitializing = false;
           }
         );
+        
+        // Store the subscription correctly
+        subscription = data;
 
         // THEN check for existing session
         const { data: { session: initialSession } } = await supabase.auth.getSession();
@@ -125,9 +129,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     initializeAuth();
 
-    // Cleanup function
+    // Cleanup function - Fix: properly unsubscribe from auth listener
     return () => {
-      authListenerSubscription?.unsubscribe();
+      if (subscription?.data?.subscription) {
+        // Check if subscription exists and has the correct structure
+        subscription.data.subscription.unsubscribe();
+      }
     };
   }, [toast, safeLoadConversations, clearConversations, createConversation]);
 
