@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -55,8 +54,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [loadConversationsFromDB, createConversation]);
 
   useEffect(() => {
-    // Fix: Correctly declare variable to hold the subscription object
-    let subscription: { data: { subscription: any } } | null = null;
+    // Fix: Store the proper subscription object
+    let subscription: { subscription: any } | null = null;
     let isInitializing = !sessionStorage.getItem(AUTH_INITIALIZED_KEY);
 
     const initializeAuth = async () => {
@@ -103,8 +102,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           }
         );
         
-        // Store the subscription correctly
-        subscription = data;
+        // Store the subscription correctly - Fix: assign the correct data structure
+        subscription = { subscription: data.subscription };
 
         // THEN check for existing session
         const { data: { session: initialSession } } = await supabase.auth.getSession();
@@ -131,9 +130,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     // Cleanup function - Fix: properly unsubscribe from auth listener
     return () => {
-      if (subscription?.data?.subscription) {
-        // Check if subscription exists and has the correct structure
-        subscription.data.subscription.unsubscribe();
+      if (subscription?.subscription) {
+        subscription.subscription.unsubscribe();
       }
     };
   }, [toast, safeLoadConversations, clearConversations, createConversation]);
