@@ -69,10 +69,8 @@ export const sendMessageToLLM = async (
   } catch (error: any) {
     console.error(`Error with ${model.provider} API:`, error);
     
-    toast({
-      description: error.message || 'An unexpected error occurred',
-      variant: "destructive",
-    });
+    // Fix: Use correct toast format for sonner
+    toast.error(error.message || 'An unexpected error occurred');
 
     return {
       content: `Error: ${error.message || 'Failed to get response from model'}. Please try again.`,
