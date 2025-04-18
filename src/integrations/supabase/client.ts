@@ -9,31 +9,37 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
+// Create a single, shared Supabase client instance
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
     storageKey: 'supabase.auth.token',
-    // Debug logging for auth issues
-    debug: true
+    // Only enable debug logging in development
+    debug: process.env.NODE_ENV === 'development'
   }
 });
 
 // Helper function to check if a user is authenticated
 export const isAuthenticated = async () => {
-  const { data, error } = await supabase.auth.getSession();
-  if (error) {
-    console.error("Error checking authentication:", error);
+  try {
+    const { data, error } = await supabase.auth.getSession();
+    if (error) {
+      console.error("Error checking authentication:", error);
+      return false;
+    }
+    return !!data.session?.user;
+  } catch (error) {
+    console.error("Unexpected error in isAuthenticated:", error);
     return false;
   }
-  return !!data.session?.user;
 };
 
 // Updated function that uses the edge function to safely fetch profile data
 export const fetchProfileData = async () => {
   try {
-    // First get auth session to get token
+    // First check if we already have a session in memory before making a network request
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     
     if (sessionError || !session) {
@@ -100,4 +106,3 @@ export const fetchProfileData = async () => {
     };
   }
 };
-

@@ -1,3 +1,4 @@
+
 import { useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -8,8 +9,19 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
   const { loadConversationsFromDB, createConversation, conversations } = useChatStore();
 
+  // Use sessionStorage to track if conversations have been loaded
+  const conversationsLoadedKey = 'conversations_loaded_protected_route';
+  
   useEffect(() => {
     if (user && !loading) {
+      // Check if we've already loaded conversations in this session
+      const alreadyLoaded = sessionStorage.getItem(conversationsLoadedKey);
+      
+      if (alreadyLoaded === 'true') {
+        console.log("ProtectedRoute: Conversations already loaded in this session");
+        return;
+      }
+      
       // Load user's conversations when authenticated
       const initConversations = async () => {
         console.log("ProtectedRoute: Initializing conversations for authenticated user");
@@ -23,12 +35,13 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
             if (conversations.length === 0) {
               console.log("No conversations found, creating a new one");
               await createConversation();
-            } else {
-              console.log(`Loaded ${conversations.length} conversations, not reloading`);
             }
           } else {
             console.log(`Already have ${conversations.length} conversations in state, not reloading`);
           }
+          
+          // Mark as loaded in this session
+          sessionStorage.setItem(conversationsLoadedKey, 'true');
         } catch (error) {
           console.error("Error initializing conversations:", error);
           toast({
@@ -40,6 +53,9 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
       };
       
       initConversations();
+    } else if (!loading && !user) {
+      // Clear the loaded flag when user is not authenticated
+      sessionStorage.removeItem(conversationsLoadedKey);
     }
   }, [user, loading, loadConversationsFromDB, createConversation, conversations]);
 

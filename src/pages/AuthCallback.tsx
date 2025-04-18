@@ -1,3 +1,4 @@
+
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -9,9 +10,27 @@ const AuthCallback = () => {
   const { loadConversationsFromDB, createConversation, clearConversations } = useChatStore();
 
   useEffect(() => {
+    // Handle the OAuth callback once
+    const processCallbackOnce = () => {
+      // Flag to prevent duplicate processing
+      const callbackProcessedKey = 'auth_callback_processed';
+      if (sessionStorage.getItem(callbackProcessedKey) === 'true') {
+        console.log("Auth callback already processed, redirecting to home");
+        navigate('/', { replace: true });
+        return;
+      }
+      
+      // Mark as processed immediately to prevent race conditions
+      sessionStorage.setItem(callbackProcessedKey, 'true');
+      
+      // Handle the actual auth callback
+      handleAuthCallback();
+    };
+    
     // Handle the OAuth callback
     const handleAuthCallback = async () => {
       try {
+        console.log("Processing auth callback");
         const { data, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -29,7 +48,7 @@ const AuthCallback = () => {
           console.log("Auth callback successful, loading conversations");
           try {
             // First, reset the conversation state to clear any existing unauthenticated conversations
-            useChatStore.getState().clearConversations();
+            clearConversations();
             
             // Then load user's conversations after successful authentication
             await loadConversationsFromDB();
@@ -60,7 +79,7 @@ const AuthCallback = () => {
       }
     };
 
-    handleAuthCallback();
+    processCallbackOnce();
   }, [navigate, loadConversationsFromDB, createConversation, clearConversations]);
 
   return (
