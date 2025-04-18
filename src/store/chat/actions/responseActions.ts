@@ -1,9 +1,13 @@
+
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { sendMessageToLLM } from '@/services/llmService';
 import { calculateComputeCredits } from '@/utils/computeCredits';
 import { updateContextSummary } from '../utils';
+
+// Performance monitoring
+const perfMarkers = new Map();
 
 export const generateResponseAction = (set: Function, get: Function) => async () => {
   if (get().isLoading) {
@@ -12,6 +16,10 @@ export const generateResponseAction = (set: Function, get: Function) => async ()
   }
   
   set({ isLoading: true });
+  
+  // Start performance timing
+  const perfId = `response-${Date.now()}`;
+  perfMarkers.set(perfId, performance.now());
   
   try {
     const currentConversationId = get().currentConversationId;
@@ -34,48 +42,25 @@ export const generateResponseAction = (set: Function, get: Function) => async ()
       content: lastMessage.content.substring(0, 50) + (lastMessage.content.length > 50 ? '...' : ''),
       hasImages: lastMessage.images && lastMessage.images.length > 0,
       hasFiles: lastMessage.files && lastMessage.files.length > 0,
-      filesCount: lastMessage.files?.length || 0
     });
     
-    // If there are files, log them for debugging
-    if (lastMessage.files && lastMessage.files.length > 0) {
-      console.log("File content preview:", 
-        lastMessage.files[0].substring(0, 150) + (lastMessage.files[0].length > 150 ? '...' : ''));
-    }
-
-    let retryCount = 0;
-    const maxRetries = 3;
-    let aiResponse;
-    
-    while (retryCount < maxRetries) {
-      try {
-        aiResponse = await sendMessageToLLM(
-          lastMessage.content,
-          selectedModel,
-          currentConversation.messages
-        );
-        
-        if (aiResponse && !aiResponse.content.startsWith('Error:')) {
-          break; // Successful response
-        }
-        
-        // If we get an error response, retry
-        retryCount++;
-        console.log(`AI response contained error (attempt ${retryCount}/${maxRetries}), retrying...`);
-        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retrying
-      } catch (callError) {
-        retryCount++;
-        console.error(`Error calling LLM API (attempt ${retryCount}/${maxRetries}):`, callError);
-        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retrying
+    try {
+      const aiResponse = await sendMessageToLLM(
+        lastMessage.content,
+        selectedModel,
+        currentConversation.messages
+      );
+      
+      if (!aiResponse) {
+        handleError('Failed to generate a response. Please try again.');
+        return;
       }
-    }
-    
-    if (!aiResponse || aiResponse.content.startsWith('Error:')) {
-      handleError('Failed to generate a response after multiple attempts. Please try again.');
-      return;
-    }
+      
+      if (aiResponse.content.startsWith('Error:')) {
+        handleError(aiResponse.content);
+        return;
+      }
 
-    if (aiResponse) {
       // Extract token counts and calculate compute credits
       const tokens = aiResponse.tokens || { input: 0, output: 0 };
       const computeCredits = calculateComputeCredits(
@@ -99,6 +84,7 @@ export const generateResponseAction = (set: Function, get: Function) => async ()
 
       const updatedContextSummary = updateContextSummary(currentConversation.contextSummary, newMessage);
 
+      // Update state with the new message - do this first for better UX
       set(state => ({
         conversations: state.conversations.map(conv =>
           conv.id === currentConversationId
@@ -118,160 +104,16 @@ export const generateResponseAction = (set: Function, get: Function) => async ()
 
       if (session?.user) {
         try {
-          console.log("Saving assistant message to database for conversation:", currentConversationId);
-          
-          // First, check if the conversation exists and has the correct user_id
-          const { data: convData, error: convCheckError } = await supabase
-            .from('conversations')
-            .select('id, user_id')
-            .eq('id', currentConversationId)
-            .maybeSingle();
-            
-          if (convCheckError) {
-            console.error('Error checking conversation:', convCheckError);
-            toast.error('Failed to verify conversation ownership');
-            return;
-          }
-          
-          if (!convData) {
-            console.log('Conversation not found in database, creating it now...');
-            // Create the conversation if it doesn't exist
-            const { error: createConvError } = await supabase
-              .from('conversations')
-              .insert([{
-                id: currentConversationId,
-                user_id: session.user.id,
-                title: currentConversation.title,
-                created_at: currentConversation.createdAt.toISOString(),
-                updated_at: new Date().toISOString()
-              }]);
-              
-            if (createConvError) {
-              console.error('Error creating conversation:', createConvError);
-              toast.error('Failed to create conversation in database');
-              return;
-            }
-            console.log('Successfully created conversation in database');
-          } else if (convData.user_id !== session.user.id) {
-            console.error('Conversation belongs to a different user');
-            toast.error('You do not have permission to access this conversation');
-            return;
-          }
-          
-          // Update the conversation timestamp
-          const { error: conversationError } = await supabase
-            .from('conversations')
-            .update({ updated_at: new Date().toISOString() })
-            .eq('id', currentConversationId)
-            .eq('user_id', session.user.id);
-
-          if (conversationError) {
-            console.error('Error updating conversation timestamp:', conversationError);
-            toast.error('Failed to update conversation timestamp');
-          }
-          
-          // Prepare the message insert data with all available info
-          const messageInsertData = {
-            id: newMessage.id,
-            conversation_id: currentConversationId,
-            content: newMessage.content,
-            role: newMessage.role,
-            model_id: selectedModel.id,
-            model_provider: selectedModel.provider,
-            created_at: newMessage.timestamp.toISOString(),
-            input_tokens: tokens.input,
-            output_tokens: tokens.output,
-            compute_credits: computeCredits,
-          };
-          
-          // Add web search results if they exist
-          if (newMessage.webSearchResults && newMessage.webSearchResults.length > 0) {
-            console.log('Adding web search results to the database');
-            Object.assign(messageInsertData, {
-              web_search_results: newMessage.webSearchResults
-            });
-          }
-          
-          // Add file search results if they exist
-          if (newMessage.fileSearchResults && newMessage.fileSearchResults.length > 0) {
-            console.log('Adding file search results to the database');
-            Object.assign(messageInsertData, {
-              file_search_results: newMessage.fileSearchResults
-            });
-          }
-          
-          // If the last user message had images, include those for reference
-          const lastUserMessage = currentConversation.messages.filter(m => m.role === 'user').pop();
-          if (lastUserMessage?.images && lastUserMessage.images.length > 0) {
-            console.log('Adding reference to images from the user query');
-            Object.assign(messageInsertData, {
-              images: lastUserMessage.images
-            });
-          }
-          
-          // Insert the message
-          const { error } = await supabase
-            .from('conversation_messages')
-            .insert([messageInsertData]);
-
-          if (error) {
-            console.error('Error saving message to database:', error);
-            toast.error('Failed to save message to database');
-          } else {
-            // Update the user's total compute credits using RPC
-            try {
-              const userId = session.user.id;
-              console.log(`Updating user ${userId} compute credits: +${computeCredits} credits`);
-              
-              // Check if a record exists for the user
-              const { data: existingRecord, error: checkError } = await supabase
-                .from('user_compute_credits')
-                .select('id')
-                .eq('user_id', userId)
-                .maybeSingle();
-                
-              if (checkError) {
-                console.error('Error checking user compute credits record:', checkError);
-              }
-              
-              if (!existingRecord) {
-                console.log("No existing credit record found, creating one");
-                const { error: insertError } = await supabase
-                  .from('user_compute_credits')
-                  .insert([
-                    { 
-                      user_id: userId,
-                      total_credits: computeCredits 
-                    }
-                  ]);
-                  
-                if (insertError) {
-                  console.error('Error creating user compute credits record:', insertError);
-                  toast.error('Failed to create compute credits record');
-                } else {
-                  console.log(`Created new credit record with ${computeCredits} credits`);
-                }
-              } else {
-                // Use the RPC function to update existing records
-                const { error: creditError } = await supabase.rpc(
-                  'update_user_compute_credits',
-                  { 
-                    p_user_id: userId,
-                    p_credits: computeCredits
-                  }
-                );
-                
-                if (creditError) {
-                  console.error('Error updating user compute credits:', creditError);
-                  toast.error('Failed to update compute credits');
-                } else {
-                  console.log(`Updated user compute credits: +${computeCredits} credits`);
-                }
-              }
-            } catch (creditUpdateError) {
-              console.error('Error handling compute credits update:', creditUpdateError);
-            }
-          }
+          // Save to database in the background - don't block the UI
+          saveMessageToDatabase(
+            session.user.id, 
+            currentConversationId, 
+            newMessage, 
+            selectedModel, 
+            currentConversation, 
+            computeCredits,
+            lastMessage
+          );
         } catch (dbError) {
           console.error('Database error:', dbError);
           toast.error('Failed to save message to database');
@@ -279,12 +121,193 @@ export const generateResponseAction = (set: Function, get: Function) => async ()
       } else {
         console.warn("User not authenticated, skipping database save");
       }
-    } else {
-      handleError('Failed to generate response');
+      
+      // Log performance metrics
+      if (perfMarkers.has(perfId)) {
+        const duration = performance.now() - perfMarkers.get(perfId);
+        console.log(`Response generation completed in ${duration.toFixed(2)}ms`);
+        perfMarkers.delete(perfId);
+      }
+    } catch (error) {
+      console.error('Error in response generation:', error);
+      handleError('Failed to generate response. Please try again.');
     }
   } catch (error) {
-    console.error('Error generating response:', error);
+    console.error('Error in generateResponseAction:', error);
     const handleError = get().handleError;
     handleError('Failed to generate response. Please try again.');
+  } finally {
+    set({ isLoading: false });
   }
 };
+
+// Separate function to save message to database to improve UI responsiveness
+async function saveMessageToDatabase(
+  userId: string, 
+  conversationId: string, 
+  message: any, 
+  selectedModel: any, 
+  conversation: any,
+  computeCredits: number,
+  lastUserMessage: any
+) {
+  try {
+    console.log("Saving assistant message to database for conversation:", conversationId);
+    
+    // First, check if the conversation exists and has the correct user_id
+    const { data: convData, error: convCheckError } = await supabase
+      .from('conversations')
+      .select('id, user_id')
+      .eq('id', conversationId)
+      .maybeSingle();
+      
+    if (convCheckError) {
+      console.error('Error checking conversation:', convCheckError);
+      toast.error('Failed to verify conversation ownership');
+      return;
+    }
+    
+    if (!convData) {
+      console.log('Conversation not found in database, creating it now...');
+      // Create the conversation if it doesn't exist
+      const { error: createConvError } = await supabase
+        .from('conversations')
+        .insert([{
+          id: conversationId,
+          user_id: userId,
+          title: conversation.title,
+          created_at: conversation.createdAt.toISOString(),
+          updated_at: new Date().toISOString()
+        }]);
+        
+      if (createConvError) {
+        console.error('Error creating conversation:', createConvError);
+        toast.error('Failed to create conversation in database');
+        return;
+      }
+      console.log('Successfully created conversation in database');
+    } else if (convData.user_id !== userId) {
+      console.error('Conversation belongs to a different user');
+      toast.error('You do not have permission to access this conversation');
+      return;
+    }
+    
+    // Update the conversation timestamp
+    const { error: conversationError } = await supabase
+      .from('conversations')
+      .update({ updated_at: new Date().toISOString() })
+      .eq('id', conversationId)
+      .eq('user_id', userId);
+
+    if (conversationError) {
+      console.error('Error updating conversation timestamp:', conversationError);
+      toast.error('Failed to update conversation timestamp');
+    }
+    
+    // Prepare the message insert data with all available info
+    const messageInsertData = {
+      id: message.id,
+      conversation_id: conversationId,
+      content: message.content,
+      role: message.role,
+      model_id: selectedModel.id,
+      model_provider: selectedModel.provider,
+      created_at: message.timestamp.toISOString(),
+      input_tokens: message.tokens?.input || 0,
+      output_tokens: message.tokens?.output || 0,
+      compute_credits: computeCredits,
+    };
+    
+    // Add web search results if they exist
+    if (message.webSearchResults && message.webSearchResults.length > 0) {
+      Object.assign(messageInsertData, {
+        web_search_results: message.webSearchResults
+      });
+    }
+    
+    // Add file search results if they exist
+    if (message.fileSearchResults && message.fileSearchResults.length > 0) {
+      Object.assign(messageInsertData, {
+        file_search_results: message.fileSearchResults
+      });
+    }
+    
+    // If the last user message had images, include those for reference
+    if (lastUserMessage?.images && lastUserMessage.images.length > 0) {
+      Object.assign(messageInsertData, {
+        images: lastUserMessage.images
+      });
+    }
+    
+    // Insert the message
+    const { error } = await supabase
+      .from('conversation_messages')
+      .insert([messageInsertData]);
+
+    if (error) {
+      console.error('Error saving message to database:', error);
+      toast.error('Failed to save message to database');
+    } else {
+      // Update the user's total compute credits using RPC
+      updateUserComputeCredits(userId, computeCredits);
+    }
+  } catch (error) {
+    console.error('Error saving message to database:', error);
+  }
+}
+
+// Extract the compute credits update to a separate function
+async function updateUserComputeCredits(userId: string, computeCredits: number) {
+  try {
+    console.log(`Updating user ${userId} compute credits: +${computeCredits} credits`);
+    
+    // Check if a record exists for the user
+    const { data: existingRecord, error: checkError } = await supabase
+      .from('user_compute_credits')
+      .select('id')
+      .eq('user_id', userId)
+      .maybeSingle();
+      
+    if (checkError) {
+      console.error('Error checking user compute credits record:', checkError);
+      return;
+    }
+    
+    if (!existingRecord) {
+      console.log("No existing credit record found, creating one");
+      const { error: insertError } = await supabase
+        .from('user_compute_credits')
+        .insert([
+          { 
+            user_id: userId,
+            total_credits: computeCredits 
+          }
+        ]);
+        
+      if (insertError) {
+        console.error('Error creating user compute credits record:', insertError);
+        toast.error('Failed to create compute credits record');
+      } else {
+        console.log(`Created new credit record with ${computeCredits} credits`);
+      }
+    } else {
+      // Use the RPC function to update existing records
+      const { error: creditError } = await supabase.rpc(
+        'update_user_compute_credits',
+        { 
+          p_user_id: userId,
+          p_credits: computeCredits
+        }
+      );
+      
+      if (creditError) {
+        console.error('Error updating user compute credits:', creditError);
+        toast.error('Failed to update compute credits');
+      } else {
+        console.log(`Updated user compute credits: +${computeCredits} credits`);
+      }
+    }
+  } catch (error) {
+    console.error('Error handling compute credits update:', error);
+  }
+}

@@ -7,17 +7,20 @@ import { useChatStore } from "@/store";
 
 const ChatContainer = () => {
   const { 
-    currentConversationId, 
-    selectedModel,
+    selectedModel
   } = useChatStore();
   
-  // Make sure the selected model is initialized when the chat container mounts
+  // Simple mounting log to avoid redundant operations
   useEffect(() => {
-    // Use less verbose logging to reduce console noise
     if (selectedModel?.name) {
       console.log("ChatContainer mounted, current selected model:", selectedModel.name);
     }
-  }, [selectedModel]);
+    
+    // Return cleanup function
+    return () => {
+      // Clean up any resources or event listeners if needed
+    };
+  }, [selectedModel?.name]);
 
   return (
     <div className="flex flex-col h-screen">
@@ -30,4 +33,5 @@ const ChatContainer = () => {
   );
 };
 
-export default ChatContainer;
+// Using React.memo to prevent unnecessary re-renders
+export default React.memo(ChatContainer);

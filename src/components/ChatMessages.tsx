@@ -17,8 +17,9 @@ const ChatMessages = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isAutoScrollEnabled, setIsAutoScrollEnabled] = React.useState(true);
   const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const prevMsgCountRef = useRef<number>(0);
   
-  // Get the current conversation once and store it
+  // Find the current conversation more efficiently using useMemo
   const currentConversation = React.useMemo(() => 
     conversations.find(conv => conv.id === currentConversationId),
     [conversations, currentConversationId]
@@ -26,20 +27,22 @@ const ChatMessages = () => {
 
   // Calculate lastAssistantIndex only when conversation messages change
   const lastAssistantIndex = React.useMemo(() => {
-    if (!currentConversation?.messages) return -1;
+    if (!currentConversation?.messages?.length) return -1;
     
-    return currentConversation.messages
-      .map((msg, index) => ({ role: msg.role, index }))
-      .filter(item => item.role === 'assistant')
-      .pop()?.index ?? -1;
+    for (let i = currentConversation.messages.length - 1; i >= 0; i--) {
+      if (currentConversation.messages[i].role === 'assistant') {
+        return i;
+      }
+    }
+    return -1;
   }, [currentConversation?.messages]);
   
-  // Optimize loading detection with useCallback to prevent recreations
+  // Handle loading timeout with useCallback
   const handleLoadingTimeout = useCallback(() => {
     toast.error("Response is taking longer than expected. You may need to try again.");
   }, []);
   
-  // Optimize the loading timeout with cleanup
+  // Optimize the loading timeout
   useEffect(() => {
     if (isLoading) {
       // Clear any existing timeout to prevent duplicate notifications
@@ -59,7 +62,7 @@ const ChatMessages = () => {
     };
   }, [isLoading, handleLoadingTimeout]);
 
-  // Handle scroll events to determine if auto-scroll should be enabled
+  // Handle scroll events efficiently with passive event listener
   useEffect(() => {
     const handleScroll = () => {
       if (!containerRef.current) return;
@@ -71,35 +74,33 @@ const ChatMessages = () => {
 
     const container = containerRef.current;
     if (container) {
-      container.addEventListener("scroll", handleScroll);
+      container.addEventListener("scroll", handleScroll, { passive: true });
       return () => container.removeEventListener("scroll", handleScroll);
     }
   }, []);
 
-  // Optimize scroll behavior with useCallback
-  const scrollToBottom = useCallback(() => {
-    if (isAutoScrollEnabled && messagesEndRef.current) {
+  // Only scroll when new messages are added
+  useEffect(() => {
+    const messageCount = currentConversation?.messages?.length || 0;
+    
+    if (messageCount > prevMsgCountRef.current && isAutoScrollEnabled && messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
-  }, [isAutoScrollEnabled]);
-
-  // Scroll to bottom when messages change or when loading state changes
-  useEffect(() => {
-    scrollToBottom();
+    
+    prevMsgCountRef.current = messageCount;
   }, [
-    currentConversation?.messages, 
-    isLoading, 
-    processingUrls, 
-    scrollToBottom
+    currentConversation?.messages,
+    isAutoScrollEnabled
   ]);
   
-  // Create a new conversation if none exists
+  // Create a new conversation if none exists - only once when needed
   useEffect(() => {
     if (!currentConversation && conversations.length === 0) {
       createConversation();
     }
   }, [currentConversation, conversations.length, createConversation]);
 
+  // Loading state
   if (!currentConversation) {
     return <div className="flex-1 overflow-y-auto p-4 flex items-center justify-center">
       <div className="animate-spin">
@@ -108,6 +109,7 @@ const ChatMessages = () => {
     </div>;
   }
 
+  // Message rendering optimized with memoization where possible
   return (
     <div ref={containerRef} className="flex-1 overflow-y-auto p-4 space-y-6">
       {currentConversation.messages.length === 0 && !isLoading && !processingUrls ? (

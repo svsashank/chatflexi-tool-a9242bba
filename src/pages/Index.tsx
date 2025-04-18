@@ -15,6 +15,7 @@ const Index = () => {
   
   // Track if we've already loaded conversations in this component instance
   const loadedRef = useRef(false);
+  const loadingMessagesRef = useRef<{[key: string]: boolean}>({});
 
   // Only load conversations when the user is authenticated and we haven't already loaded them
   useEffect(() => {
@@ -27,18 +28,28 @@ const Index = () => {
     }
   }, [user, loadConversationsFromDB, conversations.length]);
 
-  // Load messages for the current conversation if it changes and we have conversations but no messages
+  // Optimized loading for current conversation messages
   useEffect(() => {
     if (currentConversationId) {
       const currentConversation = conversations.find(c => c.id === currentConversationId);
-      const shouldLoadMessages = currentConversation && 
-                               (!currentConversation.messages || currentConversation.messages.length === 0);
       
-      if (shouldLoadMessages) {
+      // Check if we should load messages (don't have them yet and haven't started loading)
+      if (currentConversation && 
+          (!currentConversation.messages || currentConversation.messages.length === 0) && 
+          !loadingMessagesRef.current[currentConversationId]) {
+        
+        // Mark as loading to prevent duplicate requests
+        loadingMessagesRef.current[currentConversationId] = true;
+        
         console.log("Index page: Loading messages for current conversation:", currentConversationId);
-        loadMessagesForConversation(currentConversationId).catch(err => {
-          console.error("Failed to load messages:", err);
-        });
+        loadMessagesForConversation(currentConversationId)
+          .catch(err => {
+            console.error("Failed to load messages:", err);
+          })
+          .finally(() => {
+            // Reset the loading flag even if there was an error
+            loadingMessagesRef.current[currentConversationId] = false;
+          });
       }
     }
   }, [currentConversationId, loadMessagesForConversation, conversations]);

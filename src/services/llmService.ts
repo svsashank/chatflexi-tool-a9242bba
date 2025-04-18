@@ -70,12 +70,9 @@ export const sendMessageToLLM = async (
     const images = lastMessage?.images || [];
     const files = lastMessage?.files || [];
     
-    // Debug logging for URL content
+    // Debug logging for URL content - reduce verbosity
     if (files.length > 0) {
-      const urlFiles = files.filter(file => file.startsWith('URL:'));
-      if (urlFiles.length > 0) {
-        console.log(`Message includes ${urlFiles.length} URL content files`);
-      }
+      console.log(`Message includes ${files.filter(file => file.startsWith('URL:')).length} URL content files`);
     }
     
     console.log('Sending message to LLM:', { 
@@ -84,124 +81,98 @@ export const sendMessageToLLM = async (
       provider: model.provider
     });
     
-    if (files.length > 0) {
-      console.log(`Sending ${files.length} files to LLM`);
-    }
-    
-    // Call the Supabase Edge Function with retries for better reliability
-    let attempts = 0;
-    const maxAttempts = 3; // Increase the number of retry attempts
-    let lastError;
-    
-    // Use AbortController for timeout, but handle it separately from the Supabase call
+    // Use AbortController for timeout
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout - increasing from 30 to 60 seconds
     
-    while (attempts < maxAttempts) {
-      try {
-        // Create a promise that will reject when the controller aborts
-        const timeoutPromise = new Promise((_, reject) => {
-          controller.signal.addEventListener('abort', () => {
-            reject(new Error('Request timed out after 30 seconds'));
-          });
+    try {
+      // Create a promise that will reject when the controller aborts
+      const timeoutPromise = new Promise((_, reject) => {
+        controller.signal.addEventListener('abort', () => {
+          reject(new Error('Request timed out after 60 seconds'));
         });
-        
-        // Race between the actual API call and the timeout
-        const result = await Promise.race([
-          supabase.functions.invoke('chat', {
-            body: { 
-              model,
-              content,
-              messages: messageHistory,
-              images,
-              files
-            }
-          }),
-          timeoutPromise
-        ]);
-        
-        clearTimeout(timeoutId);
-        
-        // Type assertion since we know this is from the supabase call if we get here
-        const { data, error } = result as { data: any, error: any };
-        
-        if (error) {
-          console.error(`Attempt ${attempts + 1}: Error with ${model.provider} API:`, error);
-          lastError = error;
-          attempts++;
-          // Wait before retry, with increasing delay
-          if (attempts < maxAttempts) await new Promise(resolve => setTimeout(resolve, 1000 * attempts));
-          continue;
-        }
-        
-        if (!data || (!data.content && !data.error)) {
-          console.error(`Attempt ${attempts + 1}: Empty response from ${model.provider} API`);
-          lastError = new Error("Empty response received from API");
-          attempts++;
-          // Wait before retry, with increasing delay
-          if (attempts < maxAttempts) await new Promise(resolve => setTimeout(resolve, 1000 * attempts));
-          continue;
-        }
-        
-        console.log('Received response from LLM');
-        
-        // If content is empty but we have search results, create a placeholder message
-        if (!data.content && (data.webSearchResults?.length > 0 || data.fileSearchResults?.length > 0)) {
-          data.content = "I'm currently searching for information related to your request. The results will be processed shortly.";
-        }
-        
-        // Ensure we always have some content
-        if (!data.content) {
-          data.content = "I'm processing your request. Please wait a moment for the full response.";
-        }
-        
-        const response = {
-          content: data.content,
-          tokens: data.tokens || { input: 0, output: 0 },
-          webSearchResults: data.webSearchResults || [],
-          fileSearchResults: data.fileSearchResults || []
-        };
-        
-        // Cache the successful response
-        responseCache.set(cacheKey, {
-          timestamp: Date.now(),
-          response
+      });
+      
+      // Better error message for timeout
+      const showTimeoutMessage = setTimeout(() => {
+        toast({
+          title: "Response taking longer than usual",
+          description: "The AI model is processing your request. This may take a moment...",
+          variant: "default",
         });
-        
-        return response;
-      } catch (error: any) {
-        clearTimeout(timeoutId);
-        
-        // Handle AbortController timeout
-        if (error.name === 'AbortError') {
-          console.error('Request timed out');
-          throw new Error('Request timed out after 30 seconds');
-        }
-        
-        console.error(`Attempt ${attempts + 1}: Error with ${model.provider} API:`, error);
-        lastError = error;
-        attempts++;
-        // Wait before retry, with increasing delay
-        if (attempts < maxAttempts) await new Promise(resolve => setTimeout(resolve, 1000 * attempts));
+      }, 15000); // Show a message after 15 seconds
+      
+      // Race between the actual API call and the timeout
+      const result = await Promise.race([
+        supabase.functions.invoke('chat', {
+          body: { 
+            model,
+            content,
+            messages: messageHistory,
+            images,
+            files
+          }
+        }),
+        timeoutPromise
+      ]);
+      
+      clearTimeout(timeoutId);
+      clearTimeout(showTimeoutMessage);
+      
+      // Type assertion since we know this is from the supabase call if we get here
+      const { data, error } = result as { data: any, error: any };
+      
+      if (error) {
+        console.error(`Error with ${model.provider} API:`, error);
+        throw error;
       }
+      
+      if (!data || (!data.content && !data.error)) {
+        throw new Error("Empty response received from API");
+      }
+      
+      console.log('Received response from LLM');
+      
+      // If content is empty but we have search results, create a placeholder message
+      if (!data.content && (data.webSearchResults?.length > 0 || data.fileSearchResults?.length > 0)) {
+        data.content = "I'm currently searching for information related to your request. The results will be processed shortly.";
+      }
+      
+      // Ensure we always have some content
+      if (!data.content) {
+        data.content = "I'm processing your request. Please wait a moment for the full response.";
+      }
+      
+      const response = {
+        content: data.content,
+        tokens: data.tokens || { input: 0, output: 0 },
+        webSearchResults: data.webSearchResults || [],
+        fileSearchResults: data.fileSearchResults || []
+      };
+      
+      // Cache the successful response
+      responseCache.set(cacheKey, {
+        timestamp: Date.now(),
+        response
+      });
+      
+      return response;
+    } catch (error: any) {
+      clearTimeout(timeoutId);
+      
+      // Handle AbortController timeout
+      if (error.name === 'AbortError') {
+        console.error('Request timed out');
+        throw new Error('Response is taking longer than expected. You may need to try again.');
+      }
+      
+      throw error;
     }
-    
-    // If we get here, all attempts failed
-    toast({
-      title: "Connection Error",
-      description: "Failed to get a response from the AI. Please try again.",
-      variant: "destructive",
-    });
-    
-    return {
-      content: `Error: ${lastError?.message || 'Failed to get response after multiple attempts'}. Please try again.`,
-      tokens: { input: 0, output: 0 }
-    };
   } catch (error: any) {
     console.error(`Error with ${model.provider} API:`, error);
     toast({
-      title: "Error",
-      description: `Error: ${error.message || 'An unexpected error occurred'}`,
+      title: "Response Failed",
+      description: `${error.message || 'An unexpected error occurred'}. Please try again.`,
       variant: "destructive",
     });
     
