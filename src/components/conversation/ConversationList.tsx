@@ -11,6 +11,7 @@ interface ConversationListProps {
   isLoading: boolean;
   onSelect: (id: string) => void;
   onDelete: (id: string, e: React.MouseEvent) => void;
+  onRefresh?: () => void;
 }
 
 const ConversationList = ({ 
@@ -18,12 +19,19 @@ const ConversationList = ({
   currentConversationId,
   isLoading,
   onSelect,
-  onDelete
+  onDelete,
+  onRefresh
 }: ConversationListProps) => {
   if (isLoading && conversations.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center p-8 text-center">
-        <RefreshCw size={24} className="animate-spin text-muted-foreground mb-3" />
+        <RefreshCw 
+          size={24} 
+          className="animate-spin text-muted-foreground mb-3"
+          onClick={onRefresh}
+          role="button"
+          aria-label="Refresh conversations"
+        />
         <p className="text-sm text-muted-foreground">Loading conversations...</p>
       </div>
     );
@@ -37,6 +45,14 @@ const ConversationList = ({
         <p className="text-xs text-muted-foreground mt-1">
           Create a new conversation to get started
         </p>
+        {onRefresh && (
+          <button 
+            onClick={onRefresh}
+            className="mt-4 text-xs text-primary hover:underline"
+          >
+            Refresh conversations
+          </button>
+        )}
       </div>
     );
   }
@@ -52,6 +68,16 @@ const ConversationList = ({
           onDelete={onDelete}
         />
       ))}
+      {onRefresh && (
+        <div className="p-2 text-center">
+          <button 
+            onClick={onRefresh}
+            className="text-xs text-muted-foreground hover:text-primary hover:underline"
+          >
+            Refresh conversations
+          </button>
+        </div>
+      )}
     </ScrollArea>
   );
 };

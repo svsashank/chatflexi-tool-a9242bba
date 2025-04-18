@@ -4,6 +4,7 @@ import { ChatStore } from '../types';
 import { AIModel, Message } from '@/types';
 import { extractUrls } from '@/utils/urlUtils';
 import { supabase } from '@/integrations/supabase/client';
+import { generateConversationTitleFromMessage } from '../conversationActions';
 
 export const createSendMessageAction = (
   set: (state: Partial<ChatStore> | ((state: ChatStore) => Partial<ChatStore>)) => void,
@@ -18,7 +19,8 @@ export const createSendMessageAction = (
       setProcessingUrls, 
       handleError,
       createConversation,
-      addMessage
+      addMessage,
+      updateConversationTitle
     } = get();
     
     // If no conversation exists, create one first
@@ -35,6 +37,7 @@ export const createSendMessageAction = (
       return;
     }
     
+    const conversation = get().conversations.find(c => c.id === updatedCurrentConversationId);
     const userId = localStorage.getItem('userId') || undefined;
     const timestamp = new Date();
     const messageId = uuidv4();
@@ -107,6 +110,13 @@ export const createSendMessageAction = (
     
     // Add user message using the addMessage action
     addMessage(newMessage);
+    
+    // Update the conversation title based on the first message if it's still the default
+    if (conversation && conversation.title === 'New Conversation' && conversation.messages.length === 0) {
+      const generatedTitle = generateConversationTitleFromMessage(content);
+      console.log("Updating conversation title to:", generatedTitle);
+      updateConversationTitle(updatedCurrentConversationId, generatedTitle);
+    }
     
     // Generate AI response with a small delay to ensure UI updates first
     setTimeout(() => {

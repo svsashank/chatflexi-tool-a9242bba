@@ -1,11 +1,27 @@
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 import { Conversation } from '@/types';
-import { ChatStore } from './types';
+import { ChatStore } from '../types';
+
+// Keep track of loading states to prevent duplicate requests
+const loadingStates = {
+  creating: false,
+  deleting: new Set<string>(),
+  updating: new Set<string>(),
+};
 
 export const createConversationAction = (set: Function, get: () => ChatStore) => async () => {
   try {
+    // Prevent multiple simultaneous creation requests
+    if (loadingStates.creating) {
+      console.log("Already creating a conversation, please wait");
+      return;
+    }
+    
+    loadingStates.creating = true;
+    console.log("Creating new conversation...");
+    
     const newConversation: Conversation = {
       id: uuidv4(),
       title: 'New Conversation',
@@ -14,8 +30,6 @@ export const createConversationAction = (set: Function, get: () => ChatStore) =>
       updatedAt: new Date(),
       contextSummary: '',
     };
-
-    console.log("Creating new conversation with ID:", newConversation.id);
 
     // Get current user
     const { data: { session } } = await supabase.auth.getSession();
@@ -34,33 +48,37 @@ export const createConversationAction = (set: Function, get: () => ChatStore) =>
         
       if (error) {
         console.error('Error creating conversation in database:', error);
-        toast({
-          title: 'Error',
-          description: 'Could not create a new conversation',
-          variant: 'destructive',
-        });
+        toast.error('Could not create a new conversation');
+        loadingStates.creating = false;
+        return null;
       } else {
         console.log("Successfully saved new conversation to database");
       }
     }
 
+    // Update local state first for better UX
     set((state: ChatStore) => ({
-      conversations: [...state.conversations, newConversation],
+      conversations: [newConversation, ...state.conversations],
       currentConversationId: newConversation.id,
     }));
 
     console.log("New conversation created and set as current with ID:", newConversation.id);
+    loadingStates.creating = false;
+    return newConversation.id;
   } catch (error) {
     console.error('Error creating conversation:', error);
-    toast({
-      title: 'Error',
-      description: 'Could not create a new conversation',
-      variant: 'destructive',
-    });
+    toast.error('Could not create a new conversation');
+    loadingStates.creating = false;
+    return null;
   }
 };
 
 export const setCurrentConversationIdAction = (set: Function, get: () => ChatStore) => async (id: string) => {
+  if (!id) {
+    console.error("Invalid conversation ID provided");
+    return;
+  }
+  
   console.log("Setting current conversation to:", id);
   
   // Verify the conversation exists in our state before setting it
@@ -71,12 +89,18 @@ export const setCurrentConversationIdAction = (set: Function, get: () => ChatSto
     return;
   }
   
-  // Set the conversation as current
+  // Set the conversation as current immediately for better UX
   set({ currentConversationId: id });
   
-  // Always load messages when switching conversations to ensure we have the latest data
-  console.log(`Loading messages for conversation ${id}`);
-  await get().loadMessagesForConversation(id);
+  try {
+    // Load messages in the background
+    await get().loadMessagesForConversation(id);
+  } catch (error) {
+    console.error(`Error loading messages for conversation ${id}:`, error);
+    // Don't revert the current conversation ID, as the user has already switched
+    // Just inform them of the error
+    toast.error('Could not load messages for this conversation');
+  }
 };
 
 export const deleteConversationAction = (set: Function, get: () => ChatStore) => async (id: string) => {
@@ -85,10 +109,28 @@ export const deleteConversationAction = (set: Function, get: () => ChatStore) =>
   // Don't delete if it's the only conversation
   if (conversations.length <= 1) {
     console.log("Can't delete the only conversation");
+    toast.error("You need at least one conversation");
+    return;
+  }
+  
+  // Prevent multiple delete operations on the same conversation
+  if (loadingStates.deleting.has(id)) {
+    console.log(`Already deleting conversation ${id}, please wait`);
     return;
   }
   
   try {
+    loadingStates.deleting.add(id);
+    
+    // Optimistically update UI first for better UX
+    const updatedConversations = conversations.filter(conv => conv.id !== id);
+    const newCurrentId = id === currentConversationId ? updatedConversations[0].id : currentConversationId;
+    
+    set({
+      conversations: updatedConversations,
+      currentConversationId: newCurrentId,
+    });
+    
     const { data: { session } } = await supabase.auth.getSession();
     
     if (session?.user) {
@@ -101,55 +143,96 @@ export const deleteConversationAction = (set: Function, get: () => ChatStore) =>
         
       if (error) {
         console.error('Error deleting conversation from database:', error);
-        toast({
-          title: 'Error',
-          description: 'Could not delete conversation',
-          variant: 'destructive',
-        });
+        
+        // Revert the change if database update fails
+        set({ conversations });
+        toast.error('Could not delete conversation');
+        loadingStates.deleting.delete(id);
         return;
       } else {
         console.log("Successfully deleted conversation from database");
+        toast.success('Conversation deleted');
       }
     }
     
-    const updatedConversations = conversations.filter(conv => conv.id !== id);
-    
-    // If the deleted conversation was the current one, set a new current
-    const newCurrentId = id === currentConversationId 
-      ? updatedConversations[0].id 
-      : currentConversationId;
-    
-    set({
-      conversations: updatedConversations,
-      currentConversationId: newCurrentId,
-    });
-
     console.log("Conversation deleted. New current conversation:", newCurrentId);
+    loadingStates.deleting.delete(id);
   } catch (error) {
     console.error('Error deleting conversation:', error);
-    toast({
-      title: 'Error',
-      description: 'Could not delete conversation',
-      variant: 'destructive',
-    });
+    toast.error('Could not delete conversation');
+    loadingStates.deleting.delete(id);
   }
 };
 
-export const resetConversationsAction = (set: Function) => () => {
-  // Create a single empty conversation when resetting
-  const newConversation: Conversation = {
-    id: uuidv4(),
-    title: 'New Conversation',
-    messages: [],
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    contextSummary: '',
-  };
+export const updateConversationTitleAction = (set: Function, get: () => ChatStore) => async (id: string, title: string) => {
+  if (loadingStates.updating.has(id)) {
+    console.log(`Already updating conversation ${id}, please wait`);
+    return;
+  }
   
-  set({
-    conversations: [newConversation],
-    currentConversationId: newConversation.id,
-  });
+  try {
+    loadingStates.updating.add(id);
+    
+    // Update locally first for responsive UI
+    set((state: ChatStore) => ({
+      conversations: state.conversations.map(conv => 
+        conv.id === id ? { ...conv, title, updatedAt: new Date() } : conv
+      )
+    }));
+    
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (session?.user) {
+      const { error } = await supabase
+        .from('conversations')
+        .update({ 
+          title,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .eq('user_id', session.user.id);
+        
+      if (error) {
+        console.error('Error updating conversation title:', error);
+        toast.error('Could not update conversation title');
+      } else {
+        console.log("Successfully updated conversation title");
+      }
+    }
+    
+    loadingStates.updating.delete(id);
+  } catch (error) {
+    console.error('Error updating conversation title:', error);
+    toast.error('Could not update conversation title');
+    loadingStates.updating.delete(id);
+  }
+};
+
+// New function to generate a meaningful title based on user message
+export const generateConversationTitleFromMessage = (message: string) => {
+  // Remove special characters and normalize spaces
+  const cleanMessage = message.replace(/[^\w\s]/gi, ' ').replace(/\s+/g, ' ').trim();
   
-  console.log("Reset conversations state with a new conversation:", newConversation.id);
+  // Limit to first 5-8 words for a reasonable title length
+  const words = cleanMessage.split(' ');
+  const titleWords = words.slice(0, Math.min(8, Math.max(5, words.length)));
+  let title = titleWords.join(' ');
+  
+  // Add ellipsis if truncated and capitalize first letter
+  if (words.length > titleWords.length) {
+    title += '...';
+  }
+  
+  // Ensure title isn't too long
+  if (title.length > 50) {
+    title = title.substring(0, 47) + '...';
+  }
+  
+  // If still empty after processing, use default title
+  if (!title || title.length < 3) {
+    title = 'New Conversation';
+  }
+  
+  // Capitalize first letter
+  return title.charAt(0).toUpperCase() + title.slice(1);
 };

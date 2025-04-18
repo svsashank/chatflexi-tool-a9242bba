@@ -13,7 +13,8 @@ import {
   createConversationAction, 
   setCurrentConversationIdAction, 
   deleteConversationAction,
-  updateConversationTitleAction
+  updateConversationTitleAction,
+  generateConversationTitleFromMessage,
 } from './actions/conversationActions';
 import {
   loadConversationsFromDBAction,
@@ -66,3 +67,5 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   handleError: handleErrorAction(set),
   retryRequest: retryRequestAction(set, get),
 }));
+
+export { generateConversationTitleFromMessage };

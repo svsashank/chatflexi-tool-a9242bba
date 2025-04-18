@@ -29,11 +29,11 @@ export type ChatStore = {
   setCurrentConversationId: (id: string) => void;
   deleteConversation: (id: string) => void;
   updateConversationTitle: (id: string, title: string) => void;
+  refreshConversations: () => Promise<void>;
   
   // Database Actions
   loadConversationsFromDB: () => Promise<void>;
   loadMessagesForConversation: (conversationId: string) => Promise<void>;
-  refreshConversations: () => Promise<void>;
   
   // State Management Actions
   clearConversations: () => void;
