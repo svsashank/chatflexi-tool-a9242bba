@@ -79,13 +79,15 @@ export async function handleOpenAIReasoningModel(
 
   console.log(`Calling OpenAI responses API for reasoning model ${modelId}...`);
   
-  // Define tools properly as objects
+  // Define tools correctly for the responses API
+  // The key fix: For file_search tool, we need to provide vector_store_ids array
   const tools = [
     {
       type: "web_search"
     },
     {
-      type: "file_search"
+      type: "file_search",
+      vector_store_ids: [] // Required empty array, not omitting the property
     }
   ];
   
