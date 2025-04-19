@@ -79,14 +79,9 @@ export async function handleOpenAIReasoningModel(
 
   console.log(`Calling OpenAI responses API for reasoning model ${modelId}...`);
   
-  // Critical fix: Remove the file_search tool entirely since we don't have a valid vector store
-  // The API requires at least one item in vector_store_ids if file_search tool is included
-  const tools = [
-    {
-      type: "web_search"
-    }
-    // File search tool removed to avoid the empty vector_store_ids error
-  ];
+  // CRITICAL FIX: Remove ALL tools for o1 series models since they don't support web_search_preview
+  // The previous error was because web_search tool is not supported with o1
+  // We'll handle search needs separately after the initial API call
   
   try {
     const response = await fetch('https://api.openai.com/v1/responses', {
@@ -100,7 +95,7 @@ export async function handleOpenAIReasoningModel(
         model: modelId,
         input: formattedInput,
         reasoning: { effort: "high" }, // Using high effort for best results
-        tools: tools
+        // Remove tools array entirely to fix the error with o1 model
       })
     });
     
@@ -132,25 +127,16 @@ export async function handleOpenAIReasoningModel(
         }
       }
       
-      // Extract web search queries if we haven't done a proactive search
-      if (!webSearchResults.length) {
-        for (const item of data.output) {
-          if (item.type === 'tool_result' && item.tool === 'web_search') {
-            // Get search queries
-            let searchQuery = content;
-            if (item.input && item.input.query) {
-              searchQuery = item.input.query;
-            }
-            console.log(`Performing web search for API-requested query: "${searchQuery}"`);
-            
-            // Use Brave Search API to get real results
-            webSearchResults = await performBraveSearch(searchQuery);
-            console.log("Got web search results from Brave:", JSON.stringify(webSearchResults, null, 2));
-            
-            // If we got search results but haven't generated a response yet, make a follow-up call
-            if (webSearchResults.length > 0 && !responseContent) {
-              // Generate a new system prompt with search results that emphasizes they're supplemental
-              const searchContext = `
+      // For o1 models, if we need search results, we need to do it manually after the initial response
+      // We'll check if the content suggests a need for search
+      if (!webSearchResults.length && needsWebSearch(content)) {
+        console.log("Content might need web search. Performing search manually...");
+        webSearchResults = await performBraveSearch(content);
+        
+        // If we got search results but haven't generated a response yet, make a follow-up call
+        if (webSearchResults.length > 0) {
+          // Generate a new system prompt with search results that emphasizes they're supplemental
+          const searchContext = `
 I've found some potentially relevant information from the web about the user's query.
 This is supplementary context to help inform your response, but you should not be limited to only this information.
 Use your own knowledge and capabilities alongside this information to provide the best possible answer.
@@ -163,50 +149,49 @@ ${result.snippet}
 `).join('\n')}
 
 Feel free to reference this information if it's helpful, but also draw on your broader knowledge to provide a comprehensive response to the user's question.`;
-              
-              const enhancedSystemPrompt = systemPrompt + "\n" + searchContext;
-              
-              // Make a follow-up call with search results
-              const followUpInput = [
-                { role: 'system', content: enhancedSystemPrompt },
-                ...historyWithoutLastUserMessage.map(msg => ({
-                  role: msg.role,
-                  content: msg.content
-                })),
-                { role: 'user', content }
-              ];
-              
-              const followUpResponse = await fetch('https://api.openai.com/v1/responses', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${OPENAI_API_KEY}`,
-                  'OpenAI-Beta': 'responses=v1'
-                },
-                body: JSON.stringify({
-                  model: modelId,
-                  input: followUpInput,
-                  reasoning: { effort: "high" },
-                })
-              });
-              
-              if (followUpResponse.ok) {
-                const followUpData = await followUpResponse.json();
-                console.log("Follow-up response with search results:", JSON.stringify(followUpData, null, 2));
-                
-                // Extract content from follow-up response
-                if (followUpData.output && Array.isArray(followUpData.output)) {
-                  for (const item of followUpData.output) {
-                    if (item.type === 'message' && item.content && Array.isArray(item.content)) {
-                      for (const contentItem of item.content) {
-                        if (contentItem.type === 'output_text' && contentItem.text) {
-                          responseContent = contentItem.text;
-                          break;
-                        }
-                      }
-                      if (responseContent) break;
+          
+          const enhancedSystemPrompt = systemPrompt + "\n" + searchContext;
+          
+          // Make a follow-up call with search results
+          const followUpInput = [
+            { role: 'system', content: enhancedSystemPrompt },
+            ...historyWithoutLastUserMessage.map(msg => ({
+              role: msg.role,
+              content: msg.content
+            })),
+            { role: 'user', content }
+          ];
+          
+          const followUpResponse = await fetch('https://api.openai.com/v1/responses', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${OPENAI_API_KEY}`,
+              'OpenAI-Beta': 'responses=v1'
+            },
+            body: JSON.stringify({
+              model: modelId,
+              input: followUpInput,
+              reasoning: { effort: "high" },
+              // Still no tools for follow-up call
+            })
+          });
+          
+          if (followUpResponse.ok) {
+            const followUpData = await followUpResponse.json();
+            console.log("Follow-up response with search results:", JSON.stringify(followUpData, null, 2));
+            
+            // Extract content from follow-up response
+            if (followUpData.output && Array.isArray(followUpData.output)) {
+              for (const item of followUpData.output) {
+                if (item.type === 'message' && item.content && Array.isArray(item.content)) {
+                  for (const contentItem of item.content) {
+                    if (contentItem.type === 'output_text' && contentItem.text) {
+                      responseContent = contentItem.text;
+                      break;
                     }
                   }
+                  if (responseContent) break;
                 }
               }
             }
@@ -545,7 +530,8 @@ export function isOSeriesReasoningModel(modelId: string): boolean {
   return oSeriesReasoningModels.includes(modelId);
 }
 
-// Check if query likely needs web search
+// Helper function to determine if a query likely needs web search
+// Used for O-series models since we can't use the web_search tool directly
 function needsWebSearch(query: string): boolean {
   const lowerQuery = query.toLowerCase();
   
