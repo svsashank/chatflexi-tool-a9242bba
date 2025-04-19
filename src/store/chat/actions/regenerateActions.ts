@@ -1,4 +1,3 @@
-
 import { v4 as uuidv4 } from 'uuid';
 import { sendMessageToLLM } from '@/services/llmService';
 import { toast } from '@/components/ui/use-toast';
@@ -198,48 +197,77 @@ export const createRegenerateMessageAction = (set: Function, get: Function) => a
               const userId = session.user.id;
               console.log(`Updating user ${userId} compute credits for regeneration: +${computeCredits} credits`);
               
-              // Check if a record exists for the user
-              const { data: existingRecord, error: checkError } = await supabase
-                .from('user_compute_credits')
-                .select('id')
-                .eq('user_id', userId)
-                .maybeSingle();
-                
-              if (checkError) {
-                console.error('Error checking user compute credits record:', checkError);
-              }
+              // First try the RPC function which handles both insert and update
+              const { error: rpcError } = await supabase.rpc(
+                'update_user_compute_credits',
+                { 
+                  p_user_id: userId,
+                  p_credits: computeCredits
+                }
+              );
               
-              if (!existingRecord) {
-                console.log("No existing credit record found, creating one");
-                const { error: insertError } = await supabase
-                  .from('user_compute_credits')
-                  .insert([
-                    { 
-                      user_id: userId,
-                      total_credits: computeCredits 
-                    }
-                  ]);
-                  
-                if (insertError) {
-                  console.error('Error creating user compute credits record:', insertError);
-                }
-              } else {
-                // Use the RPC function to update existing records
-                const { error: creditError } = await supabase.rpc(
-                  'update_user_compute_credits',
-                  { 
-                    p_user_id: userId,
-                    p_credits: computeCredits
-                  }
-                );
+              if (rpcError) {
+                console.error('Error updating user compute credits via RPC:', rpcError);
                 
-                if (creditError) {
-                  console.error('Error updating user compute credits:', creditError);
+                // Fallback approach - check if record exists
+                const { data: existingRecord, error: checkError } = await supabase
+                  .from('user_compute_credits')
+                  .select('id')
+                  .eq('user_id', userId)
+                  .maybeSingle();
+                  
+                if (checkError) {
+                  console.error('Error checking user compute credits record:', checkError);
+                }
+                
+                if (!existingRecord) {
+                  console.log("No existing credit record found, creating one");
+                  const { error: insertError } = await supabase
+                    .from('user_compute_credits')
+                    .insert([
+                      { 
+                        user_id: userId,
+                        total_credits: computeCredits 
+                      }
+                    ]);
+                  
+                  if (insertError) {
+                    // Handle potential race condition with duplicate key
+                    if (insertError.code === '23505') {
+                      console.log("Duplicate key detected, trying update instead");
+                      const { error: updateError } = await supabase
+                        .from('user_compute_credits')
+                        .update({ 
+                          total_credits: supabase.rpc('increment_credits', { amount: computeCredits }),
+                          updated_at: new Date().toISOString()
+                        })
+                        .eq('user_id', userId);
+                      
+                      if (updateError) {
+                        console.error('Error updating credits after duplicate key:', updateError);
+                      }
+                    } else {
+                      console.error('Error creating user compute credits record:', insertError);
+                    }
+                  }
+                } else {
+                  // Update existing record directly
+                  const { error: updateError } = await supabase
+                    .from('user_compute_credits')
+                    .update({ 
+                      total_credits: supabase.rpc('increment_credits', { amount: computeCredits }),
+                      updated_at: new Date().toISOString() 
+                    })
+                    .eq('user_id', userId);
+                  
+                  if (updateError) {
+                    console.error('Error updating existing credits record:', updateError);
+                  }
                 }
               }
-            } catch (creditUpdateError) {
-              console.error('Error handling compute credits update:', creditUpdateError);
             }
+          } catch (creditUpdateError) {
+            console.error('Error handling compute credits update:', creditUpdateError);
           }
         } catch (dbError) {
           console.error('Database error:', dbError);

@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Zap } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -36,24 +35,53 @@ const UserComputeCredits = () => {
           } else if (!data) {
             console.log("No credits record found for user, creating one with 0 credits");
             
-            // Create a new record if none exists
-            const { error: insertError } = await supabase
-              .from('user_compute_credits')
-              .insert([
-                { user_id: session.user.id, total_credits: 0 }
-              ]);
-              
-            if (insertError) {
-              console.error('Error creating user compute credits record:', insertError);
-              setError(insertError.message);
-              toast({
-                title: "Error",
-                description: "Failed to initialize credits record",
-                variant: "destructive",
-              });
-            } else {
-              console.log("Created new credit record with 0 credits");
-              setTotalCredits(0);
+            // Create a new record if none exists - with error handling for race conditions
+            try {
+              const { error: insertError } = await supabase
+                .from('user_compute_credits')
+                .insert([
+                  { user_id: session.user.id, total_credits: 0 }
+                ]);
+                
+              if (insertError) {
+                // If there's a duplicate key error, it means another request created the record
+                // between our check and insert. In this case, try to fetch again.
+                if (insertError.code === '23505') { // Postgres duplicate key error code
+                  console.log("Duplicate key detected, another request likely created the record. Fetching again.");
+                  const { data: retryData, error: retryError } = await supabase
+                    .from('user_compute_credits')
+                    .select('total_credits')
+                    .eq('user_id', session.user.id)
+                    .maybeSingle();
+                    
+                  if (retryError) {
+                    console.error('Error in retry fetch:', retryError);
+                    setError("Failed to initialize credits record");
+                    toast({
+                      title: "Error",
+                      description: "Failed to initialize credits record",
+                      variant: "destructive",
+                    });
+                  } else {
+                    console.log("Successfully fetched existing credit record on retry");
+                    setTotalCredits(retryData?.total_credits || 0);
+                  }
+                } else {
+                  console.error('Error creating user compute credits record:', insertError);
+                  setError("Failed to initialize credits record");
+                  toast({
+                    title: "Error",
+                    description: "Failed to initialize credits record",
+                    variant: "destructive",
+                  });
+                }
+              } else {
+                console.log("Created new credit record with 0 credits");
+                setTotalCredits(0);
+              }
+            } catch (err) {
+              console.error('Exception creating credit record:', err);
+              setError("Failed to initialize credits record");
             }
           } else {
             console.log("Fetched total credits:", data.total_credits || 0);
