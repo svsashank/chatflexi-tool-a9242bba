@@ -236,10 +236,11 @@ export const createRegenerateMessageAction = (set: Function, get: Function) => a
                     // Handle potential race condition with duplicate key
                     if (insertError.code === '23505') {
                       console.log("Duplicate key detected, trying update instead");
+                      // Use a direct numeric value instead of rpc function
                       const { error: updateError } = await supabase
                         .from('user_compute_credits')
                         .update({ 
-                          total_credits: supabase.rpc('increment_credits', { amount: computeCredits }),
+                          total_credits: computeCredits,  // Just set it directly to new value
                           updated_at: new Date().toISOString()
                         })
                         .eq('user_id', userId);
@@ -253,16 +254,29 @@ export const createRegenerateMessageAction = (set: Function, get: Function) => a
                   }
                 } else {
                   // Update existing record directly
-                  const { error: updateError } = await supabase
+                  // First get the current value
+                  const { data: currentCredits, error: getError } = await supabase
                     .from('user_compute_credits')
-                    .update({ 
-                      total_credits: supabase.rpc('increment_credits', { amount: computeCredits }),
-                      updated_at: new Date().toISOString() 
-                    })
-                    .eq('user_id', userId);
-                  
-                  if (updateError) {
-                    console.error('Error updating existing credits record:', updateError);
+                    .select('total_credits')
+                    .eq('user_id', userId)
+                    .single();
+                    
+                  if (getError) {
+                    console.error('Error getting current credits:', getError);
+                  } else {
+                    // Then update with the sum
+                    const newTotal = (currentCredits?.total_credits || 0) + computeCredits;
+                    const { error: updateError } = await supabase
+                      .from('user_compute_credits')
+                      .update({ 
+                        total_credits: newTotal,
+                        updated_at: new Date().toISOString() 
+                      })
+                      .eq('user_id', userId);
+                    
+                    if (updateError) {
+                      console.error('Error updating existing credits record:', updateError);
+                    }
                   }
                 }
               }

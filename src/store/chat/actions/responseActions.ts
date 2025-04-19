@@ -1,4 +1,3 @@
-
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -233,7 +232,7 @@ async function updateUserComputeCredits(userId: string, computeCredits: number) 
       // Fallback: Check if a record exists for the user
       const { data: existingRecord, error: checkError } = await supabase
         .from('user_compute_credits')
-        .select('id')
+        .select('id, total_credits')
         .eq('user_id', userId)
         .maybeSingle();
         
@@ -258,16 +257,30 @@ async function updateUserComputeCredits(userId: string, computeCredits: number) 
           // so now update it through an update operation
           if (insertError.code === '23505') {
             console.log("Duplicate key detected, trying update instead");
-            const { error: updateError } = await supabase
+            // Get current credits and then update
+            const { data: currentCredits, error: getError } = await supabase
               .from('user_compute_credits')
-              .update({ 
-                total_credits: supabase.rpc('increment_credits', { amount: computeCredits }),
-                updated_at: new Date().toISOString()
-              })
-              .eq('user_id', userId);
+              .select('total_credits')
+              .eq('user_id', userId)
+              .single();
               
-            if (updateError) {
-              console.error('Error updating user compute credits after duplicate key:', updateError);
+            if (getError) {
+              console.error('Error getting current credits:', getError);
+            } else {
+              // Calculate new total
+              const newTotal = (currentCredits?.total_credits || 0) + computeCredits;
+              
+              const { error: updateError } = await supabase
+                .from('user_compute_credits')
+                .update({ 
+                  total_credits: newTotal,
+                  updated_at: new Date().toISOString()
+                })
+                .eq('user_id', userId);
+                
+              if (updateError) {
+                console.error('Error updating user compute credits after duplicate key:', updateError);
+              }
             }
           } else {
             console.error('Error creating user compute credits record:', insertError);
@@ -276,11 +289,13 @@ async function updateUserComputeCredits(userId: string, computeCredits: number) 
           console.log(`Created new credit record with ${computeCredits} credits`);
         }
       } else {
-        // Update existing record directly
+        // Update existing record directly by adding to existing value
+        const newTotal = (existingRecord.total_credits || 0) + computeCredits;
+        
         const { error: updateError } = await supabase
           .from('user_compute_credits')
           .update({ 
-            total_credits: supabase.rpc('increment_credits', { amount: computeCredits }),
+            total_credits: newTotal,
             updated_at: new Date().toISOString() 
           })
           .eq('user_id', userId);
