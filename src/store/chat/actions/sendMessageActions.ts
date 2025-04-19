@@ -4,7 +4,7 @@ import { ChatStore } from '../types';
 import { AIModel, Message } from '@/types';
 import { extractUrls } from '@/utils/urlUtils';
 import { supabase } from '@/integrations/supabase/client';
-import { generateConversationTitleFromMessage } from '../conversationActions';
+import { generateConversationTitleFromMessage } from './conversationActions';
 
 export const createSendMessageAction = (
   set: (state: Partial<ChatStore> | ((state: ChatStore) => Partial<ChatStore>)) => void,
