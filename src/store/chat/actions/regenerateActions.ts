@@ -1,3 +1,4 @@
+
 import { v4 as uuidv4 } from 'uuid';
 import { sendMessageToLLM } from '@/services/llmService';
 import { toast } from '@/components/ui/use-toast';
@@ -265,9 +266,9 @@ export const createRegenerateMessageAction = (set: Function, get: Function) => a
                   }
                 }
               }
+            } catch (creditUpdateError) {
+              console.error('Error handling compute credits update:', creditUpdateError);
             }
-          } catch (creditUpdateError) {
-            console.error('Error handling compute credits update:', creditUpdateError);
           }
         } catch (dbError) {
           console.error('Database error:', dbError);
