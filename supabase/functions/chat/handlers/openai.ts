@@ -79,16 +79,13 @@ export async function handleOpenAIReasoningModel(
 
   console.log(`Calling OpenAI responses API for reasoning model ${modelId}...`);
   
-  // Define tools correctly for the responses API
-  // The key fix: For file_search tool, we need to provide vector_store_ids array
+  // Critical fix: Remove the file_search tool entirely since we don't have a valid vector store
+  // The API requires at least one item in vector_store_ids if file_search tool is included
   const tools = [
     {
       type: "web_search"
-    },
-    {
-      type: "file_search",
-      vector_store_ids: [] // Required empty array, not omitting the property
     }
+    // File search tool removed to avoid the empty vector_store_ids error
   ];
   
   try {
@@ -214,14 +211,6 @@ Feel free to reference this information if it's helpful, but also draw on your b
               }
             }
           }
-        }
-      }
-      
-      // Extract file search results
-      for (const item of data.output) {
-        if (item.type === 'tool_result' && item.tool === 'file_search' && item.result) {
-          fileSearchResults = Array.isArray(item.result) ? item.result : [];
-          console.log("Found file search results:", JSON.stringify(fileSearchResults));
         }
       }
     }
@@ -400,23 +389,6 @@ export async function handleOpenAIStandard(
           required: ["query"]
         }
       }
-    },
-    {
-      type: "function",
-      function: {
-        name: "file_search",
-        description: "Search through uploaded files",
-        parameters: {
-          type: "object",
-          properties: {
-            query: {
-              type: "string", 
-              description: "The search query"
-            }
-          },
-          required: ["query"]
-        }
-      }
     }
   ];
   
@@ -479,18 +451,6 @@ export async function handleOpenAIStandard(
             // Perform real search with Brave API
             webSearchResults = await performBraveSearch(searchQuery);
             console.log(`Received ${webSearchResults.length} search results from Brave`);
-          }
-          
-          // Process file search tool call
-          if (toolCall.function.name === "file_search") {
-            const args = JSON.parse(toolCall.function.arguments);
-            const searchQuery = args.query || '';
-            
-            if (!searchQuery) continue;
-            
-            // For now, we return empty file search results
-            console.log(`Would perform file search for: ${searchQuery}`);
-            fileSearchResults = [];
           }
         } catch (e) {
           console.error("Error processing tool call:", e);
