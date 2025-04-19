@@ -14,7 +14,6 @@ import {
   setCurrentConversationIdAction, 
   deleteConversationAction,
   updateConversationTitleAction,
-  generateConversationTitleFromMessage,
 } from './actions/conversationActions';
 import {
   loadConversationsFromDBAction,
@@ -26,6 +25,9 @@ import {
   handleErrorAction,
   retryRequestAction
 } from './actions/stateActions';
+
+// Import generateConversationTitleFromMessage from conversationActions
+import { generateConversationTitleFromMessage } from './conversationActions';
 
 // Import AI_MODELS
 import { AI_MODELS } from '@/constants';
