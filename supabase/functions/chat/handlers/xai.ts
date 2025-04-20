@@ -77,14 +77,16 @@ export async function handleXAI(messageHistory: any[], content: string, modelId:
         model: grokModelId,
         messages: formattedMessages,
         temperature: 0.7,
-        max_tokens: 1000,
+        max_tokens: 4000, // Increased from 1000 to 4000
+        stream: false // Ensure we get the full response
       })
     });
     
     // Capture the full response as text first for better debugging
     const responseText = await response.text();
     console.log(`xAI API response status: ${response.status}`);
-    console.log(`xAI API response first 100 chars: ${responseText.substring(0, 100)}...`);
+    console.log(`xAI API response first 500 chars: ${responseText.substring(0, 500)}...`);
+    console.log(`Full response length: ${responseText.length} chars`);
     
     // Try to parse the response as JSON to better handle errors
     let parsedResponse;
@@ -97,30 +99,19 @@ export async function handleXAI(messageHistory: any[], content: string, modelId:
       throw new Error(`Invalid JSON response from xAI API: ${responseText.substring(0, 100)}...`);
     }
     
-    // Check for authentication errors
-    if (parsedResponse.code === 401 || !response.ok) {
-      if (parsedResponse.msg) {
-        // This captures the Chinese error message we saw in the logs
-        console.error(`xAI authentication error: ${parsedResponse.msg}`);
-        throw new Error(`xAI API authentication failed. Please check your API key and permissions. Error code: ${parsedResponse.code || response.status}`);
-      } else if (parsedResponse.error) {
-        console.error(`xAI API error: ${JSON.stringify(parsedResponse.error)}`);
-        throw new Error(`xAI API error: ${parsedResponse.error.message || 'Unknown error'}`);
-      } else {
-        throw new Error(`xAI API returned status ${response.status}: ${responseText.substring(0, 100)}`);
-      }
-    }
-    
-    // Validate the expected response structure before trying to use it
+    // Validate the expected response structure with more comprehensive checks
     if (parsedResponse.choices && 
         Array.isArray(parsedResponse.choices) && 
         parsedResponse.choices.length > 0 && 
         parsedResponse.choices[0].message && 
         parsedResponse.choices[0].message.content) {
       
+      const fullContent = parsedResponse.choices[0].message.content;
+      console.log(`Full response content length: ${fullContent.length} chars`);
+      
       return new Response(
         JSON.stringify({ 
-          content: parsedResponse.choices[0].message.content,
+          content: fullContent,
           model: grokModelId,
           provider: 'xAI',
           tokens: {
@@ -142,3 +133,4 @@ export async function handleXAI(messageHistory: any[], content: string, modelId:
     throw error;
   }
 }
+
