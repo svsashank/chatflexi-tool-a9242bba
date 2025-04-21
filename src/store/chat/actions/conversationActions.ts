@@ -1,4 +1,3 @@
-
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -46,7 +45,7 @@ export const createConversationAction = (set: Function, get: () => ChatStore) =>
     // Prevent multiple simultaneous creation requests
     if (loadingStates.creating) {
       console.log("Already creating a conversation, please wait");
-      return;
+      return null;
     }
     
     loadingStates.creating = true;
@@ -64,29 +63,34 @@ export const createConversationAction = (set: Function, get: () => ChatStore) =>
     // Get current user
     const { data: { session } } = await supabase.auth.getSession();
     
-    if (session?.user) {
-      // Store in database
-      const { error } = await supabase
-        .from('conversations')
-        .insert({
-          id: newConversation.id,
-          user_id: session.user.id,
-          title: newConversation.title,
-          created_at: newConversation.createdAt.toISOString(),
-          updated_at: newConversation.updatedAt.toISOString()
-        });
-        
-      if (error) {
-        console.error('Error creating conversation in database:', error);
-        toast.error('Could not create a new conversation');
-        loadingStates.creating = false;
-        return null;
-      } else {
-        console.log("Successfully saved new conversation to database");
-      }
+    if (!session?.user) {
+      console.error('No authenticated user found');
+      toast.error('Authentication required to create conversations');
+      loadingStates.creating = false;
+      return null;
     }
+    
+    // Store in database
+    const { error } = await supabase
+      .from('conversations')
+      .insert({
+        id: newConversation.id,
+        user_id: session.user.id,
+        title: newConversation.title,
+        created_at: newConversation.createdAt.toISOString(),
+        updated_at: newConversation.updatedAt.toISOString()
+      });
+      
+    if (error) {
+      console.error('Error creating conversation in database:', error);
+      toast.error('Could not create a new conversation');
+      loadingStates.creating = false;
+      return null;
+    }
+    
+    console.log("Successfully saved new conversation to database");
 
-    // Update local state first for better UX
+    // Update local state
     set((state: ChatStore) => ({
       conversations: [newConversation, ...state.conversations],
       currentConversationId: newConversation.id,
@@ -100,6 +104,9 @@ export const createConversationAction = (set: Function, get: () => ChatStore) =>
     toast.error('Could not create a new conversation');
     loadingStates.creating = false;
     return null;
+  } finally {
+    // Always ensure creating flag is reset
+    loadingStates.creating = false;
   }
 };
 

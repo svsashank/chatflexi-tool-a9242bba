@@ -7,28 +7,15 @@ import { useAuth } from "@/contexts/AuthContext";
 const Index = () => {
   const { user } = useAuth();
   const { 
-    loadConversationsFromDB, 
-    currentConversationId, 
     loadMessagesForConversation,
+    currentConversationId,
     conversations,
   } = useChatStore();
   
-  // Track if we've already loaded conversations in this component instance
-  const loadedRef = useRef(false);
+  // Track if we're loading messages for conversations to prevent duplicate requests
   const loadingMessagesRef = useRef<{[key: string]: boolean}>({});
 
-  // Only load conversations when the user is authenticated and we haven't already loaded them
-  useEffect(() => {
-    if (user && !loadedRef.current && conversations.length === 0) {
-      loadedRef.current = true;
-      console.log("Index page: Loading conversations for authenticated user");
-      loadConversationsFromDB().catch(err => {
-        console.error("Failed to load conversations:", err);
-      });
-    }
-  }, [user, loadConversationsFromDB, conversations.length]);
-
-  // Optimized loading for current conversation messages
+  // Only load messages for the current conversation if needed
   useEffect(() => {
     if (currentConversationId) {
       const currentConversation = conversations.find(c => c.id === currentConversationId);
