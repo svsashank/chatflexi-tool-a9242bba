@@ -1,7 +1,7 @@
 
 import { corsHeaders } from "../utils/cors.ts";
 
-// Helper function to get the correct Grok model ID
+// Extract model ID based on input
 function getGrokModelId(modelId: string): string {
   switch(modelId) {
     case 'grok-3':
@@ -13,7 +13,7 @@ function getGrokModelId(modelId: string): string {
   }
 }
 
-// Helper function to process file content
+// Process and append file contents to the user input content for context
 function processFiles(files: string[], content: string): string {
   if (!files || files.length === 0) {
     return content;
@@ -45,7 +45,7 @@ function processFiles(files: string[], content: string): string {
   return enhancedContent;
 }
 
-// Helper function to format messages for the API
+// Format the full message history with a system prompt and the user's content
 function formatMessages(messageHistory: any[], content: string, systemPrompt: string): any[] {
   return [
     { role: 'system', content: systemPrompt },
@@ -57,7 +57,7 @@ function formatMessages(messageHistory: any[], content: string, systemPrompt: st
   ];
 }
 
-// Helper function to estimate token counts
+// Estimate token counts from string lengths as rough guess
 function estimateTokens(content: string, systemPrompt: string, responseContent: string) {
   return {
     input: Math.round((content.length + systemPrompt.length) / 4),
@@ -65,8 +65,8 @@ function estimateTokens(content: string, systemPrompt: string, responseContent: 
   };
 }
 
-// Helper function to handle xAI API response
-async function handleXAIResponse(response: Response) {
+// Parse and validate the xAI API response text
+async function parseXAIResponse(response: Response) {
   const responseText = await response.text();
   console.log(`xAI API response status: ${response.status}`);
   console.log(`xAI API response first 500 chars: ${responseText.substring(0, 500)}...`);
@@ -83,7 +83,33 @@ async function handleXAIResponse(response: Response) {
   }
 }
 
-// Main xAI handler function
+// Call the xAI API with the prepared data and return a Response with formatted result
+async function callXAIAPI(formattedMessages: any[], modelId: string) {
+  const XAI_API_KEY = Deno.env.get('XAI_API_KEY');
+  if (!XAI_API_KEY) {
+    throw new Error("xAI API key not configured. Please add your xAI API key in the Supabase settings.");
+  }
+
+  console.log(`Calling xAI API with model ${modelId}...`);
+
+  const response = await fetch('https://api.x.ai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${XAI_API_KEY}`
+    },
+    body: JSON.stringify({
+      model: modelId,
+      messages: formattedMessages,
+      temperature: 0.7,
+      max_tokens: 4000,
+      stream: false
+    })
+  });
+
+  return response;
+}
+
 export async function handleXAI(
   messageHistory: any[],
   content: string,
@@ -93,48 +119,29 @@ export async function handleXAI(
   preSearchResults: any[] = [],
   files: string[] = []
 ) {
-  const XAI_API_KEY = Deno.env.get('XAI_API_KEY');
-  if (!XAI_API_KEY) {
-    throw new Error("xAI API key not configured. Please add your xAI API key in the Supabase settings.");
-  }
-  
   const grokModelId = getGrokModelId(modelId);
   console.log(`Processing request for xAI model ${grokModelId} with content: ${content.substring(0, 50)}...`);
   console.log(`Has files: ${files.length > 0}, file count: ${files.length}`);
-  
+
   const enhancedContent = processFiles(files, content);
   const formattedMessages = formatMessages(messageHistory, enhancedContent, systemPrompt);
 
-  console.log(`Calling xAI API with model ${grokModelId}...`);
   try {
-    const response = await fetch('https://api.x.ai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${XAI_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: grokModelId,
-        messages: formattedMessages,
-        temperature: 0.7,
-        max_tokens: 4000,
-        stream: false
-      })
-    });
-    
-    const parsedResponse = await handleXAIResponse(response);
-    
-    if (parsedResponse.choices && 
-        Array.isArray(parsedResponse.choices) && 
-        parsedResponse.choices.length > 0 && 
-        parsedResponse.choices[0].message && 
-        parsedResponse.choices[0].message.content) {
-      
+    const response = await callXAIAPI(formattedMessages, grokModelId);
+    const parsedResponse = await parseXAIResponse(response);
+
+    if (
+      parsedResponse.choices && 
+      Array.isArray(parsedResponse.choices) && 
+      parsedResponse.choices.length > 0 && 
+      parsedResponse.choices[0].message && 
+      parsedResponse.choices[0].message.content
+    ) {
       const fullContent = parsedResponse.choices[0].message.content;
       console.log(`Full response content length: ${fullContent.length} chars`);
-      
+
       const tokens = estimateTokens(content, systemPrompt, fullContent);
-      
+
       return new Response(
         JSON.stringify({ 
           content: fullContent,
