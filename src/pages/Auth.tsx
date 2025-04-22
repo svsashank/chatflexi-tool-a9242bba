@@ -88,14 +88,26 @@ const Auth = () => {
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!resetEmail) {
+      toast.error('Please enter your email address');
+      return;
+    }
+    
     setResetLoading(true);
 
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
-        redirectTo: `${window.location.origin}/auth/reset-password`,
+      // Instead of using Supabase's built-in reset function, use our custom edge function
+      const redirectUrl = `${window.location.origin}/auth/reset-password`;
+      
+      const response = await supabase.functions.invoke('send-password-reset', {
+        body: {
+          email: resetEmail,
+          redirectUrl
+        }
       });
-
-      if (error) throw error;
+      
+      if (response.error) throw new Error(response.error.message || 'Failed to send reset instructions');
 
       toast.success('Password reset instructions have been sent to your email');
       setIsResetMode(false);

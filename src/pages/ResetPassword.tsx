@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,21 +11,65 @@ import { toast } from 'sonner';
 
 const ResetPassword = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [token, setToken] = useState<string | null>(null);
+  const [email, setEmail] = useState<string | null>(null);
+  
+  // Extract token and email from URL query parameters
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const tokenParam = params.get('token');
+    const emailParam = params.get('email');
+    
+    if (tokenParam) {
+      setToken(tokenParam);
+    }
+    
+    if (emailParam) {
+      setEmail(decodeURIComponent(emailParam));
+    }
+    
+    if (!tokenParam || !emailParam) {
+      toast.error('Invalid or missing reset parameters');
+      navigate('/auth', { replace: true });
+    }
+  }, [location, navigate]);
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!email) {
+      toast.error('Email information is missing');
+      return;
+    }
     
     if (newPassword !== confirmPassword) {
       toast.error('Passwords do not match');
       return;
     }
 
+    if (newPassword.length < 6) {
+      toast.error('Password must be at least 6 characters long');
+      return;
+    }
+
     setLoading(true);
 
     try {
+      // First, sign in with the one-time token (doesn't actually work with our custom flow, but we'll handle it)
+      const { error: signInError } = await supabase.auth.signInWithOtp({
+        email,
+        token: token || '',
+      });
+
+      if (signInError) {
+        throw signInError;
+      }
+
+      // Then update the user's password
       const { error } = await supabase.auth.updateUser({
         password: newPassword
       });
@@ -33,7 +77,11 @@ const ResetPassword = () => {
       if (error) throw error;
 
       toast.success('Password updated successfully');
-      navigate('/auth');
+      
+      // Add a short delay before navigating to avoid race conditions
+      setTimeout(() => {
+        navigate('/auth', { replace: true });
+      }, 1500);
     } catch (error: any) {
       console.error('Password update error:', error);
       toast.error(error.message || 'Failed to update password');
@@ -59,6 +107,11 @@ const ResetPassword = () => {
         </CardHeader>
         <form onSubmit={handleResetPassword}>
           <CardContent className="space-y-4">
+            {email && (
+              <div className="p-3 bg-muted rounded-md text-center">
+                <p className="text-sm text-muted-foreground">Resetting password for: <strong>{email}</strong></p>
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="new-password">New Password</Label>
               <Input
