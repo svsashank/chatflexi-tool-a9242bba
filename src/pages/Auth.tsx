@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,19 +12,15 @@ import { toast } from 'sonner';
 
 const Auth = () => {
   const { user, signIn, signInWithGoogle, loading } = useAuth();
-  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
   const authAttemptedRef = React.useRef(false);
 
   // If user is already logged in and auth is not loading, redirect to home
-  useEffect(() => {
-    if (user && !loading) {
-      console.log("User already logged in, redirecting to home");
-      navigate('/', { replace: true });
-    }
-  }, [user, loading, navigate]);
+  if (user) {
+    return <Navigate to="/" replace />;
+  }
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,15 +36,13 @@ const Auth = () => {
     try {
       console.log("Starting sign in attempt...");
       await signIn(email, password);
-      // Navigation will happen automatically through the useEffect above
+      // Navigation will happen automatically through the redirect in the render function
     } catch (error: any) {
       console.error('Sign in error:', error);
       toast.error(error.message || 'Failed to sign in');
-      // Only reset authAttemptedRef if there's an error, so we don't try again automatically
       authAttemptedRef.current = false;
       setAuthLoading(false);
     }
-    // Don't reset loading state here - let the redirect happen or error handler reset it
   };
 
   const handleGoogleSignIn = () => {
@@ -62,7 +56,7 @@ const Auth = () => {
     
     try {
       signInWithGoogle();
-      // No need to reset authAttemptedRef as we'll be redirected
+      // Redirect will happen automatically once signed in
     } catch (error: any) {
       console.error('Google sign in error:', error);
       toast.error(error.message || 'Failed to sign in with Google');
@@ -75,25 +69,12 @@ const Auth = () => {
     window.location.href = 'https://krix.app';
   };
 
-  // Reset auth state when component unmounts
-  useEffect(() => {
-    return () => {
-      console.log("Auth component unmounting, resetting auth attempt state");
-      authAttemptedRef.current = false;
-    };
-  }, []);
-
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     );
-  }
-
-  // If user is already signed in, redirect to home
-  if (user) {
-    return <Navigate to="/" replace />;
   }
 
   return (

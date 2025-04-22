@@ -20,10 +20,10 @@ const COOLDOWN_TIME = 5000; // 5 seconds cooldown
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading, isTokenRefresh } = useAuth();
   const { loadConversationsFromDB, createConversation, conversations } = useChatStore();
-  const initAttemptedRef = useRef(false);
   const [isInitializing, setIsInitializing] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   const componentIdRef = useRef(`pr_${Math.random().toString(36).substring(2, 10)}`);
+  const initAttemptedRef = useRef(false);
 
   useEffect(() => {
     console.log(`ProtectedRoute mounted: ${componentIdRef.current}`);
@@ -32,9 +32,9 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     abortControllerRef.current = new AbortController();
     const { signal } = abortControllerRef.current;
 
-    // If user is not authenticated or still loading, skip initialization
-    if (!user || loading) {
-      console.log("ProtectedRoute: User is not authenticated or auth is still loading, skipping initialization");
+    // If user is not authenticated, skip initialization
+    if (!user) {
+      console.log("ProtectedRoute: User is not authenticated, skipping initialization");
       return;
     }
     
@@ -64,46 +64,8 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
         // Check if initialization is in progress for this user
         if (globalState.initializationInProgress.has(user.id)) {
           console.log(`ProtectedRoute: Initialization already in progress for user ${user.id}`);
-          
-          // Wait for the existing initialization to complete
-          if (globalState.initializationPromises.has(user.id)) {
-            try {
-              await globalState.initializationPromises.get(user.id);
-              console.log(`ProtectedRoute: Waited for existing initialization for user ${user.id}`);
-            } catch (e) {
-              console.log(`ProtectedRoute: Error waiting for existing initialization: ${e}`);
-            }
-            return;
-          }
           return;
         }
-        
-        // Check loading attempts to implement exponential backoff
-        const attempts = globalState.loadingAttempts.get(user.id) || 0;
-        if (attempts >= MAX_LOADING_ATTEMPTS) {
-          const backoffTime = Math.min(COOLDOWN_TIME * Math.pow(2, attempts - MAX_LOADING_ATTEMPTS), 60000);
-          console.log(`ProtectedRoute: Too many loading attempts (${attempts}), backing off for ${backoffTime}ms`);
-          
-          // Wait for backoff time before proceeding
-          await new Promise(resolve => setTimeout(resolve, backoffTime));
-          
-          // Reset attempts counter after backoff
-          globalState.loadingAttempts.set(user.id, Math.max(1, attempts - 2));
-        }
-        
-        // Prevent repeated initializations in quick succession
-        const now = Date.now();
-        const lastInit = globalState.lastSignInTime.get(user.id) || 0;
-        if ((now - lastInit) < COOLDOWN_TIME) {
-          console.log(`ProtectedRoute: User ${user.id} was initialized recently, skipping`);
-          return;
-        }
-        
-        // Update last sign-in time
-        globalState.lastSignInTime.set(user.id, now);
-        
-        // Increment loading attempts
-        globalState.loadingAttempts.set(user.id, attempts + 1);
         
         // Create a promise for this initialization that other components can wait on
         const initPromise = (async () => {
@@ -190,27 +152,10 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
         abortControllerRef.current.abort();
         abortControllerRef.current = null;
       }
-      
-      // If component unmounts during initialization, cleanup only the request state
-      // but leave the global tracking intact for other instances
-      if (user && globalState.initializationInProgress.has(user.id)) {
-        console.log(`Component unmounted during initialization for user ${user.id}`);
-        // We don't remove from initializationInProgress here to prevent new instances from starting
-        // a parallel initialization; it will be removed when the promise completes or fails
-      }
     };
   }, [user, loading, loadConversationsFromDB, createConversation, conversations, isTokenRefresh]);
 
-  // Show loading state while auth is being resolved
-  if (loading) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-
-  // Redirect to auth if no user
+  // Redirect to auth if no user and not loading
   if (!user) {
     return <Navigate to="/auth" replace />;
   }

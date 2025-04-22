@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
@@ -27,7 +27,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signInAttemptRef = React.useRef(false);
 
   // Track token refresh events
-  useEffect(() => {
+  React.useEffect(() => {
     const { data } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'TOKEN_REFRESHED') {
         console.log('Auth token refreshed - not creating a new conversation');
@@ -100,6 +100,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
+      window.location.href = '/auth';
     } catch (error: any) {
       toast({
         title: "Sign out failed",

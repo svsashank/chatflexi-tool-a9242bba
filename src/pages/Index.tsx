@@ -2,10 +2,8 @@
 import React, { useEffect, useRef } from "react";
 import ChatContainer from "@/components/ChatContainer";
 import { useChatStore } from "@/store";
-import { useAuth } from "@/contexts/AuthContext";
 
 const Index = () => {
-  const { user } = useAuth();
   const { 
     loadMessagesForConversation,
     currentConversationId,
@@ -16,10 +14,14 @@ const Index = () => {
   const loadingMessagesRef = useRef<{[key: string]: boolean}>({});
   // Track component mount state
   const isMountedRef = useRef(true);
+  // Track component identity
+  const componentIdRef = useRef(`index_${Math.random().toString(36).substring(2, 10)}`);
   // Abort controller reference
   const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
+    console.log(`Index page ${componentIdRef.current} mounted`);
+    
     // Create a new abort controller for this effect instance
     abortControllerRef.current = new AbortController();
     const signal = abortControllerRef.current.signal;
@@ -40,7 +42,7 @@ const Index = () => {
         // Mark as loading to prevent duplicate requests
         loadingMessagesRef.current[currentConversationId] = true;
         
-        console.log("Index page: Loading messages for current conversation:", currentConversationId);
+        console.log(`Index page ${componentIdRef.current}: Loading messages for conversation ${currentConversationId}`);
         try {
           await loadMessagesForConversation(currentConversationId);
         } catch (err) {
@@ -60,6 +62,7 @@ const Index = () => {
     
     // Cleanup function
     return () => {
+      console.log(`Index page ${componentIdRef.current} unmounting`);
       isMountedRef.current = false;
       
       // Abort any ongoing operations
