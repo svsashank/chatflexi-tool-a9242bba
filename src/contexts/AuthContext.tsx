@@ -14,15 +14,34 @@ type AuthContextType = {
   signOut: () => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   loading: boolean;
+  isTokenRefresh: boolean; // Add flag to track token refresh events
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+// Export the AuthProvider at the top level so it can be imported directly
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, session, loading } = useAuthInitialization();
+  const [isTokenRefresh, setIsTokenRefresh] = useState(false);
   const { toast } = useToast();
   // Destructure only what we need - prevent unnecessary dependency on the whole store
   const { createConversation, loadConversationsFromDB } = useChatStore();
+
+  // Track token refresh events
+  React.useEffect(() => {
+    const { data } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'TOKEN_REFRESHED') {
+        console.log('Auth token refreshed - not creating a new conversation');
+        setIsTokenRefresh(true);
+      } else {
+        setIsTokenRefresh(false);
+      }
+    });
+    
+    return () => {
+      data.subscription.unsubscribe();
+    };
+  }, []);
 
   // Login function - no need to manage state as the auth listener will handle it
   const signIn = async (email: string, password: string) => {
@@ -99,7 +118,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <AuthContext.Provider
-      value={{ user, session, signIn, signUp, signOut, signInWithGoogle, loading }}
+      value={{ 
+        user, 
+        session, 
+        signIn, 
+        signUp, 
+        signOut, 
+        signInWithGoogle, 
+        loading,
+        isTokenRefresh 
+      }}
     >
       {children}
     </AuthContext.Provider>

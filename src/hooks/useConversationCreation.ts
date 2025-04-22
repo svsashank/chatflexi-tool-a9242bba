@@ -3,11 +3,14 @@ import { useState, useRef, useEffect } from 'react';
 import { useChatStore } from '@/store';
 import debounce from 'lodash/debounce';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
 
 // Track conversation creation globally across hook instances
 const globalCreationState = {
   isCreating: false,
   pendingRequest: null as AbortController | null,
+  lastCreatedAt: 0, // Track timestamp of last creation
+  creationsByUser: new Map<string, number>(), // Track creations per user
 };
 
 export const useConversationCreation = () => {
@@ -15,14 +18,41 @@ export const useConversationCreation = () => {
   const createRequestRef = useRef<AbortController | null>(null);
   const { createConversation } = useChatStore();
   const isMountedRef = useRef(true);
+  const { user, isTokenRefresh } = useAuth();
 
   // Create a debounced version of conversation creation
   const debouncedCreate = useRef(
     debounce(async () => {
       try {
+        // Skip creation on token refresh events
+        if (isTokenRefresh) {
+          console.log("Skipping conversation creation during token refresh");
+          return;
+        }
+        
+        // Check if user exists
+        if (!user) {
+          console.log("No authenticated user, skipping conversation creation");
+          return;
+        }
+        
         // Check global creation state first
         if (globalCreationState.isCreating) {
           console.log("Conversation creation already in progress globally");
+          return;
+        }
+        
+        // Prevent rapid successive creations (rate limiting)
+        const now = Date.now();
+        if ((now - globalCreationState.lastCreatedAt) < 2000) { // 2 seconds cooldown
+          console.log("Creation attempted too soon after previous creation, skipping");
+          return;
+        }
+        
+        // Rate limit per user (max 3 conversations per minute)
+        const userCreationCount = globalCreationState.creationsByUser.get(user.id) || 0;
+        if (userCreationCount >= 3) {
+          console.log("User has created too many conversations recently, skipping");
           return;
         }
         
@@ -49,8 +79,25 @@ export const useConversationCreation = () => {
           throw new Error('Failed to create conversation');
         }
         
+        // Update creation tracking
+        globalCreationState.lastCreatedAt = Date.now();
+        
+        // Track per-user creation count
+        const currentCount = globalCreationState.creationsByUser.get(user.id) || 0;
+        globalCreationState.creationsByUser.set(user.id, currentCount + 1);
+        
+        // Reset user count after 1 minute
+        setTimeout(() => {
+          if (user && globalCreationState.creationsByUser.has(user.id)) {
+            const count = globalCreationState.creationsByUser.get(user.id) || 0;
+            if (count > 0) {
+              globalCreationState.creationsByUser.set(user.id, count - 1);
+            }
+          }
+        }, 60000);
+        
         console.log("Debounced conversation creation completed successfully:", newId);
-      } catch (error) {
+      } catch (error: any) {
         // Only show error if not aborted and component is still mounted
         if (error.name !== 'AbortError' && isMountedRef.current) {
           console.error('Error in conversation creation:', error);

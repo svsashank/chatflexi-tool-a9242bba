@@ -10,10 +10,11 @@ const globalState = {
   initializedUsers: new Set<string>(),
   initializationInProgress: new Set<string>(),
   initializationPromises: new Map<string, Promise<void>>(),
+  lastSignInTime: new Map<string, number>(), // Track last sign-in time per user
 };
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, loading } = useAuth();
+  const { user, loading, isTokenRefresh } = useAuth();
   const { loadConversationsFromDB, createConversation, conversations } = useChatStore();
   const initAttemptedRef = useRef(false);
   const [isInitializing, setIsInitializing] = useState(false);
@@ -37,6 +38,12 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
       if (signal.aborted) return;
       
       try {
+        // Skip initialization if this is just a token refresh event
+        if (isTokenRefresh) {
+          console.log(`ProtectedRoute: Skipping initialization for user ${user.id} - token refresh only`);
+          return;
+        }
+        
         // Check if initialization is in progress for this user
         if (globalState.initializationInProgress.has(user.id)) {
           console.log(`ProtectedRoute: Initialization already in progress for user ${user.id}`);
@@ -49,6 +56,17 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
           }
           return;
         }
+        
+        // Prevent repeated initializations in quick succession
+        const now = Date.now();
+        const lastInit = globalState.lastSignInTime.get(user.id) || 0;
+        if ((now - lastInit) < 10000) { // Within 10 seconds
+          console.log(`ProtectedRoute: User ${user.id} was initialized recently, skipping`);
+          return;
+        }
+        
+        // Update last sign-in time
+        globalState.lastSignInTime.set(user.id, now);
         
         // Check if we've already initialized this user in the current session
         if (globalState.initializedUsers.has(user.id)) {
@@ -137,7 +155,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
         // a parallel initialization; it will be removed when the promise completes or fails
       }
     };
-  }, [user, loading, loadConversationsFromDB, createConversation, conversations]);
+  }, [user, loading, loadConversationsFromDB, createConversation, conversations, isTokenRefresh]);
 
   // Show loading state while auth is being resolved
   if (loading) {

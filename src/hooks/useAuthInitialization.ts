@@ -1,7 +1,11 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Session, User } from '@supabase/supabase-js';
+
+const globalInitState = {
+  initialized: false,
+  authSessions: new Map<string, number>() // Track auth sessions by user ID and timestamp
+};
 
 export const useAuthInitialization = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -38,7 +42,21 @@ export const useAuthInitialization = () => {
           
           // Update state with the new session
           setSession(newSession);
-          setUser(newSession?.user ?? null);
+          
+          // For sign in and token refresh events, update user
+          if (newSession?.user) {
+            setUser(newSession.user);
+            
+            // For sign in events, track session start time
+            if (event === 'SIGNED_IN') {
+              globalInitState.authSessions.set(
+                newSession.user.id, 
+                Date.now()
+              );
+            }
+          } else {
+            setUser(null);
+          }
           
           // Complete loading once we have a definitive auth state
           if (event !== 'INITIAL_SESSION') {
@@ -53,6 +71,14 @@ export const useAuthInitialization = () => {
         if (sessionData) {
           setSession(sessionData.session);
           setUser(sessionData.session?.user ?? null);
+          
+          // Track session if user exists
+          if (sessionData.session?.user) {
+            globalInitState.authSessions.set(
+              sessionData.session.user.id,
+              Date.now()
+            );
+          }
         }
         
         // Store cleanup function
@@ -60,6 +86,9 @@ export const useAuthInitialization = () => {
         
         // Complete loading after initial check
         setLoading(false);
+        
+        // Mark global initialization as complete
+        globalInitState.initialized = true;
       } catch (error) {
         console.error('Auth initialization error:', error);
         setLoading(false);
