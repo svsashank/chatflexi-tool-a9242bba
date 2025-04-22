@@ -41,8 +41,8 @@ const ResetPassword = () => {
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!email) {
-      toast.error('Email information is missing');
+    if (!email || !token) {
+      toast.error('Email or token information is missing');
       return;
     }
     
@@ -59,13 +59,19 @@ const ResetPassword = () => {
     setLoading(true);
 
     try {
-      // Using updateUser directly as we're not using OTP verification
-      // The token itself is part of the URL but not used in the API call
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword
+      // Use the proper API for resetting password with a reset token
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.href,
       });
 
       if (error) throw error;
+
+      // Now we can update the user's password with the token
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (updateError) throw updateError;
 
       toast.success('Password updated successfully');
       
