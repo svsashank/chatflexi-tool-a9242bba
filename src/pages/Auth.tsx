@@ -92,7 +92,7 @@ const Auth = () => {
     setResetLoading(true);
 
     try {
-      // Construct the full URL for the reset password page
+      // Construct the full URL for the reset password page - ensure the path exactly matches the route
       const redirectUrl = `${window.location.origin}/auth/reset-password`;
       
       // Call our custom edge function instead of the built-in resetPasswordForEmail

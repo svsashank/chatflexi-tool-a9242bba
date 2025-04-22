@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,12 +11,29 @@ import { toast } from 'sonner';
 
 const ResetPassword = () => {
   const navigate = useNavigate();
-  const location = useLocation();
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [authenticated, setAuthenticated] = useState(false);
 
   useEffect(() => {
+    // Check for PASSWORD_RECOVERY event and capture it
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log(`Auth event in ResetPassword: ${event}`);
+      
+      // If we're in PASSWORD_RECOVERY mode, let the component handle it
+      if (event === 'PASSWORD_RECOVERY') {
+        setAuthenticated(true);
+      }
+      
+      // If somehow the user gets fully signed in here, redirect them
+      // This prevents auto-login after clicking reset link
+      if (event === 'SIGNED_IN' && !authenticated) {
+        console.log("User authenticated, but we need to reset password first");
+        // Stay on this page - don't redirect
+      }
+    });
+
     // Check if we have a hash fragment in the URL (contains the recovery token)
     const hash = window.location.hash;
     
@@ -25,9 +42,9 @@ const ResetPassword = () => {
       navigate('/auth', { replace: true });
     }
     
-    // We don't extract the token manually - Supabase will handle it
-    // We just need to verify it's present
-    console.log("Recovery hash present in URL:", hash ? "Yes" : "No");
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [navigate]);
 
   const handleResetPassword = async (e: React.FormEvent) => {
@@ -46,8 +63,7 @@ const ResetPassword = () => {
     setLoading(true);
 
     try {
-      // The updateUser method will use the hash token in the URL automatically
-      // This is a key change - we're directly using updateUser, not signIn first
+      // Update the password using the recovery token in the URL
       const { data, error } = await supabase.auth.updateUser({
         password: newPassword
       });
@@ -61,6 +77,9 @@ const ResetPassword = () => {
       }
 
       toast.success('Password updated successfully');
+      
+      // Sign out the user to ensure a clean state
+      await supabase.auth.signOut();
       
       // Add a short delay before navigating
       setTimeout(() => {

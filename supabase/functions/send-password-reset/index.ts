@@ -49,6 +49,7 @@ const handler = async (req: Request): Promise<Response> => {
         type: 'recovery',
         email: email,
         options: {
+          // Make sure redirectTo points to the reset password page, not the root
           redirectTo: redirectUrl,
         }
       });
