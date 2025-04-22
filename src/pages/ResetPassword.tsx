@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 
 const ResetPassword = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -22,6 +23,14 @@ const ResetPassword = () => {
 
   useEffect(() => {
     console.log("ResetPassword component mounted");
+    console.log("Current URL:", window.location.href);
+    
+    // Parse the current URL to extract token if present
+    const urlParams = new URLSearchParams(window.location.hash.substring(1));
+    const accessToken = urlParams.get('access_token');
+    const tokenType = urlParams.get('type');
+    
+    console.log("URL hash parameters:", { accessToken: accessToken ? "present" : "not present", type: tokenType });
     
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -32,9 +41,6 @@ const ResetPassword = () => {
         passwordRecoveryProcessedRef.current = true;
         setValidResetToken(true);
         setTokenChecked(true);
-        
-        // If the user is automatically signed in by Supabase during recovery process,
-        // we don't need to do anything special here - we'll handle the reset based on the token
       }
     });
 
@@ -63,6 +69,7 @@ const ResetPassword = () => {
       setTokenChecked(true);
     };
     
+    // First check for token in URL
     checkForResetToken();
     
     // Cleanup subscription on unmount

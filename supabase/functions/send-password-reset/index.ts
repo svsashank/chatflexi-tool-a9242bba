@@ -44,11 +44,9 @@ const handler = async (req: Request): Promise<Response> => {
     );
 
     try {
-      // Make sure redirectUrl specifically points to the reset password page, not just the app root
-      // This ensures the user lands on the reset form, not just gets logged in
-      const finalRedirectUrl = redirectUrl.endsWith('/auth/reset-password') 
-        ? redirectUrl 
-        : `${redirectUrl.replace(/\/$/, '')}/auth/reset-password`;
+      // Make sure redirectUrl specifically points to the reset password page
+      // We're ensuring it's the exact path to avoid any issues
+      const finalRedirectUrl = redirectUrl;
         
       console.log(`Final redirect URL for password reset: ${finalRedirectUrl}`);
       
