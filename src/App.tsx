@@ -22,22 +22,22 @@ const AppContent = () => {
   }, [initializeSelectedModel]);
 
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <AppRoutes />
-        </TooltipProvider>
-      </AuthProvider>
-    </BrowserRouter>
+    <AuthProvider>
+      <AppRoutes />
+    </AuthProvider>
   );
-}
+};
 
 const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
-      <AppContent />
+      <BrowserRouter>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <AppContent />
+        </TooltipProvider>
+      </BrowserRouter>
     </QueryClientProvider>
   );
 };
