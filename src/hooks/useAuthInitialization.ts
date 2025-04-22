@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Session, User } from '@supabase/supabase-js';
@@ -14,6 +15,7 @@ export const useAuthInitialization = () => {
   
   // Use a ref to track initialization across renders
   const isInitializedRef = useRef(false);
+  const authChangeSubscriptionRef = useRef<{ unsubscribe: () => void } | null>(null);
   
   useEffect(() => {
     // Skip if already initialized in this component instance
@@ -23,8 +25,6 @@ export const useAuthInitialization = () => {
     
     // Mark as initialized in this component instance
     isInitializedRef.current = true;
-    
-    let cleanup: (() => void) | undefined;
     
     const initializeAuth = async () => {
       try {
@@ -54,7 +54,8 @@ export const useAuthInitialization = () => {
                 Date.now()
               );
             }
-          } else {
+          } else if (event === 'SIGNED_OUT') {
+            // Clear user on sign out
             setUser(null);
           }
           
@@ -63,6 +64,9 @@ export const useAuthInitialization = () => {
             setLoading(false);
           }
         });
+        
+        // Store the subscription for cleanup
+        authChangeSubscriptionRef.current = data.subscription;
         
         // Then check for an existing session
         const { data: sessionData } = await supabase.auth.getSession();
@@ -81,9 +85,6 @@ export const useAuthInitialization = () => {
           }
         }
         
-        // Store cleanup function
-        cleanup = data.subscription.unsubscribe;
-        
         // Complete loading after initial check
         setLoading(false);
         
@@ -99,9 +100,10 @@ export const useAuthInitialization = () => {
     
     // Return cleanup function to unsubscribe when component unmounts
     return () => {
-      if (cleanup) {
+      if (authChangeSubscriptionRef.current) {
         console.log("Cleaning up auth listener");
-        cleanup();
+        authChangeSubscriptionRef.current.unsubscribe();
+        authChangeSubscriptionRef.current = null;
       }
     };
   }, []); // Empty dependency array - only run once

@@ -16,31 +16,71 @@ const Auth = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
+  const authAttemptedRef = React.useRef(false);
 
   // Redirect to home if already logged in
   useEffect(() => {
     if (user && !loading) {
-      navigate('/');
+      console.log("User already logged in, redirecting to home");
+      navigate('/', { replace: true });
     }
   }, [user, loading, navigate]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (authLoading || authAttemptedRef.current) {
+      console.log("Auth already in progress, ignoring duplicate request");
+      return;
+    }
+    
     setAuthLoading(true);
+    authAttemptedRef.current = true;
+    
     try {
       await signIn(email, password);
       // Navigation will happen automatically through the useEffect
     } catch (error: any) {
       console.error('Sign in error:', error);
       toast.error(error.message || 'Failed to sign in');
+      authAttemptedRef.current = false;
     } finally {
       setAuthLoading(false);
+      // Note: We don't reset authAttemptedRef here to prevent multiple requests
+      // It will be reset when the component unmounts or when the user navigates away
+    }
+  };
+
+  const handleGoogleSignIn = () => {
+    if (authLoading || authAttemptedRef.current) {
+      console.log("Auth already in progress, ignoring duplicate request");
+      return;
+    }
+    
+    authAttemptedRef.current = true;
+    setAuthLoading(true);
+    
+    try {
+      signInWithGoogle();
+      // No need to reset authAttemptedRef as we'll be redirected
+    } catch (error: any) {
+      console.error('Google sign in error:', error);
+      toast.error(error.message || 'Failed to sign in with Google');
+      setAuthLoading(false);
+      authAttemptedRef.current = false;
     }
   };
 
   const handleRedirectToSignup = () => {
     window.location.href = 'https://krix.app';
   };
+
+  // Reset auth state when component unmounts
+  useEffect(() => {
+    return () => {
+      authAttemptedRef.current = false;
+    };
+  }, []);
 
   if (loading) {
     return (
@@ -52,7 +92,7 @@ const Auth = () => {
 
   // If user is already signed in, redirect to home
   if (user) {
-    return <Navigate to="/" />;
+    return <Navigate to="/" replace />;
   }
 
   return (
@@ -81,6 +121,7 @@ const Auth = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                disabled={authLoading}
               />
             </div>
             <div className="space-y-2">
@@ -92,6 +133,7 @@ const Auth = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                disabled={authLoading}
               />
             </div>
           </CardContent>
@@ -115,7 +157,7 @@ const Auth = () => {
               type="button" 
               variant="outline" 
               className="w-full" 
-              onClick={signInWithGoogle}
+              onClick={handleGoogleSignIn}
               disabled={authLoading}
             >
               <FcGoogle className="mr-2 h-5 w-5" />
@@ -128,6 +170,7 @@ const Auth = () => {
                 variant="link"
                 className="text-primary"
                 onClick={handleRedirectToSignup}
+                disabled={authLoading}
               >
                 Get started at krix.app
               </Button>

@@ -9,8 +9,15 @@ import AppRoutes from "./AppRoutes";
 import { useChatStore } from "./store";
 import { useEffect } from "react";
 
-// Create a client
-const queryClient = new QueryClient();
+// Create a client with better error handling
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      staleTime: 30000,
+    },
+  },
+});
 
 const AppContent = () => {
   const { initializeSelectedModel } = useChatStore();
@@ -34,7 +41,7 @@ const App = () => {
       <BrowserRouter>
         <TooltipProvider>
           <Toaster />
-          <Sonner />
+          <Sonner position="top-right" closeButton />
           <AppContent />
         </TooltipProvider>
       </BrowserRouter>

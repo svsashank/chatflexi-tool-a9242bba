@@ -65,19 +65,13 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
         // Prevent repeated initializations in quick succession
         const now = Date.now();
         const lastInit = globalState.lastSignInTime.get(user.id) || 0;
-        if ((now - lastInit) < 10000) { // Within 10 seconds
+        if ((now - lastInit) < 5000) { // Within 5 seconds (reduced from 10s)
           console.log(`ProtectedRoute: User ${user.id} was initialized recently, skipping`);
           return;
         }
         
         // Update last sign-in time
         globalState.lastSignInTime.set(user.id, now);
-        
-        // Check if we've already initialized this user in the current session
-        if (globalState.initializedUsers.has(user.id)) {
-          console.log(`ProtectedRoute: User ${user.id} already initialized`);
-          return;
-        }
         
         // Create a promise for this initialization that other components can wait on
         const initPromise = (async () => {
