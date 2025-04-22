@@ -59,17 +59,8 @@ const ResetPassword = () => {
     setLoading(true);
 
     try {
-      // First, sign in with the one-time token (doesn't actually work with our custom flow, but we'll handle it)
-      const { error: signInError } = await supabase.auth.signInWithOtp({
-        email,
-        token: token || '',
-      });
-
-      if (signInError) {
-        throw signInError;
-      }
-
-      // Then update the user's password
+      // Using updateUser directly as we're not using OTP verification
+      // The token itself is part of the URL but not used in the API call
       const { error } = await supabase.auth.updateUser({
         password: newPassword
       });
