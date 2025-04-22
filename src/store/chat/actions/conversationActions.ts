@@ -1,16 +1,17 @@
-
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Conversation } from '@/types';
 import { ChatStore } from '../types';
 
-// Keep track of loading states to prevent duplicate requests
-const loadingStates = {
+// Track global conversation action states
+const globalState = {
   creating: false,
+  creationPromise: null as Promise<string | null> | null,
   deleting: new Set<string>(),
   updating: new Set<string>(),
   abortController: null as AbortController | null,
+  currentRequest: null as AbortController | null,
 };
 
 // New function to generate a meaningful title based on user message
@@ -44,86 +45,108 @@ export const generateConversationTitleFromMessage = (message: string) => {
 
 export const createConversationAction = (set: Function, get: () => ChatStore) => async () => {
   try {
-    // Cancel any existing request
-    if (loadingStates.abortController) {
-      loadingStates.abortController.abort();
-    }
-    loadingStates.abortController = new AbortController();
-
-    // Prevent multiple simultaneous creation requests
-    if (loadingStates.creating) {
-      console.log("Already creating a conversation, please wait");
-      return null;
+    // Check if there's already a global creation in progress - return its promise if possible
+    if (globalState.creating && globalState.creationPromise) {
+      console.log("Using existing conversation creation promise");
+      return await globalState.creationPromise;
     }
     
-    loadingStates.creating = true;
+    // Create new abort controller and cancel any existing request
+    if (globalState.currentRequest) {
+      console.log("Aborting previous conversation creation request");
+      globalState.currentRequest.abort();
+    }
+    
+    globalState.currentRequest = new AbortController();
+    const { signal } = globalState.currentRequest;
+    
+    // Set creation state
+    globalState.creating = true;
     console.log("Creating new conversation...");
     
-    const newConversation: Conversation = {
-      id: uuidv4(),
-      title: 'New Conversation',
-      messages: [],
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      contextSummary: '',
-    };
-
-    // Get current user
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (!session?.user) {
-      console.error('No authenticated user found');
-      toast.error('Authentication required to create conversations');
-      loadingStates.creating = false;
-      loadingStates.abortController = null;
-      return null;
-    }
-    
-    // Check if request was aborted during authentication check
-    if (loadingStates.abortController?.signal.aborted) {
-      console.log('Conversation creation aborted after auth check');
-      loadingStates.creating = false;
-      loadingStates.abortController = null;
-      return null;
-    }
-    
-    // Store in database
-    const { error } = await supabase
-      .from('conversations')
-      .insert({
-        id: newConversation.id,
-        user_id: session.user.id,
-        title: newConversation.title,
-        created_at: newConversation.createdAt.toISOString(),
-        updated_at: newConversation.updatedAt.toISOString()
-      });
+    // Create a promise for this conversation creation that can be reused
+    globalState.creationPromise = (async () => {
+      // Return early if aborted before we even started
+      if (signal.aborted) {
+        console.log("Conversation creation aborted before starting");
+        return null;
+      }
       
-    if (error) {
-      console.error('Error creating conversation in database:', error);
-      toast.error('Could not create a new conversation');
-      loadingStates.creating = false;
-      loadingStates.abortController = null;
-      return null;
-    }
+      const newConversation: Conversation = {
+        id: uuidv4(),
+        title: 'New Conversation',
+        messages: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        contextSummary: '',
+      };
+      
+      // Get current user
+      const sessionResponse = await supabase.auth.getSession();
+      
+      // Return early if aborted during auth check
+      if (signal.aborted) {
+        console.log('Conversation creation aborted after auth check');
+        return null;
+      }
+      
+      const session = sessionResponse.data.session;
+      
+      if (!session?.user) {
+        console.error('No authenticated user found');
+        toast.error('Authentication required to create conversations');
+        return null;
+      }
+      
+      // Check if request was aborted during authentication check
+      if (signal.aborted) {
+        console.log('Conversation creation aborted after auth check');
+        return null;
+      }
+      
+      // Store in database
+      const response = await supabase
+        .from('conversations')
+        .insert({
+          id: newConversation.id,
+          user_id: session.user.id,
+          title: newConversation.title,
+          created_at: newConversation.createdAt.toISOString(),
+          updated_at: newConversation.updatedAt.toISOString()
+        });
+        
+      // Check if aborted during database operation
+      if (signal.aborted) {
+        console.log('Conversation creation aborted during database operation');
+        return null;
+      }
+      
+      if (response.error) {
+        console.error('Error creating conversation in database:', response.error);
+        toast.error('Could not create a new conversation');
+        return null;
+      }
+      
+      console.log("Successfully saved new conversation to database");
+      
+      // Check if aborted before state update
+      if (signal.aborted) {
+        console.log('Conversation creation aborted before state update');
+        return null;
+      }
+      
+      // Update local state
+      set((state: ChatStore) => ({
+        conversations: [newConversation, ...state.conversations],
+        currentConversationId: newConversation.id,
+      }));
+      
+      console.log("New conversation created and set as current with ID:", newConversation.id);
+      return newConversation.id;
+    })();
     
-    // Check if request was aborted during database operation
-    if (loadingStates.abortController?.signal.aborted) {
-      console.log('Conversation creation aborted after database operation');
-      loadingStates.creating = false;
-      loadingStates.abortController = null;
-      return null;
-    }
-    
-    console.log("Successfully saved new conversation to database");
-
-    // Update local state
-    set((state: ChatStore) => ({
-      conversations: [newConversation, ...state.conversations],
-      currentConversationId: newConversation.id,
-    }));
-
-    console.log("New conversation created and set as current with ID:", newConversation.id);
-    return newConversation.id;
+    // Wait for the promise and return its result
+    return await globalState.creationPromise;
   } catch (error) {
     if (error.name === 'AbortError') {
       console.log('Conversation creation aborted');
@@ -133,9 +156,10 @@ export const createConversationAction = (set: Function, get: () => ChatStore) =>
     toast.error('Could not create a new conversation');
     return null;
   } finally {
-    // Always ensure creating flag is reset
-    loadingStates.creating = false;
-    loadingStates.abortController = null;
+    // Always reset the global creation state
+    globalState.creating = false;
+    globalState.creationPromise = null;
+    globalState.currentRequest = null;
   }
 };
 
@@ -180,13 +204,13 @@ export const deleteConversationAction = (set: Function, get: () => ChatStore) =>
   }
   
   // Prevent multiple delete operations on the same conversation
-  if (loadingStates.deleting.has(id)) {
+  if (globalState.deleting.has(id)) {
     console.log(`Already deleting conversation ${id}, please wait`);
     return;
   }
   
   try {
-    loadingStates.deleting.add(id);
+    globalState.deleting.add(id);
     
     // Optimistically update UI first for better UX
     const updatedConversations = conversations.filter(conv => conv.id !== id);
@@ -213,7 +237,7 @@ export const deleteConversationAction = (set: Function, get: () => ChatStore) =>
         // Revert the change if database update fails
         set({ conversations });
         toast.error('Could not delete conversation');
-        loadingStates.deleting.delete(id);
+        globalState.deleting.delete(id);
         return;
       } else {
         console.log("Successfully deleted conversation from database");
@@ -222,22 +246,22 @@ export const deleteConversationAction = (set: Function, get: () => ChatStore) =>
     }
     
     console.log("Conversation deleted. New current conversation:", newCurrentId);
-    loadingStates.deleting.delete(id);
+    globalState.deleting.delete(id);
   } catch (error) {
     console.error('Error deleting conversation:', error);
     toast.error('Could not delete conversation');
-    loadingStates.deleting.delete(id);
+    globalState.deleting.delete(id);
   }
 };
 
 export const updateConversationTitleAction = (set: Function, get: () => ChatStore) => async (id: string, title: string) => {
-  if (loadingStates.updating.has(id)) {
+  if (globalState.updating.has(id)) {
     console.log(`Already updating conversation ${id}, please wait`);
     return;
   }
   
   try {
-    loadingStates.updating.add(id);
+    globalState.updating.add(id);
     
     // Update locally first for responsive UI
     set((state: ChatStore) => ({
@@ -266,10 +290,10 @@ export const updateConversationTitleAction = (set: Function, get: () => ChatStor
       }
     }
     
-    loadingStates.updating.delete(id);
+    globalState.updating.delete(id);
   } catch (error) {
     console.error('Error updating conversation title:', error);
     toast.error('Could not update conversation title');
-    loadingStates.updating.delete(id);
+    globalState.updating.delete(id);
   }
 };

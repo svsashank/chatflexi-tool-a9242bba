@@ -14,33 +14,60 @@ const Index = () => {
   
   // Track if we're loading messages for conversations to prevent duplicate requests
   const loadingMessagesRef = useRef<{[key: string]: boolean}>({});
+  // Track component mount state
+  const isMountedRef = useRef(true);
+  // Abort controller reference
+  const abortControllerRef = useRef<AbortController | null>(null);
 
-  // Only load messages for the current conversation if needed
   useEffect(() => {
-    if (!currentConversationId) {
-      return; // Skip if no conversation is selected
-    }
+    // Create a new abort controller for this effect instance
+    abortControllerRef.current = new AbortController();
+    const signal = abortControllerRef.current.signal;
     
-    const currentConversation = conversations.find(c => c.id === currentConversationId);
+    // Only load messages for the current conversation if needed
+    const loadMessages = async () => {
+      if (!currentConversationId || signal.aborted) {
+        return; // Skip if no conversation is selected or aborted
+      }
+      
+      const currentConversation = conversations.find(c => c.id === currentConversationId);
+      
+      // Check if we should load messages (don't have them yet and haven't started loading)
+      if (currentConversation && 
+          (!currentConversation.messages || currentConversation.messages.length === 0) && 
+          !loadingMessagesRef.current[currentConversationId]) {
+        
+        // Mark as loading to prevent duplicate requests
+        loadingMessagesRef.current[currentConversationId] = true;
+        
+        console.log("Index page: Loading messages for current conversation:", currentConversationId);
+        try {
+          await loadMessagesForConversation(currentConversationId);
+        } catch (err) {
+          if (!signal.aborted && isMountedRef.current) {
+            console.error("Failed to load messages:", err);
+          }
+        } finally {
+          // Reset the loading flag even if there was an error, but only if not aborted
+          if (!signal.aborted && isMountedRef.current) {
+            loadingMessagesRef.current[currentConversationId] = false;
+          }
+        }
+      }
+    };
     
-    // Check if we should load messages (don't have them yet and haven't started loading)
-    if (currentConversation && 
-        (!currentConversation.messages || currentConversation.messages.length === 0) && 
-        !loadingMessagesRef.current[currentConversationId]) {
+    loadMessages();
+    
+    // Cleanup function
+    return () => {
+      isMountedRef.current = false;
       
-      // Mark as loading to prevent duplicate requests
-      loadingMessagesRef.current[currentConversationId] = true;
-      
-      console.log("Index page: Loading messages for current conversation:", currentConversationId);
-      loadMessagesForConversation(currentConversationId)
-        .catch(err => {
-          console.error("Failed to load messages:", err);
-        })
-        .finally(() => {
-          // Reset the loading flag even if there was an error
-          loadingMessagesRef.current[currentConversationId] = false;
-        });
-    }
+      // Abort any ongoing operations
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+    };
   }, [currentConversationId, loadMessagesForConversation, conversations]);
 
   return <ChatContainer />;

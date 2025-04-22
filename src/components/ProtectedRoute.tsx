@@ -5,17 +5,25 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useChatStore } from '@/store';
 import { toast } from 'sonner';
 
-// Global flag to track initialization across route changes
-const initializedUsers = new Set<string>();
-const initializationInProgress = new Set<string>();
+// Global state tracking across route changes and component instances
+const globalState = {
+  initializedUsers: new Set<string>(),
+  initializationInProgress: new Set<string>(),
+  initializationPromises: new Map<string, Promise<void>>(),
+};
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
   const { loadConversationsFromDB, createConversation, conversations } = useChatStore();
   const initAttemptedRef = useRef(false);
   const [isInitializing, setIsInitializing] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
   
   useEffect(() => {
+    // Create abort controller for this component instance
+    abortControllerRef.current = new AbortController();
+    const { signal } = abortControllerRef.current;
+    
     // Skip if already attempted in this component instance or user is not authenticated or still loading
     if (initAttemptedRef.current || !user || loading) {
       return;
@@ -25,63 +33,108 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     initAttemptedRef.current = true;
     
     const initConversations = async () => {
+      // Return early if aborted
+      if (signal.aborted) return;
+      
       try {
         // Check if initialization is in progress for this user
-        if (initializationInProgress.has(user.id)) {
+        if (globalState.initializationInProgress.has(user.id)) {
           console.log(`ProtectedRoute: Initialization already in progress for user ${user.id}`);
+          
+          // Wait for the existing initialization to complete
+          if (globalState.initializationPromises.has(user.id)) {
+            await globalState.initializationPromises.get(user.id);
+            console.log(`ProtectedRoute: Waited for existing initialization for user ${user.id}`);
+            return;
+          }
           return;
         }
         
         // Check if we've already initialized this user in the current session
-        if (initializedUsers.has(user.id)) {
+        if (globalState.initializedUsers.has(user.id)) {
           console.log(`ProtectedRoute: User ${user.id} already initialized`);
           return;
         }
         
-        // Mark initialization as in progress
-        initializationInProgress.add(user.id);
-        
-        setIsInitializing(true);
-        console.log("ProtectedRoute: Initializing conversations for authenticated user");
-        
-        // Load conversations if we don't already have them
-        if (conversations.length === 0) {
-          console.log("No conversations in state, loading from database");
-          await loadConversationsFromDB();
+        // Create a promise for this initialization that other components can wait on
+        const initPromise = (async () => {
+          // Mark initialization as in progress
+          globalState.initializationInProgress.add(user.id);
           
-          // Check if we now have conversations after loading
-          const currentConversations = useChatStore.getState().conversations;
+          setIsInitializing(true);
+          console.log("ProtectedRoute: Initializing conversations for authenticated user");
           
-          // Only create a new conversation if none were loaded
-          if (currentConversations.length === 0) {
-            console.log("No conversations found, creating a new one");
-            await createConversation();
+          // Return early if aborted
+          if (signal.aborted) return;
+          
+          // Load conversations if we don't already have them
+          if (conversations.length === 0) {
+            console.log("No conversations in state, loading from database");
+            await loadConversationsFromDB();
+            
+            // Return early if aborted
+            if (signal.aborted) return;
+            
+            // Check if we now have conversations after loading
+            const currentConversations = useChatStore.getState().conversations;
+            
+            // Only create a new conversation if none were loaded and not aborted
+            if (currentConversations.length === 0 && !signal.aborted) {
+              console.log("No conversations found, creating a new one");
+              await createConversation();
+            } else {
+              console.log(`Loaded ${currentConversations.length} conversations, no need to create a new one`);
+            }
           } else {
-            console.log(`Loaded ${currentConversations.length} conversations, no need to create a new one`);
+            console.log(`Already have ${conversations.length} conversations in state, not reloading`);
           }
-        } else {
-          console.log(`Already have ${conversations.length} conversations in state, not reloading`);
-        }
+          
+          // Mark as initialized only if not aborted
+          if (!signal.aborted) {
+            globalState.initializedUsers.add(user.id);
+          }
+        })();
         
-        // Mark as initialized for this user
-        initializedUsers.add(user.id);
+        // Store the promise
+        globalState.initializationPromises.set(user.id, initPromise);
+        
+        // Wait for initialization to complete
+        await initPromise;
       } catch (error) {
-        console.error("Error initializing conversations:", error);
-        toast.error('Could not load your conversations. Please try refreshing the page.');
+        // Only show error if not aborted
+        if (!signal.aborted) {
+          console.error("Error initializing conversations:", error);
+          toast.error('Could not load your conversations. Please try refreshing the page.');
+        }
       } finally {
-        setIsInitializing(false);
-        // Remove from in-progress set regardless of success or failure
-        initializationInProgress.delete(user.id);
+        // Clean up regardless of success or failure, but only if not aborted
+        if (!signal.aborted) {
+          setIsInitializing(false);
+          // Remove from in-progress set
+          globalState.initializationInProgress.delete(user.id);
+          // Remove the stored promise
+          globalState.initializationPromises.delete(user.id);
+        }
       }
     };
     
+    // Start initialization
     initConversations();
     
     // Cleanup function
     return () => {
-      // If component unmounts during initialization, cleanup
-      if (user) {
-        initializationInProgress.delete(user.id);
+      // Abort any ongoing operations for this component instance
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+      
+      // If component unmounts during initialization, cleanup only the request state
+      // but leave the global tracking intact for other instances
+      if (user && globalState.initializationInProgress.has(user.id)) {
+        console.log(`Component unmounted during initialization for user ${user.id}`);
+        // We don't remove from initializationInProgress here to prevent new instances from starting
+        // a parallel initialization; it will be removed when the promise completes or fails
       }
     };
   }, [user, loading, loadConversationsFromDB, createConversation, conversations]);
