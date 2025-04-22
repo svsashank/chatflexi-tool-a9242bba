@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -91,8 +92,10 @@ const Auth = () => {
     setResetLoading(true);
 
     try {
+      // Construct the full URL for the reset password page
       const redirectUrl = `${window.location.origin}/auth/reset-password`;
       
+      // Call our custom edge function instead of the built-in resetPasswordForEmail
       const response = await supabase.functions.invoke('send-password-reset', {
         body: {
           email: resetEmail,

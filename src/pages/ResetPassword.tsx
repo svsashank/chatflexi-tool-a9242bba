@@ -15,12 +15,9 @@ const ResetPassword = () => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  
-  // We won't extract email/token from URL parameters as they're handled by Supabase
-  // The hash fragment in the URL contains the access token needed for password reset
 
   useEffect(() => {
-    // Check if we have a recovery hash in the URL
+    // Check if we have a hash fragment in the URL (contains the recovery token)
     const hash = window.location.hash;
     
     if (!hash || hash.length < 1) {
@@ -28,8 +25,9 @@ const ResetPassword = () => {
       navigate('/auth', { replace: true });
     }
     
-    // We don't need to extract the token - Supabase will handle it internally
-    // when we call updateUser
+    // We don't extract the token manually - Supabase will handle it
+    // We just need to verify it's present
+    console.log("Recovery hash present in URL:", hash ? "Yes" : "No");
   }, [navigate]);
 
   const handleResetPassword = async (e: React.FormEvent) => {
@@ -48,17 +46,23 @@ const ResetPassword = () => {
     setLoading(true);
 
     try {
-      // The hash in the URL contains the access token that Supabase needs
-      // updateUser will automatically use this token from the URL
-      const { error } = await supabase.auth.updateUser({
+      // The updateUser method will use the hash token in the URL automatically
+      // This is a key change - we're directly using updateUser, not signIn first
+      const { data, error } = await supabase.auth.updateUser({
         password: newPassword
       });
 
-      if (error) throw error;
+      if (error) {
+        throw error;
+      }
+
+      if (!data || !data.user) {
+        throw new Error("Failed to update password");
+      }
 
       toast.success('Password updated successfully');
       
-      // Add a short delay before navigating to avoid race conditions
+      // Add a short delay before navigating
       setTimeout(() => {
         navigate('/auth', { replace: true });
       }, 1500);

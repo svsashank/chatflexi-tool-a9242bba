@@ -44,6 +44,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     try {
       // Generate a password reset token using Supabase's admin API
+      // Important: Using recovery type, not magiclink type
       const { data, error } = await supabase.auth.admin.generateLink({
         type: 'recovery',
         email: email,
