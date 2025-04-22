@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,20 +11,29 @@ import { Hexagon } from 'lucide-react';
 import { toast } from 'sonner';
 
 const Auth = () => {
+  const navigate = useNavigate();
   const { user, signIn, signInWithGoogle, loading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
   const authAttemptedRef = React.useRef(false);
-
-  // If user is already logged in and auth is not loading, redirect to home
-  if (user) {
-    return <Navigate to="/" replace />;
-  }
+  
+  // Track already redirected status to prevent loops
+  const redirectedRef = React.useRef(false);
+  
+  // Handle redirection when user becomes available
+  useEffect(() => {
+    if (user && !redirectedRef.current && !loading) {
+      console.log("User is authenticated, redirecting to home page");
+      redirectedRef.current = true;
+      navigate('/', { replace: true });
+    }
+  }, [user, loading, navigate]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Prevent duplicate sign-in attempts
     if (authLoading || authAttemptedRef.current) {
       console.log("Auth already in progress, ignoring duplicate request");
       return;
@@ -36,12 +45,16 @@ const Auth = () => {
     try {
       console.log("Starting sign in attempt...");
       await signIn(email, password);
-      // Navigation will happen automatically through the redirect in the render function
+      // Navigation will happen through the useEffect
     } catch (error: any) {
       console.error('Sign in error:', error);
       toast.error(error.message || 'Failed to sign in');
-      authAttemptedRef.current = false;
-      setAuthLoading(false);
+    } finally {
+      // Reset auth attempt state after a delay
+      setTimeout(() => {
+        authAttemptedRef.current = false;
+        setAuthLoading(false);
+      }, 2000);
     }
   };
 
@@ -75,6 +88,11 @@ const Auth = () => {
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     );
+  }
+
+  // If user is already authenticated and not in loading state, redirect
+  if (user && !loading) {
+    return <Navigate to="/" replace />;
   }
 
   return (

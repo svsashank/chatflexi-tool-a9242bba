@@ -1,10 +1,10 @@
 
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
-import { useChatStore } from '@/store';
 import { useAuthInitialization } from '@/hooks/useAuthInitialization';
+import { toast } from 'sonner';
 
 type AuthContextType = {
   user: User | null;
@@ -21,8 +21,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, session, loading } = useAuthInitialization();
-  const [isTokenRefresh, setIsTokenRefresh] = useState(false);
-  const { toast } = useToast();
+  const [isTokenRefresh, setIsTokenRefresh] = React.useState(false);
+  const { toast: uiToast } = useToast();
   // Track sign-in attempts to prevent duplicates
   const signInAttemptRef = React.useRef(false);
 
@@ -43,8 +43,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
-  // Login function with duplicate prevention
-  const signIn = useCallback(async (email: string, password: string) => {
+  const signIn = React.useCallback(async (email: string, password: string) => {
     // Prevent duplicate sign-in attempts
     if (signInAttemptRef.current) {
       console.log("Sign in already in progress, ignoring duplicate request");
@@ -52,27 +51,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     signInAttemptRef.current = true;
-
+    
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
       // Success handled by auth state listener
     } catch (error: any) {
-      toast({
-        title: "Sign in failed",
-        description: error.message || "An error occurred during sign in",
-        variant: "destructive",
-      });
+      console.error("Sign in error:", error);
+      toast.error(error.message || "Failed to sign in");
       throw error;
     } finally {
-      // Reset after 2 seconds to prevent accidental double-clicks but allow retries
+      // Reset after a delay to prevent accidental double-clicks but allow retries
       setTimeout(() => {
         signInAttemptRef.current = false;
       }, 2000);
     }
-  }, [toast]);
+  }, []);
 
-  const signUp = useCallback(async (email: string, password: string, name: string) => {
+  const signUp = React.useCallback(async (email: string, password: string, name: string) => {
     try {
       const { error } = await supabase.auth.signUp({
         email,
@@ -81,37 +77,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           data: { name },
         },
       });
+      
       if (error) throw error;
-      toast({
+      
+      uiToast({
         title: "Sign up successful",
         description: "Please check your email to confirm your account",
       });
     } catch (error: any) {
-      toast({
+      uiToast({
         title: "Sign up failed",
         description: error.message || "An error occurred during sign up",
         variant: "destructive",
       });
       throw error;
     }
-  }, [toast]);
+  }, [uiToast]);
 
-  const signOut = useCallback(async () => {
+  const signOut = React.useCallback(async () => {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
       window.location.href = '/auth';
     } catch (error: any) {
-      toast({
+      uiToast({
         title: "Sign out failed",
         description: error.message || "An error occurred during sign out",
         variant: "destructive",
       });
       throw error;
     }
-  }, [toast]);
+  }, [uiToast]);
 
-  const signInWithGoogle = useCallback(async () => {
+  const signInWithGoogle = React.useCallback(async () => {
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -121,28 +119,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       if (error) throw error;
     } catch (error: any) {
-      toast({
+      uiToast({
         title: "Google sign in failed",
         description: error.message || "An error occurred during Google sign in",
         variant: "destructive",
       });
       throw error;
     }
-  }, [toast]);
+  }, [uiToast]);
+
+  const value = {
+    user, 
+    session, 
+    signIn, 
+    signUp, 
+    signOut, 
+    signInWithGoogle, 
+    loading,
+    isTokenRefresh
+  };
 
   return (
-    <AuthContext.Provider
-      value={{ 
-        user, 
-        session, 
-        signIn, 
-        signUp, 
-        signOut, 
-        signInWithGoogle, 
-        loading,
-        isTokenRefresh 
-      }}
-    >
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

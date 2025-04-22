@@ -1,105 +1,79 @@
-
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Session, User } from '@supabase/supabase-js';
 
-// Singleton for tracking global auth state
-const globalAuthState = {
+// Simple singleton pattern for auth state to prevent duplicate initializations
+const authState = {
   initialized: false,
-  currentUser: null as User | null,
-  currentSession: null as Session | null,
-  authListener: null as any
+  user: null as User | null,
+  session: null as Session | null,
+  subscription: null as any
 };
 
 export const useAuthInitialization = () => {
-  const [user, setUser] = useState<User | null>(globalAuthState.currentUser);
-  const [session, setSession] = useState<Session | null>(globalAuthState.currentSession);
-  const [loading, setLoading] = useState(!globalAuthState.initialized);
-  
-  // Use refs to track initialization and state changes across renders
-  const isMountedRef = useRef(true);
+  const [user, setUser] = useState<User | null>(authState.user);
+  const [session, setSession] = useState<Session | null>(authState.session);
+  const [loading, setLoading] = useState(!authState.initialized);
   
   useEffect(() => {
-    // Mark component as mounted
-    isMountedRef.current = true;
+    // First setup auth listener if not already done
+    if (!authState.subscription) {
+      console.log("Setting up auth state listener");
+      
+      const { data } = supabase.auth.onAuthStateChange((event, newSession) => {
+        console.log(`Auth state changed: ${event}`);
+        
+        // Update global singleton state
+        authState.session = newSession;
+        authState.user = newSession?.user ?? null;
+        
+        // Update component state
+        setSession(newSession);
+        setUser(newSession?.user ?? null);
+      });
+      
+      authState.subscription = data.subscription;
+    }
     
+    // Get current session state
     const initializeAuth = async () => {
-      // Skip if already initialized globally
-      if (globalAuthState.initialized) {
-        // Just sync with the global state
-        setUser(globalAuthState.currentUser);
-        setSession(globalAuthState.currentSession);
+      if (authState.initialized) {
+        // Just sync with global state
+        setUser(authState.user);
+        setSession(authState.session);
         setLoading(false);
         return;
       }
       
       try {
         console.log("Initializing auth state");
+        const { data, error } = await supabase.auth.getSession();
         
-        // First set up the auth state listener if not already set
-        if (!globalAuthState.authListener) {
-          const { data } = supabase.auth.onAuthStateChange((event, newSession) => {
-            // Only log meaningful auth state changes, not every event
-            if (event !== 'INITIAL_SESSION') {
-              console.log(`Auth state changed: ${event}`);
-            }
-            
-            // Update global state
-            globalAuthState.currentSession = newSession;
-            globalAuthState.currentUser = newSession?.user ?? null;
-            
-            // Update component state if mounted
-            if (isMountedRef.current) {
-              setSession(newSession);
-              setUser(newSession?.user ?? null);
-            }
-          });
-          
-          // Store the listener for cleanup
-          globalAuthState.authListener = data.subscription;
-        }
-        
-        // Then check for an existing session
-        const { data: sessionData, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error('Error getting session:', error);
-          throw error;
-        }
+        if (error) throw error;
         
         // Update global state
-        globalAuthState.currentSession = sessionData.session;
-        globalAuthState.currentUser = sessionData.session?.user ?? null;
-        globalAuthState.initialized = true;
+        authState.session = data.session;
+        authState.user = data.session?.user ?? null;
+        authState.initialized = true;
         
-        // Update component state if still mounted
-        if (isMountedRef.current) {
-          setUser(sessionData.session?.user ?? null);
-          setSession(sessionData.session);
-          setLoading(false);
-        }
+        // Update component state
+        setUser(data.session?.user ?? null);
+        setSession(data.session);
+        setLoading(false);
       } catch (error) {
         console.error('Auth initialization error:', error);
-        
-        // Reset state on error, but mark as initialized to prevent loops
-        globalAuthState.initialized = true;
-        
-        // Update component state if still mounted
-        if (isMountedRef.current) {
-          setLoading(false);
-          setUser(null);
-          setSession(null);
-        }
+        authState.initialized = true; // Prevent loops
+        setLoading(false);
       }
     };
     
     initializeAuth();
     
-    // Cleanup function
+    // Clean up function
     return () => {
-      isMountedRef.current = false;
+      // Don't unsubscribe from auth listener - keep it for the app lifetime
     };
-  }, []); // Empty dependency array - only run once per component instance
+  }, []);
 
   return { user, session, loading };
 };
