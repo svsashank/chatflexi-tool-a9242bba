@@ -1,7 +1,7 @@
-
 import React, { useState } from "react";
 import { History, MessageSquare, Plus, RefreshCw } from "lucide-react";
 import { useChatStore } from "@/store";
+import { useConversationCreation } from "@/hooks/useConversationCreation";
 import {
   Sheet,
   SheetContent,
@@ -24,12 +24,12 @@ const ConversationHistory = () => {
     conversations, 
     currentConversationId, 
     setCurrentConversationId,
-    createConversation,
     deleteConversation,
     refreshConversations
   } = useChatStore();
 
-  // Filter conversations based on search query
+  const { isCreating, createConversation } = useConversationCreation();
+
   const filteredConversations = React.useMemo(() => {
     if (!searchQuery.trim()) return conversations;
     return conversations.filter(conversation => 
@@ -59,14 +59,10 @@ const ConversationHistory = () => {
   const handleCreateConversation = async () => {
     try {
       setIsLoading(true);
-      const newId = await createConversation();
-      if (newId) {
-        setIsOpen(false);
-        toast.success("New conversation created");
-      }
+      await createConversation();
+      setIsOpen(false);
     } catch (error) {
       console.error("Error creating conversation:", error);
-      toast.error("Could not create a new conversation");
     } finally {
       setIsLoading(false);
     }
@@ -140,9 +136,13 @@ const ConversationHistory = () => {
             onClick={handleCreateConversation}
             variant="ghost"
             className="flex items-center justify-start gap-2 py-3 px-4 text-sm font-medium text-primary hover:bg-primary/10 transition-colors"
-            disabled={isLoading}
+            disabled={isLoading || isCreating}
           >
-            {isLoading ? <RefreshCw size={16} className="animate-spin" /> : <Plus size={16} />}
+            {(isLoading || isCreating) ? (
+              <RefreshCw size={16} className="animate-spin" />
+            ) : (
+              <Plus size={16} />
+            )}
             New Chat
           </Button>
           

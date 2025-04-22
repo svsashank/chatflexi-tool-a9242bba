@@ -9,6 +9,7 @@ const loadingStates = {
   creating: false,
   deleting: new Set<string>(),
   updating: new Set<string>(),
+  abortController: null as AbortController | null,
 };
 
 // New function to generate a meaningful title based on user message
@@ -42,6 +43,12 @@ export const generateConversationTitleFromMessage = (message: string) => {
 
 export const createConversationAction = (set: Function, get: () => ChatStore) => async () => {
   try {
+    // Cancel any existing request
+    if (loadingStates.abortController) {
+      loadingStates.abortController.abort();
+    }
+    loadingStates.abortController = new AbortController();
+
     // Prevent multiple simultaneous creation requests
     if (loadingStates.creating) {
       console.log("Already creating a conversation, please wait");
@@ -100,6 +107,10 @@ export const createConversationAction = (set: Function, get: () => ChatStore) =>
     loadingStates.creating = false;
     return newConversation.id;
   } catch (error) {
+    if (error.name === 'AbortError') {
+      console.log('Conversation creation aborted');
+      return null;
+    }
     console.error('Error creating conversation:', error);
     toast.error('Could not create a new conversation');
     loadingStates.creating = false;
@@ -107,6 +118,7 @@ export const createConversationAction = (set: Function, get: () => ChatStore) =>
   } finally {
     // Always ensure creating flag is reset
     loadingStates.creating = false;
+    loadingStates.abortController = null;
   }
 };
 
