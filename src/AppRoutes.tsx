@@ -32,6 +32,8 @@ const AppRoutes = () => {
         element={!user ? <Auth /> : <Navigate to="/" replace />} 
       />
       <Route path="/auth/callback" element={<AuthCallback />} />
+      
+      {/* Reset password route - accessible regardless of auth state */}
       <Route path="/auth/reset-password" element={<ResetPassword />} />
       
       {/* Protected routes */}

@@ -35,6 +35,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     console.log(`Processing reset password request for: ${email}`);
+    console.log(`Using redirect URL: ${redirectUrl}`);
 
     // Initialize the Supabase client with the service role key
     const supabase = createClient(
@@ -44,12 +45,10 @@ const handler = async (req: Request): Promise<Response> => {
 
     try {
       // Generate a password reset token using Supabase's admin API
-      // Important: Using recovery type, not magiclink type
       const { data, error } = await supabase.auth.admin.generateLink({
         type: 'recovery',
         email: email,
         options: {
-          // Make sure redirectTo points to the reset password page, not the root
           redirectTo: redirectUrl,
         }
       });

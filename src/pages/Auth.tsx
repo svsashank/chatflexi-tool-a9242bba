@@ -92,8 +92,9 @@ const Auth = () => {
     setResetLoading(true);
 
     try {
-      // Construct the full URL for the reset password page - ensure the path exactly matches the route
+      // Make sure to use the exact path to the reset password route
       const redirectUrl = `${window.location.origin}/auth/reset-password`;
+      console.log(`Setting redirect URL to: ${redirectUrl}`);
       
       // Call our custom edge function instead of the built-in resetPasswordForEmail
       const response = await supabase.functions.invoke('send-password-reset', {

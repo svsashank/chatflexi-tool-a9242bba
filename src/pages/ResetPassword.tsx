@@ -14,34 +14,41 @@ const ResetPassword = () => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [authenticated, setAuthenticated] = useState(false);
+  const [validResetToken, setValidResetToken] = useState(false);
 
   useEffect(() => {
-    // Check for PASSWORD_RECOVERY event and capture it
+    console.log("ResetPassword component mounted");
+    
+    // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log(`Auth event in ResetPassword: ${event}`);
       
-      // If we're in PASSWORD_RECOVERY mode, let the component handle it
       if (event === 'PASSWORD_RECOVERY') {
-        setAuthenticated(true);
+        console.log("PASSWORD_RECOVERY event detected");
+        setValidResetToken(true);
       }
       
-      // If somehow the user gets fully signed in here, redirect them
-      // This prevents auto-login after clicking reset link
-      if (event === 'SIGNED_IN' && !authenticated) {
-        console.log("User authenticated, but we need to reset password first");
-        // Stay on this page - don't redirect
+      // When the user is signed in during the recovery process
+      if (event === 'SIGNED_IN') {
+        console.log("User is signed in during password recovery process");
+        // We'll let the update password flow handle the navigation
       }
     });
 
-    // Check if we have a hash fragment in the URL (contains the recovery token)
-    const hash = window.location.hash;
+    // Look for the recovery token in the URL
+    // We're not actually extracting the token, Supabase will do that automatically
+    const queryString = window.location.search;
+    const hashFragment = window.location.hash;
     
-    if (!hash || hash.length < 1) {
-      toast.error('Invalid or missing recovery link');
-      navigate('/auth', { replace: true });
+    console.log("URL query string:", queryString);
+    console.log("URL hash fragment:", hashFragment);
+    
+    if (!queryString && !hashFragment) {
+      console.log("No recovery token found in URL, checking for PASSWORD_RECOVERY event");
+      // We'll rely on the auth event listener to determine if valid
     }
     
+    // Cleanup subscription on unmount
     return () => {
       subscription.unsubscribe();
     };
@@ -63,7 +70,8 @@ const ResetPassword = () => {
     setLoading(true);
 
     try {
-      // Update the password using the recovery token in the URL
+      console.log("Attempting to update password");
+      // The Supabase client will automatically use the token from the URL
       const { data, error } = await supabase.auth.updateUser({
         password: newPassword
       });
@@ -92,6 +100,36 @@ const ResetPassword = () => {
       setLoading(false);
     }
   };
+
+  // If we don't have a valid reset token and no recovery event was detected
+  if (!validResetToken) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="space-y-1 flex flex-col items-center">
+            <div className="relative mb-2">
+              <Hexagon size={32} className="text-primary" fill="#9b87f5" stroke="#7E69AB" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="text-base font-bold text-white">K</div>
+              </div>
+            </div>
+            <CardTitle className="text-2xl font-bold">Invalid Reset Link</CardTitle>
+            <CardDescription>
+              This password reset link is invalid or has expired.
+            </CardDescription>
+          </CardHeader>
+          <CardFooter className="flex flex-col space-y-4">
+            <Button
+              type="button"
+              onClick={() => navigate('/auth')}
+            >
+              Back to Login
+            </Button>
+          </CardFooter>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
