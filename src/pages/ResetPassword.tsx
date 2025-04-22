@@ -15,6 +15,10 @@ const ResetPassword = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [validResetToken, setValidResetToken] = useState(false);
+  const [tokenChecked, setTokenChecked] = useState(false);
+
+  // Use this ref to track if we've already processed the password recovery event
+  const passwordRecoveryProcessedRef = React.useRef(false);
 
   useEffect(() => {
     console.log("ResetPassword component mounted");
@@ -23,30 +27,43 @@ const ResetPassword = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log(`Auth event in ResetPassword: ${event}`);
       
-      if (event === 'PASSWORD_RECOVERY') {
+      if (event === 'PASSWORD_RECOVERY' && !passwordRecoveryProcessedRef.current) {
         console.log("PASSWORD_RECOVERY event detected");
+        passwordRecoveryProcessedRef.current = true;
         setValidResetToken(true);
-      }
-      
-      // When the user is signed in during the recovery process
-      if (event === 'SIGNED_IN') {
-        console.log("User is signed in during password recovery process");
-        // We'll let the update password flow handle the navigation
+        setTokenChecked(true);
+        
+        // If the user is automatically signed in by Supabase during recovery process,
+        // we don't need to do anything special here - we'll handle the reset based on the token
       }
     });
 
-    // Look for the recovery token in the URL
-    // We're not actually extracting the token, Supabase will do that automatically
-    const queryString = window.location.search;
-    const hashFragment = window.location.hash;
+    // Check URL parameters for reset token
+    const checkForResetToken = async () => {
+      // We check both for query params and hash fragments as Supabase uses both
+      const queryString = window.location.search;
+      const hashFragment = window.location.hash;
+      
+      console.log("URL query string:", queryString);
+      console.log("URL hash fragment:", hashFragment);
+      
+      // If we have a hash fragment with 'access_token' or 'type=recovery', it's likely a valid reset token
+      const hasResetToken = (hashFragment && 
+        (hashFragment.includes('type=recovery') || hashFragment.includes('access_token'))) ||
+        (queryString && queryString.includes('token='));
+      
+      if (hasResetToken) {
+        console.log("Reset token found in URL");
+        setValidResetToken(true);
+      } else {
+        console.log("No reset token found in URL");
+        setValidResetToken(false);
+      }
+      
+      setTokenChecked(true);
+    };
     
-    console.log("URL query string:", queryString);
-    console.log("URL hash fragment:", hashFragment);
-    
-    if (!queryString && !hashFragment) {
-      console.log("No recovery token found in URL, checking for PASSWORD_RECOVERY event");
-      // We'll rely on the auth event listener to determine if valid
-    }
+    checkForResetToken();
     
     // Cleanup subscription on unmount
     return () => {
@@ -71,7 +88,6 @@ const ResetPassword = () => {
 
     try {
       console.log("Attempting to update password");
-      // The Supabase client will automatically use the token from the URL
       const { data, error } = await supabase.auth.updateUser({
         password: newPassword
       });
@@ -84,10 +100,12 @@ const ResetPassword = () => {
         throw new Error("Failed to update password");
       }
 
+      console.log("Password updated successfully");
       toast.success('Password updated successfully');
       
-      // Sign out the user to ensure a clean state
+      // Sign out the user to ensure a clean state and make them log in with new password
       await supabase.auth.signOut();
+      console.log("User signed out after password reset");
       
       // Add a short delay before navigating
       setTimeout(() => {
@@ -100,6 +118,16 @@ const ResetPassword = () => {
       setLoading(false);
     }
   };
+
+  // Show loading state while checking for token
+  if (!tokenChecked) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mr-2"></div>
+        <span>Verifying reset token...</span>
+      </div>
+    );
+  }
 
   // If we don't have a valid reset token and no recovery event was detected
   if (!validResetToken) {

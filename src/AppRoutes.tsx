@@ -33,7 +33,8 @@ const AppRoutes = () => {
       />
       <Route path="/auth/callback" element={<AuthCallback />} />
       
-      {/* Reset password route - accessible regardless of auth state */}
+      {/* Reset password route - accessible regardless of auth state 
+          Important: This must be outside the condition that checks if user exists */}
       <Route path="/auth/reset-password" element={<ResetPassword />} />
       
       {/* Protected routes */}

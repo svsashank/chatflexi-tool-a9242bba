@@ -44,12 +44,20 @@ const handler = async (req: Request): Promise<Response> => {
     );
 
     try {
+      // Make sure redirectUrl specifically points to the reset password page, not just the app root
+      // This ensures the user lands on the reset form, not just gets logged in
+      const finalRedirectUrl = redirectUrl.endsWith('/auth/reset-password') 
+        ? redirectUrl 
+        : `${redirectUrl.replace(/\/$/, '')}/auth/reset-password`;
+        
+      console.log(`Final redirect URL for password reset: ${finalRedirectUrl}`);
+      
       // Generate a password reset token using Supabase's admin API
       const { data, error } = await supabase.auth.admin.generateLink({
         type: 'recovery',
         email: email,
         options: {
-          redirectTo: redirectUrl,
+          redirectTo: finalRedirectUrl,
         }
       });
 

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -92,11 +91,9 @@ const Auth = () => {
     setResetLoading(true);
 
     try {
-      // Make sure to use the exact path to the reset password route
       const redirectUrl = `${window.location.origin}/auth/reset-password`;
       console.log(`Setting redirect URL to: ${redirectUrl}`);
       
-      // Call our custom edge function instead of the built-in resetPasswordForEmail
       const response = await supabase.functions.invoke('send-password-reset', {
         body: {
           email: resetEmail,
