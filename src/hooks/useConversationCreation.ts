@@ -13,16 +13,28 @@ export const useConversationCreation = () => {
   const debouncedCreate = useRef(
     debounce(async () => {
       try {
+        // Cancel any previous ongoing request
+        if (createRequestRef.current) {
+          createRequestRef.current.abort();
+        }
+        
+        // Create a new abort controller for this request
+        createRequestRef.current = new AbortController();
+        
         setIsCreating(true);
         const newId = await createConversation();
         if (!newId) {
           throw new Error('Failed to create conversation');
         }
       } catch (error) {
-        console.error('Error in conversation creation:', error);
-        toast.error('Could not create a new conversation');
+        // Only show error if not aborted
+        if (error.name !== 'AbortError') {
+          console.error('Error in conversation creation:', error);
+          toast.error('Could not create a new conversation');
+        }
       } finally {
         setIsCreating(false);
+        createRequestRef.current = null;
       }
     }, 1000, { leading: true, trailing: false })
   ).current;

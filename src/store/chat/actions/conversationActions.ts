@@ -1,3 +1,4 @@
+
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -74,6 +75,15 @@ export const createConversationAction = (set: Function, get: () => ChatStore) =>
       console.error('No authenticated user found');
       toast.error('Authentication required to create conversations');
       loadingStates.creating = false;
+      loadingStates.abortController = null;
+      return null;
+    }
+    
+    // Check if request was aborted during authentication check
+    if (loadingStates.abortController?.signal.aborted) {
+      console.log('Conversation creation aborted after auth check');
+      loadingStates.creating = false;
+      loadingStates.abortController = null;
       return null;
     }
     
@@ -92,6 +102,15 @@ export const createConversationAction = (set: Function, get: () => ChatStore) =>
       console.error('Error creating conversation in database:', error);
       toast.error('Could not create a new conversation');
       loadingStates.creating = false;
+      loadingStates.abortController = null;
+      return null;
+    }
+    
+    // Check if request was aborted during database operation
+    if (loadingStates.abortController?.signal.aborted) {
+      console.log('Conversation creation aborted after database operation');
+      loadingStates.creating = false;
+      loadingStates.abortController = null;
       return null;
     }
     
@@ -104,7 +123,6 @@ export const createConversationAction = (set: Function, get: () => ChatStore) =>
     }));
 
     console.log("New conversation created and set as current with ID:", newConversation.id);
-    loadingStates.creating = false;
     return newConversation.id;
   } catch (error) {
     if (error.name === 'AbortError') {
@@ -113,7 +131,6 @@ export const createConversationAction = (set: Function, get: () => ChatStore) =>
     }
     console.error('Error creating conversation:', error);
     toast.error('Could not create a new conversation');
-    loadingStates.creating = false;
     return null;
   } finally {
     // Always ensure creating flag is reset

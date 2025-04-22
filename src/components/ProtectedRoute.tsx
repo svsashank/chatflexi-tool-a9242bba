@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 
 // Global flag to track initialization across route changes
 const initializedUsers = new Set<string>();
+const initializationInProgress = new Set<string>();
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
@@ -25,11 +26,20 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     
     const initConversations = async () => {
       try {
+        // Check if initialization is in progress for this user
+        if (initializationInProgress.has(user.id)) {
+          console.log(`ProtectedRoute: Initialization already in progress for user ${user.id}`);
+          return;
+        }
+        
         // Check if we've already initialized this user in the current session
         if (initializedUsers.has(user.id)) {
           console.log(`ProtectedRoute: User ${user.id} already initialized`);
           return;
         }
+        
+        // Mark initialization as in progress
+        initializationInProgress.add(user.id);
         
         setIsInitializing(true);
         console.log("ProtectedRoute: Initializing conversations for authenticated user");
@@ -39,32 +49,41 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
           console.log("No conversations in state, loading from database");
           await loadConversationsFromDB();
           
-          // Get fresh state after loading
+          // Check if we now have conversations after loading
           const currentConversations = useChatStore.getState().conversations;
           
           // Only create a new conversation if none were loaded
           if (currentConversations.length === 0) {
             console.log("No conversations found, creating a new one");
             await createConversation();
+          } else {
+            console.log(`Loaded ${currentConversations.length} conversations, no need to create a new one`);
           }
-          
-          // Mark as initialized for this user
-          initializedUsers.add(user.id);
         } else {
           console.log(`Already have ${conversations.length} conversations in state, not reloading`);
-          // Still mark as initialized
-          initializedUsers.add(user.id);
         }
+        
+        // Mark as initialized for this user
+        initializedUsers.add(user.id);
       } catch (error) {
         console.error("Error initializing conversations:", error);
         toast.error('Could not load your conversations. Please try refreshing the page.');
       } finally {
         setIsInitializing(false);
+        // Remove from in-progress set regardless of success or failure
+        initializationInProgress.delete(user.id);
       }
     };
     
     initConversations();
     
+    // Cleanup function
+    return () => {
+      // If component unmounts during initialization, cleanup
+      if (user) {
+        initializationInProgress.delete(user.id);
+      }
+    };
   }, [user, loading, loadConversationsFromDB, createConversation, conversations]);
 
   // Show loading state while auth is being resolved
