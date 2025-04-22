@@ -35,7 +35,6 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     console.log(`Processing reset password request for: ${email}`);
-    console.log(`Redirect URL: ${redirectUrl}`);
 
     // Initialize the Supabase client with the service role key
     const supabase = createClient(
@@ -43,25 +42,72 @@ const handler = async (req: Request): Promise<Response> => {
       SUPABASE_SERVICE_ROLE_KEY || ""
     );
 
-    // Have Supabase send the password reset email
-    const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: redirectUrl,
-    });
+    try {
+      // Generate a password reset token using Supabase's admin API
+      const { data, error } = await supabase.auth.admin.generateLink({
+        type: 'recovery',
+        email: email,
+        options: {
+          redirectTo: redirectUrl,
+        }
+      });
 
-    if (error) {
-      console.error("Error sending reset email via Supabase:", error);
+      if (error) throw error;
+      
+      if (!data || !data.properties || !data.properties.action_link) {
+        throw new Error("Failed to generate reset link");
+      }
+      
+      const resetLink = data.properties.action_link;
+      console.log(`Generated reset link: ${resetLink}`);
+
+      // Send email using Plunk
+      const response = await fetch("https://api.useplunk.com/v1/send", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${PLUNK_SECRET_KEY}`,
+        },
+        body: JSON.stringify({
+          to: email,
+          subject: "Reset Your Password",
+          body: `
+            <h1>Reset Your Krix AI Password</h1>
+            <p>We received a request to reset your password. Click the button below to set a new password:</p>
+            <p style="text-align:center;">
+              <a href="${resetLink}" style="display:inline-block;padding:12px 24px;background-color:#9b87f5;color:white;text-decoration:none;border-radius:4px;font-weight:bold;">
+                Reset Password
+              </a>
+            </p>
+            <p>If you didn't request this, you can safely ignore this email.</p>
+            <p>The link will expire in 1 hour for security reasons.</p>
+          `,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("Failed to send email via Plunk:", errorData);
+        return new Response(
+          JSON.stringify({ error: "Failed to send reset email" }),
+          { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+
+      const plunkData = await response.json();
+      console.log("Plunk email sent successfully:", plunkData);
+
       return new Response(
-        JSON.stringify({ error: error.message }),
+        JSON.stringify({ success: true, message: "Reset password email sent" }),
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    } catch (error) {
+      console.error("Error generating reset link:", error);
+      return new Response(
+        JSON.stringify({ error: error.message || "Failed to generate reset link" }),
         { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
-
-    console.log("Reset password email sent successfully via Supabase");
-    
-    return new Response(
-      JSON.stringify({ success: true, message: "Reset password email sent" }),
-      { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
-    );
   } catch (error) {
     console.error("Error in send-password-reset function:", error);
     return new Response(

@@ -15,36 +15,25 @@ const ResetPassword = () => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [token, setToken] = useState<string | null>(null);
-  const [email, setEmail] = useState<string | null>(null);
   
-  // Extract token and email from URL query parameters
+  // We won't extract email/token from URL parameters as they're handled by Supabase
+  // The hash fragment in the URL contains the access token needed for password reset
+
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const tokenParam = params.get('token');
-    const emailParam = params.get('email');
+    // Check if we have a recovery hash in the URL
+    const hash = window.location.hash;
     
-    if (tokenParam) {
-      setToken(tokenParam);
-    }
-    
-    if (emailParam) {
-      setEmail(decodeURIComponent(emailParam));
-    }
-    
-    if (!tokenParam || !emailParam) {
-      toast.error('Invalid or missing reset parameters');
+    if (!hash || hash.length < 1) {
+      toast.error('Invalid or missing recovery link');
       navigate('/auth', { replace: true });
     }
-  }, [location, navigate]);
+    
+    // We don't need to extract the token - Supabase will handle it internally
+    // when we call updateUser
+  }, [navigate]);
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!email || !token) {
-      toast.error('Email or token information is missing');
-      return;
-    }
     
     if (newPassword !== confirmPassword) {
       toast.error('Passwords do not match');
@@ -59,19 +48,13 @@ const ResetPassword = () => {
     setLoading(true);
 
     try {
-      // Use the proper API for resetting password with a reset token
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: window.location.href,
+      // The hash in the URL contains the access token that Supabase needs
+      // updateUser will automatically use this token from the URL
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
       });
 
       if (error) throw error;
-
-      // Now we can update the user's password with the token
-      const { error: updateError } = await supabase.auth.updateUser({
-        password: newPassword,
-      });
-
-      if (updateError) throw updateError;
 
       toast.success('Password updated successfully');
       
@@ -104,11 +87,6 @@ const ResetPassword = () => {
         </CardHeader>
         <form onSubmit={handleResetPassword}>
           <CardContent className="space-y-4">
-            {email && (
-              <div className="p-3 bg-muted rounded-md text-center">
-                <p className="text-sm text-muted-foreground">Resetting password for: <strong>{email}</strong></p>
-              </div>
-            )}
             <div className="space-y-2">
               <Label htmlFor="new-password">New Password</Label>
               <Input

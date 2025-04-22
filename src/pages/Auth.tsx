@@ -18,10 +18,8 @@ const Auth = () => {
   const [authLoading, setAuthLoading] = useState(false);
   const authAttemptedRef = React.useRef(false);
   
-  // Track already redirected status to prevent loops
   const redirectedRef = React.useRef(false);
   
-  // Handle redirection when user becomes available
   useEffect(() => {
     if (user && !redirectedRef.current && !loading) {
       console.log("User is authenticated, redirecting to home page");
@@ -33,7 +31,6 @@ const Auth = () => {
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Prevent duplicate sign-in attempts
     if (authLoading || authAttemptedRef.current) {
       console.log("Auth already in progress, ignoring duplicate request");
       return;
@@ -45,12 +42,10 @@ const Auth = () => {
     try {
       console.log("Starting sign in attempt...");
       await signIn(email, password);
-      // Navigation will happen through the useEffect
     } catch (error: any) {
       console.error('Sign in error:', error);
       toast.error(error.message || 'Failed to sign in');
     } finally {
-      // Reset auth attempt state after a delay
       setTimeout(() => {
         authAttemptedRef.current = false;
         setAuthLoading(false);
@@ -69,7 +64,6 @@ const Auth = () => {
     
     try {
       signInWithGoogle();
-      // Redirect will happen automatically once signed in
     } catch (error: any) {
       console.error('Google sign in error:', error);
       toast.error(error.message || 'Failed to sign in with Google');
@@ -97,7 +91,6 @@ const Auth = () => {
     setResetLoading(true);
 
     try {
-      // Instead of using Supabase's built-in reset function, use our custom edge function
       const redirectUrl = `${window.location.origin}/auth/reset-password`;
       
       const response = await supabase.functions.invoke('send-password-reset', {
