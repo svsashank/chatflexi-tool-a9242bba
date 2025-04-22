@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -9,6 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { FcGoogle } from 'react-icons/fc';
 import { Hexagon } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -82,6 +82,31 @@ const Auth = () => {
     window.location.href = 'https://krix.app';
   };
 
+  const [isResetMode, setIsResetMode] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setResetLoading(true);
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+        redirectTo: `${window.location.origin}/auth/reset-password`,
+      });
+
+      if (error) throw error;
+
+      toast.success('Password reset instructions have been sent to your email');
+      setIsResetMode(false);
+    } catch (error: any) {
+      console.error('Reset password error:', error);
+      toast.error(error.message || 'Failed to send reset instructions');
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -90,7 +115,6 @@ const Auth = () => {
     );
   }
 
-  // If user is already authenticated and not in loading state, redirect
   if (user && !loading) {
     return <Navigate to="/" replace />;
   }
@@ -105,78 +129,129 @@ const Auth = () => {
               <div className="text-base font-bold text-white">K</div>
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold">Krix AI</CardTitle>
+          <CardTitle className="text-2xl font-bold">
+            {isResetMode ? 'Reset Password' : 'Krix AI'}
+          </CardTitle>
           <CardDescription>
-            Login to your Krix AI account
+            {isResetMode 
+              ? 'Enter your email to receive reset instructions'
+              : 'Login to your Krix AI account'
+            }
           </CardDescription>
         </CardHeader>
-        <form onSubmit={handleSignIn}>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="name@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                disabled={authLoading}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                disabled={authLoading}
-              />
-            </div>
-          </CardContent>
-          <CardFooter className="flex flex-col space-y-4">
-            <Button 
-              type="submit" 
-              className="w-full" 
-              disabled={authLoading}
-            >
-              {authLoading ? 'Signing in...' : 'Sign In'}
-            </Button>
-            <div className="relative w-full">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t border-border" />
+
+        {isResetMode ? (
+          <form onSubmit={handleResetPassword}>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="reset-email">Email</Label>
+                <Input
+                  id="reset-email"
+                  type="email"
+                  placeholder="name@example.com"
+                  value={resetEmail}
+                  onChange={(e) => setResetEmail(e.target.value)}
+                  required
+                  disabled={resetLoading}
+                />
               </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">Or</span>
-              </div>
-            </div>
-            <Button 
-              type="button" 
-              variant="outline" 
-              className="w-full" 
-              onClick={handleGoogleSignIn}
-              disabled={authLoading}
-            >
-              <FcGoogle className="mr-2 h-5 w-5" />
-              Sign in with Google
-            </Button>
-            <div className="text-center pt-2">
-              <p className="text-sm text-muted-foreground">Don't have an account?</p>
+            </CardContent>
+            <CardFooter className="flex flex-col space-y-4">
+              <Button 
+                type="submit" 
+                className="w-full"
+                disabled={resetLoading}
+              >
+                {resetLoading ? 'Sending Instructions...' : 'Send Reset Instructions'}
+              </Button>
               <Button
                 type="button"
-                variant="link"
-                className="text-primary"
-                onClick={handleRedirectToSignup}
+                variant="ghost"
+                onClick={() => setIsResetMode(false)}
+                disabled={resetLoading}
+              >
+                Back to Login
+              </Button>
+            </CardFooter>
+          </form>
+        ) : (
+          <form onSubmit={handleSignIn}>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="name@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  disabled={authLoading}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  disabled={authLoading}
+                />
+              </div>
+            </CardContent>
+            <CardFooter className="flex flex-col space-y-4">
+              <Button 
+                type="submit" 
+                className="w-full" 
                 disabled={authLoading}
               >
-                Get started at krix.app
+                {authLoading ? 'Signing in...' : 'Sign In'}
               </Button>
-            </div>
-          </CardFooter>
-        </form>
+              <div className="relative w-full">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-border" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground">Or</span>
+                </div>
+              </div>
+              <Button 
+                type="button" 
+                variant="outline" 
+                className="w-full" 
+                onClick={handleGoogleSignIn}
+                disabled={authLoading}
+              >
+                <FcGoogle className="mr-2 h-5 w-5" />
+                Sign in with Google
+              </Button>
+              <div className="text-center pt-2">
+                <p className="text-sm text-muted-foreground">Don't have an account?</p>
+                <Button
+                  type="button"
+                  variant="link"
+                  className="text-primary"
+                  onClick={handleRedirectToSignup}
+                  disabled={authLoading}
+                >
+                  Get started at krix.app
+                </Button>
+                <Button
+                  type="button"
+                  variant="link"
+                  className="text-primary"
+                  onClick={() => setIsResetMode(true)}
+                  disabled={authLoading}
+                >
+                  Forgot password?
+                </Button>
+              </div>
+            </CardFooter>
+          </form>
+        )}
       </Card>
     </div>
   );

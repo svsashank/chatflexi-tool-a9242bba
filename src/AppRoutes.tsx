@@ -6,6 +6,7 @@ import Auth from "./pages/Auth";
 import AuthCallback from "./pages/AuthCallback";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
+import ResetPassword from "./pages/ResetPassword";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { useAuth } from "./contexts/AuthContext";
 
@@ -19,7 +20,6 @@ const LoadingDisplay = () => (
 const AppRoutes = () => {
   const { user, loading } = useAuth();
 
-  // Show loading state until auth is initialized
   if (loading) {
     return <LoadingDisplay />;
   }
@@ -32,6 +32,7 @@ const AppRoutes = () => {
         element={!user ? <Auth /> : <Navigate to="/" replace />} 
       />
       <Route path="/auth/callback" element={<AuthCallback />} />
+      <Route path="/auth/reset-password" element={<ResetPassword />} />
       
       {/* Protected routes */}
       <Route 
