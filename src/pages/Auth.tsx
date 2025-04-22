@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { FcGoogle } from 'react-icons/fc';
 import { Hexagon } from 'lucide-react';
+import { toast } from 'sonner';
 
 const Auth = () => {
   const { user, signIn, signInWithGoogle, loading } = useAuth();
@@ -17,18 +18,21 @@ const Auth = () => {
   const [authLoading, setAuthLoading] = useState(false);
 
   // Redirect to home if already logged in
-  if (user && !loading) {
-    return <Navigate to="/" />;
-  }
+  useEffect(() => {
+    if (user && !loading) {
+      navigate('/');
+    }
+  }, [user, loading, navigate]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthLoading(true);
     try {
       await signIn(email, password);
-      navigate('/');
-    } catch (error) {
+      // Navigation will happen automatically through the useEffect
+    } catch (error: any) {
       console.error('Sign in error:', error);
+      toast.error(error.message || 'Failed to sign in');
     } finally {
       setAuthLoading(false);
     }
@@ -41,9 +45,14 @@ const Auth = () => {
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <p>Loading...</p>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     );
+  }
+
+  // If user is already signed in, redirect to home
+  if (user) {
+    return <Navigate to="/" />;
   }
 
   return (

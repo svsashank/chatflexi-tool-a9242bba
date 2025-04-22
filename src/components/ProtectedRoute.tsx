@@ -25,8 +25,13 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     abortControllerRef.current = new AbortController();
     const { signal } = abortControllerRef.current;
     
-    // Skip if already attempted in this component instance or user is not authenticated or still loading
-    if (initAttemptedRef.current || !user || loading) {
+    // If user is not authenticated or still loading, skip initialization
+    if (!user || loading) {
+      return;
+    }
+    
+    // Skip if already attempted in this component instance
+    if (initAttemptedRef.current) {
       return;
     }
     
@@ -85,7 +90,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
           // Return early if aborted
           if (signal.aborted) return;
           
-          // Load conversations if we don't already have them
+          // Check if we already have conversations in state first
           if (conversations.length === 0) {
             console.log("No conversations in state, loading from database");
             await loadConversationsFromDB();
@@ -166,19 +171,19 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     );
   }
 
+  // Redirect to auth if no user
+  if (!user) {
+    return <Navigate to="/auth" replace />;
+  }
+
   // Show initializing state while conversations are being loaded
-  if (user && isInitializing) {
+  if (isInitializing) {
     return (
       <div className="flex h-screen items-center justify-center flex-col">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
         <p className="text-sm text-muted-foreground">Loading your conversations...</p>
       </div>
     );
-  }
-
-  // Redirect to auth if no user
-  if (!user) {
-    return <Navigate to="/auth" replace />;
   }
 
   // Render children when authenticated and initialization is complete

@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
@@ -14,12 +14,11 @@ type AuthContextType = {
   signOut: () => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   loading: boolean;
-  isTokenRefresh: boolean; // Add flag to track token refresh events
+  isTokenRefresh: boolean;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Export the AuthProvider at the top level so it can be imported directly
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, session, loading } = useAuthInitialization();
   const [isTokenRefresh, setIsTokenRefresh] = useState(false);
@@ -28,7 +27,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const { createConversation, loadConversationsFromDB } = useChatStore();
 
   // Track token refresh events
-  React.useEffect(() => {
+  useEffect(() => {
     const { data } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'TOKEN_REFRESHED') {
         console.log('Auth token refreshed - not creating a new conversation');
