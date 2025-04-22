@@ -28,11 +28,7 @@ const AppContent = () => {
     initializeSelectedModel();
   }, [initializeSelectedModel]);
 
-  return (
-    <AuthProvider>
-      <AppRoutes />
-    </AuthProvider>
-  );
+  return <AppRoutes />;
 };
 
 const App = () => {
@@ -40,9 +36,11 @@ const App = () => {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <TooltipProvider>
-          <Toaster />
-          <Sonner position="top-right" closeButton />
-          <AppContent />
+          <AuthProvider>
+            <Toaster />
+            <Sonner position="top-right" closeButton />
+            <AppContent />
+          </AuthProvider>
         </TooltipProvider>
       </BrowserRouter>
     </QueryClientProvider>

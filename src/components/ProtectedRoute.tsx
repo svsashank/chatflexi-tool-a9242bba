@@ -11,7 +11,11 @@ const globalState = {
   initializationInProgress: new Set<string>(),
   initializationPromises: new Map<string, Promise<void>>(),
   lastSignInTime: new Map<string, number>(), // Track last sign-in time per user
+  loadingAttempts: new Map<string, number>() // Track repeated loading attempts
 };
+
+const MAX_LOADING_ATTEMPTS = 3; // Maximum attempts before backing off
+const COOLDOWN_TIME = 5000; // 5 seconds cooldown
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading, isTokenRefresh } = useAuth();
@@ -19,19 +23,24 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const initAttemptedRef = useRef(false);
   const [isInitializing, setIsInitializing] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
-  
+  const componentIdRef = useRef(`pr_${Math.random().toString(36).substring(2, 10)}`);
+
   useEffect(() => {
+    console.log(`ProtectedRoute mounted: ${componentIdRef.current}`);
+    
     // Create abort controller for this component instance
     abortControllerRef.current = new AbortController();
     const { signal } = abortControllerRef.current;
-    
+
     // If user is not authenticated or still loading, skip initialization
     if (!user || loading) {
+      console.log("ProtectedRoute: User is not authenticated or auth is still loading, skipping initialization");
       return;
     }
     
     // Skip if already attempted in this component instance
     if (initAttemptedRef.current) {
+      console.log(`ProtectedRoute ${componentIdRef.current}: Already attempted initialization, skipping`);
       return;
     }
     
@@ -40,7 +49,10 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     
     const initConversations = async () => {
       // Return early if aborted
-      if (signal.aborted) return;
+      if (signal.aborted) {
+        console.log(`ProtectedRoute ${componentIdRef.current}: Operation aborted`);
+        return;
+      }
       
       try {
         // Skip initialization if this is just a token refresh event
@@ -55,17 +67,34 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
           
           // Wait for the existing initialization to complete
           if (globalState.initializationPromises.has(user.id)) {
-            await globalState.initializationPromises.get(user.id);
-            console.log(`ProtectedRoute: Waited for existing initialization for user ${user.id}`);
+            try {
+              await globalState.initializationPromises.get(user.id);
+              console.log(`ProtectedRoute: Waited for existing initialization for user ${user.id}`);
+            } catch (e) {
+              console.log(`ProtectedRoute: Error waiting for existing initialization: ${e}`);
+            }
             return;
           }
           return;
         }
         
+        // Check loading attempts to implement exponential backoff
+        const attempts = globalState.loadingAttempts.get(user.id) || 0;
+        if (attempts >= MAX_LOADING_ATTEMPTS) {
+          const backoffTime = Math.min(COOLDOWN_TIME * Math.pow(2, attempts - MAX_LOADING_ATTEMPTS), 60000);
+          console.log(`ProtectedRoute: Too many loading attempts (${attempts}), backing off for ${backoffTime}ms`);
+          
+          // Wait for backoff time before proceeding
+          await new Promise(resolve => setTimeout(resolve, backoffTime));
+          
+          // Reset attempts counter after backoff
+          globalState.loadingAttempts.set(user.id, Math.max(1, attempts - 2));
+        }
+        
         // Prevent repeated initializations in quick succession
         const now = Date.now();
         const lastInit = globalState.lastSignInTime.get(user.id) || 0;
-        if ((now - lastInit) < 5000) { // Within 5 seconds (reduced from 10s)
+        if ((now - lastInit) < COOLDOWN_TIME) {
           console.log(`ProtectedRoute: User ${user.id} was initialized recently, skipping`);
           return;
         }
@@ -73,13 +102,20 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
         // Update last sign-in time
         globalState.lastSignInTime.set(user.id, now);
         
+        // Increment loading attempts
+        globalState.loadingAttempts.set(user.id, attempts + 1);
+        
         // Create a promise for this initialization that other components can wait on
         const initPromise = (async () => {
           // Mark initialization as in progress
           globalState.initializationInProgress.add(user.id);
           
-          setIsInitializing(true);
-          console.log("ProtectedRoute: Initializing conversations for authenticated user");
+          // Only show loading UI if this is going to be a longer operation
+          if (conversations.length === 0) {
+            setIsInitializing(true);
+          }
+          
+          console.log(`ProtectedRoute ${componentIdRef.current}: Initializing conversations for authenticated user`);
           
           // Return early if aborted
           if (signal.aborted) return;
@@ -98,7 +134,12 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
             // Only create a new conversation if none were loaded and not aborted
             if (currentConversations.length === 0 && !signal.aborted) {
               console.log("No conversations found, creating a new one");
-              await createConversation();
+              try {
+                await createConversation();
+              } catch (e) {
+                console.error("Failed to create conversation:", e);
+                // Don't throw - just log the error and continue
+              }
             } else {
               console.log(`Loaded ${currentConversations.length} conversations, no need to create a new one`);
             }
@@ -109,6 +150,8 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
           // Mark as initialized only if not aborted
           if (!signal.aborted) {
             globalState.initializedUsers.add(user.id);
+            // Reset loading attempts on successful completion
+            globalState.loadingAttempts.set(user.id, 0);
           }
         })();
         
@@ -140,6 +183,8 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     
     // Cleanup function
     return () => {
+      console.log(`ProtectedRoute unmounting: ${componentIdRef.current}`);
+      
       // Abort any ongoing operations for this component instance
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();

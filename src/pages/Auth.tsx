@@ -18,7 +18,7 @@ const Auth = () => {
   const [authLoading, setAuthLoading] = useState(false);
   const authAttemptedRef = React.useRef(false);
 
-  // Redirect to home if already logged in
+  // If user is already logged in and auth is not loading, redirect to home
   useEffect(() => {
     if (user && !loading) {
       console.log("User already logged in, redirecting to home");
@@ -38,17 +38,17 @@ const Auth = () => {
     authAttemptedRef.current = true;
     
     try {
+      console.log("Starting sign in attempt...");
       await signIn(email, password);
-      // Navigation will happen automatically through the useEffect
+      // Navigation will happen automatically through the useEffect above
     } catch (error: any) {
       console.error('Sign in error:', error);
       toast.error(error.message || 'Failed to sign in');
+      // Only reset authAttemptedRef if there's an error, so we don't try again automatically
       authAttemptedRef.current = false;
-    } finally {
       setAuthLoading(false);
-      // Note: We don't reset authAttemptedRef here to prevent multiple requests
-      // It will be reset when the component unmounts or when the user navigates away
     }
+    // Don't reset loading state here - let the redirect happen or error handler reset it
   };
 
   const handleGoogleSignIn = () => {
@@ -78,6 +78,7 @@ const Auth = () => {
   // Reset auth state when component unmounts
   useEffect(() => {
     return () => {
+      console.log("Auth component unmounting, resetting auth attempt state");
       authAttemptedRef.current = false;
     };
   }, []);

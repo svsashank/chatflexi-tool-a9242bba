@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
@@ -23,8 +23,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const { user, session, loading } = useAuthInitialization();
   const [isTokenRefresh, setIsTokenRefresh] = useState(false);
   const { toast } = useToast();
-  // Destructure only what we need - prevent unnecessary dependency on the whole store
-  const { createConversation, loadConversationsFromDB } = useChatStore();
+  // Track sign-in attempts to prevent duplicates
+  const signInAttemptRef = React.useRef(false);
 
   // Track token refresh events
   useEffect(() => {
@@ -32,7 +32,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (event === 'TOKEN_REFRESHED') {
         console.log('Auth token refreshed - not creating a new conversation');
         setIsTokenRefresh(true);
-      } else {
+      } else if (event !== 'INITIAL_SESSION') {
+        // Reset token refresh flag for other auth events
         setIsTokenRefresh(false);
       }
     });
@@ -42,12 +43,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
-  // Login function - no need to manage state as the auth listener will handle it
-  const signIn = async (email: string, password: string) => {
+  // Login function with duplicate prevention
+  const signIn = useCallback(async (email: string, password: string) => {
+    // Prevent duplicate sign-in attempts
+    if (signInAttemptRef.current) {
+      console.log("Sign in already in progress, ignoring duplicate request");
+      return;
+    }
+
+    signInAttemptRef.current = true;
+
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
-      // Success toast displayed only once after successful auth state change
+      // Success handled by auth state listener
     } catch (error: any) {
       toast({
         title: "Sign in failed",
@@ -55,10 +64,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         variant: "destructive",
       });
       throw error;
+    } finally {
+      // Reset after 2 seconds to prevent accidental double-clicks but allow retries
+      setTimeout(() => {
+        signInAttemptRef.current = false;
+      }, 2000);
     }
-  };
+  }, [toast]);
 
-  const signUp = async (email: string, password: string, name: string) => {
+  const signUp = useCallback(async (email: string, password: string, name: string) => {
     try {
       const { error } = await supabase.auth.signUp({
         email,
@@ -80,9 +94,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       throw error;
     }
-  };
+  }, [toast]);
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
@@ -94,9 +108,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       throw error;
     }
-  };
+  }, [toast]);
 
-  const signInWithGoogle = async () => {
+  const signInWithGoogle = useCallback(async () => {
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -113,7 +127,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       throw error;
     }
-  };
+  }, [toast]);
 
   return (
     <AuthContext.Provider

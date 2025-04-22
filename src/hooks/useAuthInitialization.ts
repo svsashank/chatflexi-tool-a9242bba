@@ -13,11 +13,15 @@ export const useAuthInitialization = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   
-  // Use a ref to track initialization across renders
+  // Use refs to track initialization and state changes across renders
   const isInitializedRef = useRef(false);
   const authChangeSubscriptionRef = useRef<{ unsubscribe: () => void } | null>(null);
+  const isMountedRef = useRef(true);
   
   useEffect(() => {
+    // Mark component as mounted
+    isMountedRef.current = true;
+    
     // Skip if already initialized in this component instance
     if (isInitializedRef.current) {
       return;
@@ -35,6 +39,12 @@ export const useAuthInitialization = () => {
         
         // First set up the auth state listener
         const { data } = supabase.auth.onAuthStateChange((event, newSession) => {
+          // Only proceed if component still mounted
+          if (!isMountedRef.current) {
+            console.log("Auth state changed but component unmounted, ignoring");
+            return;
+          }
+          
           // Only log meaningful auth state changes, not every event
           if (event !== 'INITIAL_SESSION') {
             console.log(`Auth state changed: ${event}`);
@@ -71,28 +81,34 @@ export const useAuthInitialization = () => {
         // Then check for an existing session
         const { data: sessionData } = await supabase.auth.getSession();
         
-        // Only set session if we got data back
-        if (sessionData) {
-          setSession(sessionData.session);
-          setUser(sessionData.session?.user ?? null);
-          
-          // Track session if user exists
-          if (sessionData.session?.user) {
-            globalInitState.authSessions.set(
-              sessionData.session.user.id,
-              Date.now()
-            );
+        // Only set session if component still mounted
+        if (isMountedRef.current) {
+          // Only set session if we got data back
+          if (sessionData) {
+            setSession(sessionData.session);
+            setUser(sessionData.session?.user ?? null);
+            
+            // Track session if user exists
+            if (sessionData.session?.user) {
+              globalInitState.authSessions.set(
+                sessionData.session.user.id,
+                Date.now()
+              );
+            }
           }
+          
+          // Complete loading after initial check
+          setLoading(false);
+          
+          // Mark global initialization as complete
+          globalInitState.initialized = true;
         }
-        
-        // Complete loading after initial check
-        setLoading(false);
-        
-        // Mark global initialization as complete
-        globalInitState.initialized = true;
       } catch (error) {
         console.error('Auth initialization error:', error);
-        setLoading(false);
+        // Only update state if component still mounted
+        if (isMountedRef.current) {
+          setLoading(false);
+        }
       }
     };
     
@@ -100,6 +116,8 @@ export const useAuthInitialization = () => {
     
     // Return cleanup function to unsubscribe when component unmounts
     return () => {
+      isMountedRef.current = false;
+      
       if (authChangeSubscriptionRef.current) {
         console.log("Cleaning up auth listener");
         authChangeSubscriptionRef.current.unsubscribe();
