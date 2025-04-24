@@ -107,7 +107,7 @@ export async function handleGoogle(messageHistory: any[], content: string, model
   // Based on latest documentation at https://ai.google.dev/gemini-api/docs
   let apiVersion = 'v1';
   let actualModelId = modelId;
-  
+
   // Handle model mapping
   if (modelId === 'gemini-pro-vision') {
     actualModelId = 'gemini-1.0-pro-vision';
@@ -117,7 +117,9 @@ export async function handleGoogle(messageHistory: any[], content: string, model
     // All Gemini 1.5 models remain the same
     actualModelId = modelId;
   } else if (modelId === 'gemini-ultra') {
-    actualModelId = 'gemini-1.0-ultra';  // Map to actual API model name if needed
+    actualModelId = 'gemini-1.0-ultra';
+  } else if (modelId === 'gemini-2.5-pro-preview-03-25') {
+    actualModelId = 'gemini-2.5-pro-preview'; // Map to the actual API model name
   }
   
   const apiEndpoint = `https://generativelanguage.googleapis.com/${apiVersion}/models/${actualModelId}:generateContent`;

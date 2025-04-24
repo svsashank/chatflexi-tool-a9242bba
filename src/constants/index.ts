@@ -1,4 +1,3 @@
-
 // AI Models
 export const AI_MODELS = [
   {
@@ -78,7 +77,7 @@ export const AI_MODELS = [
     name: 'Claude 3 Haiku',
     provider: 'anthropic',
     description: 'Fast, compact, and balanced intelligence',
-    capabilities: ['text', 'code'] as Array<'text' | 'code'>,
+    capabilities: ['text', 'code'] as Array<'text' | 'images' | 'code'>,
     avatarColor: '#d33b9a', // Anthropic pink
   },
   {
@@ -150,6 +149,14 @@ export const AI_MODELS = [
     name: 'Gemini Ultra',
     provider: 'google',
     description: 'Google\'s most powerful Gemini model with advanced reasoning capabilities',
+    capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
+    avatarColor: '#4285f4', // Google blue
+  },
+  {
+    id: 'gemini-2.5-pro-preview-03-25',
+    name: 'Gemini 2.5 Pro Preview',
+    provider: 'google',
+    description: 'Preview of Google\'s latest Gemini 2.5 model with enhanced capabilities',
     capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
     avatarColor: '#4285f4', // Google blue
   },
