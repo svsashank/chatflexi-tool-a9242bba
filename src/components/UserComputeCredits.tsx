@@ -1,14 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { Zap } from 'lucide-react';
+import { Zap, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from '@/components/ui/use-toast';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Button } from '@/components/ui/button';
 
 const UserComputeCredits = () => {
   const [totalCredits, setTotalCredits] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
+  const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
+  
   useEffect(() => {
     const fetchUserCredits = async () => {
       try {
@@ -126,6 +129,11 @@ const UserComputeCredits = () => {
     };
   }, []);
 
+  const handleUpgrade = () => {
+    // For now, just redirect to a hypothetical upgrade page
+    window.location.href = '/upgrade';
+  };
+
   if (isLoading) {
     return <div className="flex items-center gap-1 text-xs text-muted-foreground">
       <Zap size={14} className="text-amber-500" />
@@ -146,13 +154,22 @@ const UserComputeCredits = () => {
 
   // Round total credits to nearest integer
   const roundedCredits = Math.round(totalCredits);
+  const isLowCredits = roundedCredits < 1000; // Show warning when credits are low
 
-  return (
+  const creditDisplay = (
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <div className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
-            <Zap size={14} className="text-amber-500" />
+          <div className={`flex items-center gap-1 text-xs transition-colors ${
+            isLowCredits 
+              ? 'text-red-500 hover:text-red-600' 
+              : 'text-muted-foreground hover:text-foreground'
+          }`}>
+            {isLowCredits ? (
+              <AlertTriangle size={14} className="text-red-500" />
+            ) : (
+              <Zap size={14} className="text-amber-500" />
+            )}
             <span>Total: {roundedCredits.toLocaleString()} CR</span>
           </div>
         </TooltipTrigger>
@@ -163,12 +180,41 @@ const UserComputeCredits = () => {
               {roundedCredits.toLocaleString()} Total Compute Credits Used
             </p>
             <p className="text-xs">
-              This represents your total compute usage across all conversations.
+              {isLowCredits 
+                ? "Your credits are running low. Please upgrade to continue using the service."
+                : "This represents your total compute usage across all conversations."}
             </p>
           </div>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
+  );
+
+  return (
+    <>
+      <div onClick={() => isLowCredits && setShowUpgradeDialog(true)} 
+           className={isLowCredits ? 'cursor-pointer' : ''}>
+        {creditDisplay}
+      </div>
+
+      <AlertDialog open={showUpgradeDialog} onOpenChange={setShowUpgradeDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Upgrade Required</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have used {roundedCredits.toLocaleString()} compute credits. To continue using our service,
+              please upgrade your account to receive additional compute credits.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleUpgrade}>
+              Upgrade Now
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 };
 
