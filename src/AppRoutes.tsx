@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import Index from "./pages/Index";
@@ -9,6 +8,7 @@ import NotFound from "./pages/NotFound";
 import ResetPassword from "./pages/ResetPassword";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { useAuth } from "./contexts/AuthContext";
+import Upgrade from "./pages/Upgrade";
 
 const LoadingDisplay = () => (
   <div className="flex h-screen items-center justify-center">
@@ -49,6 +49,10 @@ const AppRoutes = () => {
         element={
           user ? <ProtectedRoute><Profile /></ProtectedRoute> : <Navigate to="/auth" replace />
         } 
+      />
+      <Route 
+        path="/upgrade" 
+        element={<Upgrade />} 
       />
       
       {/* Catch-all route */}
