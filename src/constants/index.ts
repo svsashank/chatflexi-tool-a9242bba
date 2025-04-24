@@ -122,34 +122,34 @@ export const AI_MODELS = [
     avatarColor: '#4285f4', // Google blue
   },
   {
-    id: 'gemini-1.5-flash-8b',
-    name: 'Gemini 1.5 Flash 8B',
+    id: 'gemini-1.5-flash-8k',
+    name: 'Gemini 1.5 Flash 8K',
     provider: 'google',
     description: 'Compact version of Gemini 1.5 Flash optimized for efficiency',
     capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
     avatarColor: '#4285f4', // Google blue
   },
   {
-    id: 'gemini-2.0-flash',
-    name: 'Gemini 2.0 Flash',
+    id: 'gemini-1.0-pro',
+    name: 'Gemini 1.0 Pro',
     provider: 'google',
-    description: 'Fast version of Gemini 2.0 with balanced performance',
+    description: 'Fast version of Gemini 1.0 with balanced performance',
     capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
     avatarColor: '#4285f4', // Google blue
   },
   {
-    id: 'gemini-2.0-flash-lite',
-    name: 'Gemini 2.0 Flash Lite',
+    id: 'gemini-pro-vision',
+    name: 'Gemini Pro Vision',
     provider: 'google',
-    description: 'Lightweight version of Gemini 2.0 Flash for efficient processing',
+    description: 'Gemini model specialized for vision tasks',
     capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
     avatarColor: '#4285f4', // Google blue
   },
   {
-    id: 'gemini-2.5-pro-exp-03-25',
-    name: 'Gemini 2.5 Pro',
+    id: 'gemini-ultra',
+    name: 'Gemini Ultra',
     provider: 'google',
-    description: 'Google\'s latest experimental flagship model with enhanced capabilities',
+    description: 'Google\'s most powerful Gemini model with advanced reasoning capabilities',
     capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
     avatarColor: '#4285f4', // Google blue
   },

@@ -1,4 +1,3 @@
-
 import { corsHeaders } from "../utils/cors.ts";
 
 // Google (Gemini) handler
@@ -104,18 +103,26 @@ export async function handleGoogle(messageHistory: any[], content: string, model
     });
   }
 
-  // Determine the correct API version and endpoint based on the model ID
-  let apiEndpoint;
+  // Map model IDs to the correct API versions and models according to the Gemini API
+  // Based on latest documentation at https://ai.google.dev/gemini-api/docs
+  let apiVersion = 'v1';
+  let actualModelId = modelId;
   
-  // Models like gemini-2.5-pro use v1beta
-  if (modelId.includes('2.5') || modelId.includes('2.0')) {
-    apiEndpoint = `https://generativelanguage.googleapis.com/v1/models/${modelId}:generateContent`;
-  } else {
-    // Older models like gemini-1.5-pro and gemini-1.5-flash use v1
-    apiEndpoint = `https://generativelanguage.googleapis.com/v1/models/${modelId}:generateContent`;
+  // Handle model mapping
+  if (modelId === 'gemini-pro-vision') {
+    actualModelId = 'gemini-1.0-pro-vision';
+  } else if (modelId === 'gemini-1.0-pro') {
+    actualModelId = 'gemini-1.0-pro';
+  } else if (modelId.startsWith('gemini-1.5')) {
+    // All Gemini 1.5 models remain the same
+    actualModelId = modelId;
+  } else if (modelId === 'gemini-ultra') {
+    actualModelId = 'gemini-1.0-ultra';  // Map to actual API model name if needed
   }
+  
+  const apiEndpoint = `https://generativelanguage.googleapis.com/${apiVersion}/models/${actualModelId}:generateContent`;
 
-  console.log(`Calling Google API with endpoint: ${apiEndpoint}...`);
+  console.log(`Calling Google API with endpoint: ${apiEndpoint} (mapped from ${modelId} to ${actualModelId})...`);
   try {
     const requestBody = {
       contents: formattedContents,
