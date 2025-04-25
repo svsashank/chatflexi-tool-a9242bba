@@ -11,7 +11,6 @@ export const COMPUTE_CREDITS_PER_TOKEN: Record<string, number> = {
   'gemini-pro-vision': 0.27,
   'gemini-ultra': 3.38,
   'gemini-1.5-flash-8k': 0.10,
-  'gemini-2.5-pro-preview-03-25': 13.50,
   'gpt-3.5-turbo': 1.35,
   'gpt-4.5-preview': 101.25,
   'o1': 40.50,
