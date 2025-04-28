@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 
@@ -12,6 +11,7 @@ import { handleAnthropic } from "./handlers/anthropic.ts";
 import { handleGoogle } from "./handlers/google.ts";
 import { handleXAI } from "./handlers/xai.ts";
 import { handleKrutrim } from "./handlers/krutrim.ts";
+import { handleOpenRouter } from "./handlers/openrouter.ts";
 
 // Enhanced cache for system prompts with TTL
 const systemPromptCache = new Map<string, {
@@ -71,6 +71,10 @@ function getCachedOrGenerateSystemPrompt(messageHistory: any[]) {
   
   return prompt;
 }
+
+// Configuration for model routing and fallback
+const USE_OPENROUTER = true; // Set to true to route all requests through OpenRouter
+const USE_OPENROUTER_FALLBACK = true; // Set to true to use OpenRouter as fallback for failed requests
 
 // Main server function
 serve(async (req) => {
@@ -238,6 +242,22 @@ serve(async (req) => {
       enhancedSystemPrompt = `${systemPrompt}\n\nRelevant web search results:\n${webSearchResults.map((result, index) => `[${index + 1}] ${result.title}\nURL: ${result.url}\n${result.snippet}`).join('\n\n')}`;
     }
     
+    // Check if we should use OpenRouter for all requests
+    if (USE_OPENROUTER && model.provider.toLowerCase() !== 'openrouter') {
+      console.log(`Routing request to OpenRouter instead of ${model.provider}`);
+      // Override the provider to use OpenRouter
+      try {
+        return await handleOpenRouter(messageHistory, content, model.id, enhancedSystemPrompt, messageImages, webSearchResults, allFiles);
+      } catch (openRouterError) {
+        // If OpenRouter fails and we're not using it as a fallback, rethrow the error
+        if (!USE_OPENROUTER_FALLBACK) {
+          throw openRouterError;
+        }
+        // Otherwise, proceed with the original provider as a fallback
+        console.log(`OpenRouter failed, falling back to original provider: ${model.provider}`);
+      }
+    }
+    
     // Format varies by provider
     try {
       let response;
@@ -262,8 +282,17 @@ serve(async (req) => {
         case 'krutrim':
           response = await handleKrutrim(messageHistory, content, model.id, enhancedSystemPrompt, messageImages, webSearchResults, allFiles);
           break;
+        case 'openrouter':
+          response = await handleOpenRouter(messageHistory, content, model.id, enhancedSystemPrompt, messageImages, webSearchResults, allFiles);
+          break;
         default:
-          throw new Error(`Provider ${model.provider} not supported`);
+          // Try OpenRouter as fallback for unknown providers if enabled
+          if (USE_OPENROUTER_FALLBACK) {
+            console.log(`Provider ${model.provider} not directly supported, using OpenRouter as fallback`);
+            response = await handleOpenRouter(messageHistory, content, model.id, enhancedSystemPrompt, messageImages, webSearchResults, allFiles);
+          } else {
+            throw new Error(`Provider ${model.provider} not supported`);
+          }
       }
       
       // Update metrics
@@ -282,6 +311,19 @@ serve(async (req) => {
       
     } catch (handlerError) {
       console.error(`Handler error for ${model.provider}:`, handlerError);
+      
+      // Try OpenRouter as fallback if enabled
+      if (USE_OPENROUTER_FALLBACK && model.provider.toLowerCase() !== 'openrouter') {
+        try {
+          console.log(`Primary handler failed, trying OpenRouter as fallback`);
+          const fallbackResponse = await handleOpenRouter(messageHistory, content, model.id, enhancedSystemPrompt, messageImages, webSearchResults, allFiles);
+          return fallbackResponse;
+        } catch (fallbackError) {
+          console.error(`OpenRouter fallback also failed:`, fallbackError);
+          // Continue to error response below
+        }
+      }
+      
       return new Response(
         JSON.stringify({ 
           content: `Error: ${handlerError.message || 'An unexpected error occurred'}`,

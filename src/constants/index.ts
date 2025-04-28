@@ -176,6 +176,39 @@ export const AI_MODELS = [
     description: 'Efficient and cost-effective version of Grok-3',
     capabilities: ['text', 'code'] as Array<'text' | 'code'>,
     avatarColor: '#1d9bf0', // Twitter blue
+  },
+  // OpenRouter Models
+  {
+    id: 'mistral-large-latest',
+    name: 'Mistral Large',
+    provider: 'openrouter',
+    description: 'Mistral\'s flagship model for advanced reasoning and generation',
+    capabilities: ['text', 'code'] as Array<'text' | 'code'>,
+    avatarColor: '#5E35B1', // Mistral purple
+  },
+  {
+    id: 'mistral-medium-latest',
+    name: 'Mistral Medium',
+    provider: 'openrouter',
+    description: 'Balanced and efficient Mistral model',
+    capabilities: ['text', 'code'] as Array<'text' | 'code'>,
+    avatarColor: '#5E35B1', // Mistral purple
+  },
+  {
+    id: 'mistral-small-latest',
+    name: 'Mistral Small',
+    provider: 'openrouter',
+    description: 'Fast and cost-effective Mistral model',
+    capabilities: ['text', 'code'] as Array<'text' | 'code'>,
+    avatarColor: '#5E35B1', // Mistral purple
+  },
+  {
+    id: 'llama3-70b-instruct',
+    name: 'Llama 3 70B',
+    provider: 'openrouter',
+    description: 'Meta\'s most capable open model',
+    capabilities: ['text', 'code'] as Array<'text' | 'code'>,
+    avatarColor: '#0668E1', // Meta blue
   }
 ];
 
