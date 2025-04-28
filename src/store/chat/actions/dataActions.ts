@@ -181,7 +181,9 @@ export const loadMessagesForConversationAction = (set: Function, get: () => Chat
             provider: message.model_provider || 'unknown',
             description: '',
             capabilities: ['text'],
-            avatarColor: '#9b87f5'
+            avatarColor: '#9b87f5',
+            responseSpeed: 'medium',  // Add required property
+            pricing: 'standard'       // Add required property
           };
           
           const formattedMessage: Message = {
