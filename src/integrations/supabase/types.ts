@@ -523,14 +523,18 @@ export type Database = {
         Args: { user_email: string }
         Returns: boolean
       }
-      create_user_profile: {
+      create_or_update_profile: {
         Args: {
           user_email: string
           user_name?: string
           user_is_subscribed?: boolean
           user_compute_points?: number
         }
-        Returns: boolean
+        Returns: {
+          success: boolean
+          message: string
+          profile_id: string
+        }[]
       }
       generate_api_key: {
         Args: { p_user_id: string; p_name: string }
