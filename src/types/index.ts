@@ -8,12 +8,14 @@ export interface Message {
   tokens?: {
     input: number;
     output: number;
+    reasoning?: number; // Add reasoning tokens
   };
   computeCredits?: number;
   images?: string[];
   files?: string[];
   webSearchResults?: any[];
   fileSearchResults?: any[];
+  reasoningContent?: string; // Add reasoning content
 }
 
 export interface Conversation {
@@ -26,7 +28,7 @@ export interface Conversation {
   userId?: string;
 }
 
-export type AIModelCapability = 'text' | 'images' | 'code' | 'audio';
+export type AIModelCapability = 'text' | 'images' | 'code' | 'audio' | 'reasoning';
 
 export type AIModel = {
   id: string;
@@ -40,6 +42,8 @@ export type AIModel = {
   pricing: 'low' | 'standard' | 'premium';
   specialMode?: string;
   version?: string;
+  reasoningEffort?: 'low' | 'medium' | 'high'; // Add reasoning effort
+  showReasoning?: boolean; // Whether to show reasoning
 }
 
 export interface ChatState {

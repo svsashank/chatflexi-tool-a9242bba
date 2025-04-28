@@ -13,9 +13,11 @@ export const sendMessageToLLM = async (
   tokens?: {
     input: number;
     output: number;
+    reasoning?: number; // Added reasoning tokens
   };
   webSearchResults?: any[];
   fileSearchResults?: any[];
+  reasoningContent?: string; // Added reasoning content
 }> => {
   const startTime = performance.now();
 
@@ -30,12 +32,30 @@ export const sendMessageToLLM = async (
     const images = lastMessage?.images || [];
     const files = lastMessage?.files || [];
 
+    // Add reasoning parameters for O-series models
+    const extraParams: any = {};
+    const isOSeries = model.id.startsWith('o') || model.id.includes('/o');
+    
+    if (isOSeries) {
+      // Set reasoning effort based on model setting or default to high
+      const reasoningEffort = model.reasoningEffort || 'high';
+      const showReasoning = model.showReasoning ?? true; // Default to showing reasoning
+      
+      extraParams.reasoning = {
+        effort: reasoningEffort,
+        exclude: !showReasoning
+      };
+      
+      console.log(`Using O-series model with reasoning: ${reasoningEffort}, show: ${showReasoning}`);
+    }
+
     console.log('Sending message to LLM:', { 
       modelName: model.name, 
       modelId: model.id, 
       contentLength: content.length,
       imagesCount: images.length,
-      filesCount: files.length
+      filesCount: files.length,
+      reasoning: isOSeries ? extraParams.reasoning : undefined
     });
 
     const result = await supabase.functions.invoke('chat', {
@@ -44,7 +64,8 @@ export const sendMessageToLLM = async (
         content,
         messages: messageHistory,
         images,
-        files
+        files,
+        ...extraParams
       }
     });
 
@@ -57,13 +78,19 @@ export const sendMessageToLLM = async (
 
     const response = {
       content: data.content || "I couldn't generate a response. Please try again.",
-      tokens: data.tokens || { input: 0, output: 0 },
+      tokens: {
+        input: data.tokens?.input || 0,
+        output: data.tokens?.output || 0,
+        reasoning: data.tokens?.reasoning
+      },
       webSearchResults: data.webSearchResults || [],
-      fileSearchResults: data.fileSearchResults || []
+      fileSearchResults: data.fileSearchResults || [],
+      reasoningContent: data.reasoningContent
     };
 
     const responseTime = performance.now() - startTime;
     console.log(`Response generation time: ${responseTime.toFixed(2)}ms`);
+    console.log(`Token counts - Input: ${response.tokens.input}, Output: ${response.tokens.output}, Reasoning: ${response.tokens.reasoning || 0}`);
 
     return response;
   } catch (error: any) {

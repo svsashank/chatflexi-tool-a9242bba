@@ -1,4 +1,3 @@
-
 import { corsHeaders } from "../utils/cors.ts";
 
 // OpenRouter integration handler
@@ -124,9 +123,21 @@ export async function handleOpenRouter(
       "X-Title": "Krix AI Assistant" // Update with your app name
     };
     
-    // Determine if we should use the "thinking" format for special models
+    // Check if this is an O-series model that needs reasoning
+    const isOSeries = modelId.startsWith('o') || modelId.includes('/o');
+    
+    // Determine if we should use the thinking format for special models
     const useThinkingFormat = modelId.includes('thinking');
     const extraParams = useThinkingFormat ? { system_format: 'zephyr_thinking' } : {};
+    
+    // Add reasoning parameter for O-series models
+    if (isOSeries) {
+      console.log(`Adding reasoning parameter for O-series model: ${modelId}`);
+      extraParams['reasoning'] = { 
+        effort: "high",  // Default to high effort
+        exclude: false   // Include reasoning in response by default
+      };
+    }
     
     // Calculate appropriate max tokens based on model type
     const maxTokens = determineMaxTokensForModel(modelId);
@@ -160,7 +171,20 @@ export async function handleOpenRouter(
       (data.choices && data.choices[0] && data.choices[0].message) ? 
       Math.round(data.choices[0].message.content.length / 4) : 0;
     
+    // Extract reasoning tokens and content if present
+    let reasoningTokens = 0;
+    let reasoningContent = null;
+    
+    if (isOSeries && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.reasoning) {
+      reasoningContent = data.choices[0].message.reasoning;
+      reasoningTokens = Math.round(reasoningContent.length / 4); // Estimate reasoning tokens
+      console.log(`Extracted reasoning content (${reasoningTokens} tokens) from O-series model response`);
+    }
+    
     const actualModelUsed = data.model || openRouterModelId;
+    
+    console.log(`Token counts - Input: ${inputTokens}, Output: ${outputTokens}, Reasoning: ${reasoningTokens}`);
+    console.log(`Actual model used: ${actualModelUsed}`);
     
     if (data.choices && Array.isArray(data.choices) && data.choices.length > 0) {
       return new Response(
@@ -171,8 +195,10 @@ export async function handleOpenRouter(
           provider: 'openrouter',
           tokens: {
             input: inputTokens,
-            output: outputTokens
-          }
+            output: outputTokens,
+            reasoning: reasoningTokens > 0 ? reasoningTokens : undefined
+          },
+          reasoningContent: reasoningContent
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -196,9 +222,6 @@ function mapModelIdToOpenRouter(modelId: string): string {
     'openai/gpt-4.1': 'openai/gpt-4.1',
     'openai/gpt-4.1-mini': 'openai/gpt-4.1-mini',
     'openai/gpt-4.1-nano': 'openai/gpt-4.1-nano',
-    'openai/gpt-4o-2024-11-20': 'openai/gpt-4o-2024-11-20',
-    'openai/gpt-4o': 'openai/gpt-4o',
-    'openai/gpt-4o-mini': 'openai/gpt-4o-mini',
     'openai/o1-pro': 'openai/o1-pro',
     'openai/o1': 'openai/o1',
     'openai/o1-preview': 'openai/o1-preview',
@@ -206,8 +229,11 @@ function mapModelIdToOpenRouter(modelId: string): string {
     'openai/chatgpt-4o-latest': 'openai/chatgpt-4o-latest',
     'openai/o3-mini-high': 'openai/o3-mini-high',
     'openai/o3-mini': 'openai/o3-mini',
+    'openai/gpt-4o-2024-11-20': 'openai/gpt-4o-2024-11-20',
     'openai/gpt-4o-2024-08-06': 'openai/gpt-4o-2024-08-06',
     'openai/gpt-4o-2024-05-13': 'openai/gpt-4o-2024-05-13',
+    'openai/gpt-4o': 'openai/gpt-4o',
+    'openai/gpt-4o-mini': 'openai/gpt-4o-mini',
     
     // Legacy OpenAI models (for backward compatibility)
     'gpt-3.5-turbo': 'openai/gpt-3.5-turbo',
@@ -217,6 +243,8 @@ function mapModelIdToOpenRouter(modelId: string): string {
     'o1-mini': 'openai/o1-mini-2024-09-12',
     'o1-pro': 'openai/o1-pro',
     'o3-mini': 'openai/o3-mini',
+    'o3': 'openai/o3',
+    'o4-mini-high': 'openai/o4-mini-high',
     'gpt-4o': 'openai/gpt-4o',
     'gpt-4o-mini': 'openai/gpt-4o-mini',
   };
@@ -336,14 +364,8 @@ function supportsVision(modelId: string): boolean {
     'openai/o4-mini-high', 'openai/o3', 'openai/o4-mini', 'openai/gpt-4.1', 'openai/gpt-4.1-mini',
     'openai/gpt-4o-2024-11-20', 'openai/gpt-4o', 'openai/gpt-4o-mini', 'openai/chatgpt-4o-latest',
     
-    // Anthropic Models with vision
-    'anthropic/claude-3-opus', 'anthropic/claude-3.7-sonnet', 'anthropic/claude-3.7-sonnet:thinking', 
-    'anthropic/claude-3.5-sonnet', 'anthropic/claude-3.5-haiku', 'anthropic/claude-3-haiku',
-    
-    // Google/Gemini Models with vision
+    // Other model providers with vision support
     'google/gemini-2.5-pro-preview-03-25', 'google/gemini-pro-1.5', 'google/gemini-flash-1.5',
-    
-    // xAI Models with vision
     'x-ai/grok-2-vision-1212',
     
     // Legacy models with vision
@@ -357,6 +379,12 @@ function supportsVision(modelId: string): boolean {
 
 // Determine the appropriate max_tokens value based on the model's capabilities
 function determineMaxTokensForModel(modelId: string): number {
+  // Check if this is an O-series model that uses reasoning
+  if (modelId.startsWith('o') || modelId.includes('/o')) {
+    // O-series models need more tokens for reasoning
+    return 4096; // Higher limit for O-series with reasoning
+  }
+  
   // Models with large output capacity
   if (modelId.includes('claude-3-opus') || 
       modelId.includes('claude-3.7') ||

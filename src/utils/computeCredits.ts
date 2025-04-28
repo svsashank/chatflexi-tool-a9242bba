@@ -1,6 +1,6 @@
 
 // Compute credits conversion rates by model
-export const COMPUTE_CREDITS_PER_TOKEN: Record<string, number> = {
+export const COMPUTE_CREDITS_PER_TOKEN: Record<string, number | { input: number; output: number; reasoning?: number }> = {
   // Google Models
   'google/gemini-2.5-pro-preview-03-25': 6.5,
   'google/gemini-2.0-flash-lite-001': 0.195,
@@ -10,20 +10,20 @@ export const COMPUTE_CREDITS_PER_TOKEN: Record<string, number> = {
   'google/gemini-pro-1.5': 3.25,
   
   // OpenAI Models
-  'openai/o4-mini-high': 2.86,
-  'openai/o3': 26,
-  'openai/o4-mini': 2.86,
+  'openai/o4-mini-high': { input: 2.86, output: 2.86, reasoning: 5.72 }, // Double rate for reasoning
+  'openai/o3': { input: 26, output: 26, reasoning: 52 }, // Double rate for reasoning
+  'openai/o4-mini': { input: 2.86, output: 2.86, reasoning: 5.72 },
   'openai/gpt-4.1': 5.2,
   'openai/gpt-4.1-mini': 1.04,
   'openai/gpt-4.1-nano': 0.26,
-  'openai/o1-pro': 390,
-  'openai/o3-mini-high': 2.86,
-  'openai/o3-mini': 2.86,
-  'openai/o1': 39,
+  'openai/o1-pro': { input: 390, output: 390, reasoning: 780 },
+  'openai/o3-mini-high': { input: 2.86, output: 2.86, reasoning: 5.72 },
+  'openai/o3-mini': { input: 2.86, output: 2.86, reasoning: 5.72 },
+  'openai/o1': { input: 39, output: 39, reasoning: 78 },
   'openai/gpt-4o-2024-11-20': 6.5,
-  'openai/o1-preview': 39,
-  'openai/o1-preview-2024-09-12': 39,
-  'openai/o1-mini-2024-09-12': 2.86,
+  'openai/o1-preview': { input: 39, output: 39, reasoning: 78 },
+  'openai/o1-preview-2024-09-12': { input: 39, output: 39, reasoning: 78 },
+  'openai/o1-mini-2024-09-12': { input: 2.86, output: 2.86, reasoning: 5.72 },
   'openai/chatgpt-4o-latest': 9.75,
   'openai/gpt-4o-2024-08-06': 6.5,
   'openai/gpt-4o-mini': 0.39,
@@ -61,10 +61,12 @@ export const COMPUTE_CREDITS_PER_TOKEN: Record<string, number> = {
   'gemini-1.5-flash-8k': 0.0975,
   'gpt-3.5-turbo': 1.35,
   'gpt-4.5-preview': 5.2,
-  'o1': 39,
-  'o1-mini': 2.86,
-  'o1-pro': 390,
-  'o3-mini': 2.86,
+  'o1': { input: 39, output: 39, reasoning: 78 },
+  'o1-mini': { input: 2.86, output: 2.86, reasoning: 5.72 },
+  'o1-pro': { input: 390, output: 390, reasoning: 780 },
+  'o3-mini': { input: 2.86, output: 2.86, reasoning: 5.72 },
+  'o3': { input: 26, output: 26, reasoning: 52 },
+  'o4-mini-high': { input: 2.86, output: 2.86, reasoning: 5.72 },
   'gpt-4o': 6.5,
   'gpt-4o-mini': 0.39,
   'deepseek-r1': 1.4235,
@@ -85,13 +87,26 @@ const DEFAULT_CREDIT_PER_TOKEN = 1.0;
 export const calculateComputeCredits = (
   inputTokens: number, 
   outputTokens: number, 
-  modelId: string
+  modelId: string,
+  reasoningTokens?: number
 ): number => {
-  const totalTokens = inputTokens + outputTokens;
-  const creditsPerToken = COMPUTE_CREDITS_PER_TOKEN[modelId] || DEFAULT_CREDIT_PER_TOKEN;
+  const creditRate = COMPUTE_CREDITS_PER_TOKEN[modelId] || DEFAULT_CREDIT_PER_TOKEN;
+  let totalCredits = 0;
   
-  // Calculate total credits (multiply token count by rate)
-  const totalCredits = totalTokens * creditsPerToken;
+  // If the model has separate rates for input/output/reasoning
+  if (typeof creditRate === 'object') {
+    totalCredits += inputTokens * creditRate.input;
+    totalCredits += outputTokens * creditRate.output;
+    
+    // Add reasoning credits if available
+    if (reasoningTokens && creditRate.reasoning) {
+      totalCredits += reasoningTokens * creditRate.reasoning;
+    }
+  } else {
+    // Simple rate applied to all tokens
+    const totalTokens = inputTokens + outputTokens + (reasoningTokens || 0);
+    totalCredits = totalTokens * creditRate;
+  }
   
   // Round to 2 decimal places
   return Math.round(totalCredits * 100) / 100;

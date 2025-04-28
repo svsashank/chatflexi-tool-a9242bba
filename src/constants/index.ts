@@ -1,4 +1,3 @@
-
 // AI Models
 export const AI_MODELS = [
   // OpenAI O4 Series - Latest and Most Capable
@@ -7,33 +6,39 @@ export const AI_MODELS = [
     name: 'O4 Mini High',
     provider: 'openai',
     description: 'High-end version of O4 Mini with enhanced capabilities',
-    capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
+    capabilities: ['text', 'images', 'code', 'reasoning'] as Array<'text' | 'images' | 'code' | 'reasoning'>,
     avatarColor: '#10a37f', // OpenAI green
     contextWindow: 128000,
     responseSpeed: 'medium' as 'medium',
-    pricing: 'premium' as 'premium'
+    pricing: 'premium' as 'premium',
+    reasoningEffort: 'high' as 'high',
+    showReasoning: true
   },
   {
     id: 'o3',
     name: 'O3',
     provider: 'openai',
     description: 'Advanced reasoning model with strong capabilities',
-    capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
+    capabilities: ['text', 'images', 'code', 'reasoning'] as Array<'text' | 'images' | 'code' | 'reasoning'>,
     avatarColor: '#10a37f', // OpenAI green
     contextWindow: 128000,
     responseSpeed: 'fast' as 'fast',
-    pricing: 'premium' as 'premium'
+    pricing: 'premium' as 'premium',
+    reasoningEffort: 'high' as 'high',
+    showReasoning: true
   },
   {
     id: 'o4-mini',
     name: 'O4 Mini',
     provider: 'openai',
     description: 'Compact version of O4 with excellent performance',
-    capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
+    capabilities: ['text', 'images', 'code', 'reasoning'] as Array<'text' | 'images' | 'code' | 'reasoning'>,
     avatarColor: '#10a37f', // OpenAI green
     contextWindow: 128000,
     responseSpeed: 'fast' as 'fast',
-    pricing: 'standard' as 'standard'
+    pricing: 'standard' as 'standard',
+    reasoningEffort: 'high' as 'high',
+    showReasoning: true
   },
   {
     id: 'gpt-4.1',
@@ -122,45 +127,53 @@ export const AI_MODELS = [
     name: 'O1 Pro',
     provider: 'openai',
     description: 'Professional version of O1 with enhanced reasoning',
-    capabilities: ['text', 'code'] as Array<'text' | 'code'>,
+    capabilities: ['text', 'code', 'reasoning'] as Array<'text' | 'code' | 'reasoning'>,
     avatarColor: '#10a37f', // OpenAI green
     contextWindow: 128000,
     responseSpeed: 'medium' as 'medium',
-    pricing: 'premium' as 'premium'
+    pricing: 'premium' as 'premium',
+    reasoningEffort: 'high' as 'high',
+    showReasoning: true
   },
   {
     id: 'o1',
     name: 'O1',
     provider: 'openai',
     description: 'Mid-range model with good reasoning capabilities',
-    capabilities: ['text', 'code'] as Array<'text' | 'code'>,
+    capabilities: ['text', 'code', 'reasoning'] as Array<'text' | 'code' | 'reasoning'>,
     avatarColor: '#10a37f', // OpenAI green
     contextWindow: 128000,
     responseSpeed: 'fast' as 'fast',
-    pricing: 'standard' as 'standard'
+    pricing: 'standard' as 'standard',
+    reasoningEffort: 'high' as 'high',
+    showReasoning: true
   },
   {
     id: 'o1-preview',
     name: 'O1 Preview',
     provider: 'openai',
     description: 'Preview version of O1 with latest features',
-    capabilities: ['text', 'code'] as Array<'text' | 'code'>,
+    capabilities: ['text', 'code', 'reasoning'] as Array<'text' | 'code' | 'reasoning'>,
     avatarColor: '#10a37f', // OpenAI green
     contextWindow: 128000,
     responseSpeed: 'medium' as 'medium',
-    pricing: 'standard' as 'standard'
+    pricing: 'standard' as 'standard',
+    reasoningEffort: 'high' as 'high',
+    showReasoning: true
   },
   {
     id: 'o1-mini-2024-09-12',
     name: 'O1 Mini (Sep 2024)',
     provider: 'openai',
     description: 'Compact O1 model with excellent speed',
-    capabilities: ['text', 'code'] as Array<'text' | 'code'>,
+    capabilities: ['text', 'code', 'reasoning'] as Array<'text' | 'code' | 'reasoning'>,
     avatarColor: '#10a37f', // OpenAI green
     contextWindow: 32000,
     responseSpeed: 'very-fast' as 'very-fast',
     pricing: 'low' as 'low',
-    version: '2024-09-12'
+    version: '2024-09-12',
+    reasoningEffort: 'medium' as 'medium',
+    showReasoning: true
   },
   
   // Anthropic Claude 3 Series
@@ -338,4 +351,10 @@ export const SPEED_TIERS = {
   'fast': { label: 'Fast', description: 'Good balance of speed and quality' },
   'medium': { label: 'Standard', description: 'Balanced processing time' },
   'slow': { label: 'Deliberate', description: 'Takes more time for higher quality' }
+};
+
+export const REASONING_EFFORT_TIERS = {
+  'low': { label: 'Basic', description: 'Limited reasoning for faster responses' },
+  'medium': { label: 'Standard', description: 'Balanced reasoning capabilities' },
+  'high': { label: 'Deep', description: 'Extensive reasoning for complex tasks' }
 };

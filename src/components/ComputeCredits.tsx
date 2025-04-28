@@ -8,6 +8,7 @@ interface ComputeCreditsProps {
   tokens: {
     input: number;
     output: number;
+    reasoning?: number;
   };
   modelId: string;
 }
@@ -17,6 +18,9 @@ const ComputeCredits: React.FC<ComputeCreditsProps> = ({ credits, tokens, modelI
   const formattedCredits = credits < 10 
     ? credits.toFixed(2) 
     : Math.round(credits).toLocaleString();
+  
+  // Calculate total tokens
+  const totalTokens = tokens.input + tokens.output + (tokens.reasoning || 0);
   
   return (
     <TooltipProvider>
@@ -37,7 +41,10 @@ const ComputeCredits: React.FC<ComputeCreditsProps> = ({ credits, tokens, modelI
               <p>Model: {modelId}</p>
               <p>Input tokens: {tokens.input.toLocaleString()}</p>
               <p>Output tokens: {tokens.output.toLocaleString()}</p>
-              <p>Total tokens: {(tokens.input + tokens.output).toLocaleString()}</p>
+              {tokens.reasoning && (
+                <p>Reasoning tokens: {tokens.reasoning.toLocaleString()}</p>
+              )}
+              <p>Total tokens: {totalTokens.toLocaleString()}</p>
             </div>
           </div>
         </TooltipContent>

@@ -40,4 +40,8 @@ export type ChatStore = {
   clearConversations: () => void;
   handleError: (message: string) => void;
   retryRequest: () => void;
+  
+  // Reasoning Actions (for O-series models)
+  setReasoningEffort?: (effort: 'low' | 'medium' | 'high') => void;
+  toggleShowReasoning?: (show: boolean) => void;
 };

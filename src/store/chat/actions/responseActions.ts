@@ -1,3 +1,4 @@
+
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -38,12 +39,24 @@ export const generateResponseAction = (set: Function, get: Function) => async ()
       currentConversation.messages
     );
 
-    const tokens = aiResponse.tokens || { input: 0, output: 0 };
+    // Extract tokens, including reasoning tokens if present
+    const tokens = {
+      input: aiResponse.tokens?.input || 0,
+      output: aiResponse.tokens?.output || 0,
+      reasoning: aiResponse.tokens?.reasoning
+    };
+    
+    // Calculate compute credits with reasoning tokens if available
     const computeCredits = calculateComputeCredits(
       tokens.input, 
       tokens.output, 
-      selectedModel.id
+      selectedModel.id,
+      tokens.reasoning
     );
+
+    // Log the token counts and credit calculation for debugging
+    console.log(`Token counts for ${selectedModel.id}:`, tokens);
+    console.log(`Calculated compute credits: ${computeCredits}`);
 
     const newMessage = {
       id: uuidv4(),
@@ -55,6 +68,7 @@ export const generateResponseAction = (set: Function, get: Function) => async ()
       computeCredits,
       webSearchResults: aiResponse.webSearchResults || [],
       fileSearchResults: aiResponse.fileSearchResults || [],
+      reasoningContent: aiResponse.reasoningContent
     };
 
     const updatedContextSummary = updateContextSummary(currentConversation.contextSummary, newMessage);

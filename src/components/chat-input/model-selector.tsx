@@ -1,8 +1,8 @@
 
 import React, { useState, useMemo } from "react";
-import { ChevronDown, Sparkles } from "lucide-react";
+import { ChevronDown, Sparkles, Brain } from "lucide-react";
 import { useChatStore } from "@/store";
-import { AI_MODELS, MODEL_GROUPS, PRICING_TIERS, SPEED_TIERS } from "@/constants";
+import { AI_MODELS, MODEL_GROUPS, PRICING_TIERS, SPEED_TIERS, REASONING_EFFORT_TIERS } from "@/constants";
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -116,6 +116,21 @@ export const ModelSelector = () => {
                       <Badge variant="outline" className="text-[10px] py-0 h-4 bg-primary/5 text-primary border-primary/20">
                         Vision
                       </Badge>
+                    )}
+                    
+                    {model.capabilities.includes('reasoning') && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge variant="outline" className="text-[10px] py-0 h-4 bg-purple-500/20 text-purple-700 border-purple-500/20 flex items-center gap-1">
+                              <Brain size={10} /> Reasoning
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom" className="text-xs">
+                            {model.reasoningEffort && REASONING_EFFORT_TIERS[model.reasoningEffort]?.description || 'Enhanced reasoning capabilities'}
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     )}
                     
                     {model.contextWindow && (
