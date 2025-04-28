@@ -1,6 +1,6 @@
 
 import { create } from 'zustand';
-import { ChatStore } from './types';
+import { ChatStore } from './actions/types';
 import { 
   addMessageAction, 
   createSendMessageAction,
@@ -21,6 +21,7 @@ import {
   loadConversationsFromDBAction,
   loadMessagesForConversationAction,
   refreshConversationsAction,
+  clearConversationCache,
 } from './actions/dataActions';
 import {
   clearConversationsAction, 
@@ -61,7 +62,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   
   // Database Actions
   loadConversationsFromDB: loadConversationsFromDBAction(set, get),
-  loadMessagesForConversation: loadMessagesForConversationAction(set, get),
+  loadMessagesForConversation: loadMessagesForConversationAction(set),
   refreshConversations: refreshConversationsAction(set, get),
   
   // State Management Actions
