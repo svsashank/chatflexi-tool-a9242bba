@@ -125,7 +125,7 @@ export async function handleOpenRouter(
     };
     
     // Determine if we should use the "thinking" format for special models
-    const useThinkingFormat = modelId === 'claude-3.7-sonnet-thinking';
+    const useThinkingFormat = modelId.includes('thinking');
     const extraParams = useThinkingFormat ? { system_format: 'zephyr_thinking' } : {};
     
     // Calculate appropriate max tokens based on model type
@@ -188,37 +188,47 @@ export async function handleOpenRouter(
 
 // Map our internal model IDs to OpenRouter model IDs
 function mapModelIdToOpenRouter(modelId: string): string {
-  // OpenAI Models - Direct mapping to OpenRouter IDs
+  // OpenAI Models
   const openaiModels: Record<string, string> = {
-    'o4-mini-high': 'openai/o4-mini-high',
-    'o3': 'openai/o3',
-    'o4-mini': 'openai/o4-mini',
-    'gpt-4.1': 'openai/gpt-4.1',
-    'gpt-4.1-mini': 'openai/gpt-4.1-mini',
-    'gpt-4.1-nano': 'openai/gpt-4.1-nano',
-    'gpt-4o-2024-11-20': 'openai/gpt-4o-2024-11-20',
-    'gpt-4o': 'openai/gpt-4o',
-    'gpt-4o-mini': 'openai/gpt-4o-mini',
-    'chatgpt-4o-latest': 'openai/chatgpt-4o-latest',
-    'o1-pro': 'openai/o1-pro',
-    'o1': 'openai/o1',
-    'o1-preview': 'openai/o1-preview',
-    'o1-mini-2024-09-12': 'openai/o1-mini-2024-09-12',
+    'openai/o4-mini-high': 'openai/o4-mini-high',
+    'openai/o3': 'openai/o3',
+    'openai/o4-mini': 'openai/o4-mini',
+    'openai/gpt-4.1': 'openai/gpt-4.1',
+    'openai/gpt-4.1-mini': 'openai/gpt-4.1-mini',
+    'openai/gpt-4.1-nano': 'openai/gpt-4.1-nano',
+    'openai/gpt-4o-2024-11-20': 'openai/gpt-4o-2024-11-20',
+    'openai/gpt-4o': 'openai/gpt-4o',
+    'openai/gpt-4o-mini': 'openai/gpt-4o-mini',
+    'openai/o1-pro': 'openai/o1-pro',
+    'openai/o1': 'openai/o1',
+    'openai/o1-preview': 'openai/o1-preview',
+    'openai/o1-mini-2024-09-12': 'openai/o1-mini-2024-09-12',
+    'openai/chatgpt-4o-latest': 'openai/chatgpt-4o-latest',
+    'openai/o3-mini-high': 'openai/o3-mini-high',
+    'openai/o3-mini': 'openai/o3-mini',
+    'openai/gpt-4o-2024-08-06': 'openai/gpt-4o-2024-08-06',
+    'openai/gpt-4o-2024-05-13': 'openai/gpt-4o-2024-05-13',
     
     // Legacy OpenAI models (for backward compatibility)
     'gpt-3.5-turbo': 'openai/gpt-3.5-turbo',
     'gpt-4': 'openai/gpt-4-turbo',
     'gpt-4.5-preview': 'openai/gpt-4.1',
+    'o1': 'openai/o1',
+    'o1-mini': 'openai/o1-mini-2024-09-12',
+    'o1-pro': 'openai/o1-pro',
+    'o3-mini': 'openai/o3-mini',
+    'gpt-4o': 'openai/gpt-4o',
+    'gpt-4o-mini': 'openai/gpt-4o-mini',
   };
   
-  // Anthropic Models - Direct mapping to OpenRouter IDs
+  // Anthropic Models
   const anthropicModels: Record<string, string> = {
-    'claude-3-opus': 'anthropic/claude-3-opus',
-    'claude-3.7-sonnet': 'anthropic/claude-3.7-sonnet',
-    'claude-3.7-sonnet-thinking': 'anthropic/claude-3.7-sonnet:thinking',
-    'claude-3.5-sonnet': 'anthropic/claude-3.5-sonnet',
-    'claude-3.5-haiku': 'anthropic/claude-3.5-haiku',
-    'claude-3-haiku': 'anthropic/claude-3-haiku',
+    'anthropic/claude-3-opus': 'anthropic/claude-3-opus',
+    'anthropic/claude-3.7-sonnet': 'anthropic/claude-3.7-sonnet',
+    'anthropic/claude-3.7-sonnet:thinking': 'anthropic/claude-3.7-sonnet:thinking',
+    'anthropic/claude-3.5-sonnet': 'anthropic/claude-3.5-sonnet',
+    'anthropic/claude-3.5-haiku': 'anthropic/claude-3.5-haiku',
+    'anthropic/claude-3-haiku': 'anthropic/claude-3-haiku',
     
     // Legacy Claude models (for backward compatibility)
     'claude-3-haiku-20240307': 'anthropic/claude-3-haiku',
@@ -227,34 +237,47 @@ function mapModelIdToOpenRouter(modelId: string): string {
     'claude-3-opus-20240229': 'anthropic/claude-3-opus',
   };
   
-  // Google/Gemini Models - Direct mapping to OpenRouter IDs
+  // Google/Gemini Models
   const googleModels: Record<string, string> = {
-    'gemini-2.5-pro-preview': 'google/gemini-2.5-pro-preview-03-25',
-    'gemini-1.5-pro': 'google/gemini-pro-1.5',
-    'gemini-1.5-flash': 'google/gemini-flash-1.5',
+    'google/gemini-2.5-pro-preview-03-25': 'google/gemini-2.5-pro-preview-03-25',
+    'google/gemini-2.0-flash-lite-001': 'google/gemini-2.0-flash-lite-001',
+    'google/gemini-2.0-flash-001': 'google/gemini-2.0-flash-001',
+    'google/gemini-flash-1.5-8b': 'google/gemini-flash-1.5-8b',
+    'google/gemini-flash-1.5': 'google/gemini-flash-1.5',
+    'google/gemini-pro-1.5': 'google/gemini-pro-1.5',
     
     // Legacy Google/Gemini models (for backward compatibility)
     'gemini-1.0-pro': 'google/gemini-pro-1.5',
     'gemini-pro-vision': 'google/gemini-pro-1.5',
     'gemini-ultra': 'google/gemini-pro-1.5',
-    'gemini-1.5-flash-8k': 'google/gemini-flash-1.5',
+    'gemini-1.5-flash': 'google/gemini-flash-1.5',
+    'gemini-1.5-pro': 'google/gemini-pro-1.5',
+    'gemini-1.5-flash-8k': 'google/gemini-flash-1.5-8b',
   };
   
-  // xAI/Grok Models - Direct mapping to OpenRouter IDs
+  // xAI/Grok Models
   const xaiModels: Record<string, string> = {
-    'grok-3-beta': 'x-ai/grok-3-beta',
-    'grok-2': 'x-ai/grok-2-1212',
+    'x-ai/grok-3-beta': 'x-ai/grok-3-beta',
+    'x-ai/grok-3-mini-beta': 'x-ai/grok-3-mini-beta',
+    'x-ai/grok-2-vision-1212': 'x-ai/grok-2-vision-1212',
+    'x-ai/grok-2-1212': 'x-ai/grok-2-1212',
     
     // Legacy xAI/Grok models (for backward compatibility)
     'grok-2-latest': 'x-ai/grok-2-1212',
     'grok-3': 'x-ai/grok-3-beta',
-    'grok-3-mini': 'x-ai/grok-2-1212', // No direct equivalent, using Grok 2
+    'grok-3-mini': 'x-ai/grok-3-mini-beta',
   };
   
-  // DeepSeek Models - Direct mapping to OpenRouter IDs
+  // DeepSeek Models
   const deepseekModels: Record<string, string> = {
-    'deepseek-v3': 'deepseek/deepseek-chat-v3-0324',
+    'deepseek/deepseek-chat-v3-0324': 'deepseek/deepseek-chat-v3-0324',
+    'deepseek/deepseek-r1': 'deepseek/deepseek-r1',
+    
+    // Legacy DeepSeek models
     'deepseek-r1': 'deepseek/deepseek-r1',
+    'deepseek-r1-llama-70b': 'deepseek/deepseek-r1',
+    'deepseek-r1-llama-8b': 'deepseek/deepseek-r1',
+    'deepseek-r1-qwen-14b': 'deepseek/deepseek-r1',
   };
   
   // Combine all model maps
@@ -275,7 +298,8 @@ function mapModelIdToOpenRouter(modelId: string): string {
   }
   
   // Fallback by provider if possible
-  if (modelId.includes('gpt') || modelId.includes('openai') || modelId.startsWith('o')) {
+  if (modelId.includes('gpt') || modelId.includes('openai') || modelId.includes('o1') || 
+      modelId.includes('o3') || modelId.includes('o4')) {
     console.warn(`Model ${modelId} not found in OpenAI mappings, falling back to gpt-4o-mini`);
     return 'openai/gpt-4o-mini';
   }
@@ -290,7 +314,7 @@ function mapModelIdToOpenRouter(modelId: string): string {
     return 'google/gemini-flash-1.5';
   }
   
-  if (modelId.includes('grok') || modelId.includes('xai')) {
+  if (modelId.includes('grok') || modelId.includes('xai') || modelId.includes('x-ai')) {
     console.warn(`Model ${modelId} not found in xAI mappings, falling back to grok-2-1212`);
     return 'x-ai/grok-2-1212';
   }
@@ -309,19 +333,23 @@ function mapModelIdToOpenRouter(modelId: string): string {
 function supportsVision(modelId: string): boolean {
   const visionModels = [
     // OpenAI Models with vision
-    'o4-mini-high', 'o3', 'o4-mini', 'gpt-4.1', 'gpt-4.1-mini',
-    'gpt-4o-2024-11-20', 'gpt-4o', 'gpt-4o-mini', 'chatgpt-4o-latest',
+    'openai/o4-mini-high', 'openai/o3', 'openai/o4-mini', 'openai/gpt-4.1', 'openai/gpt-4.1-mini',
+    'openai/gpt-4o-2024-11-20', 'openai/gpt-4o', 'openai/gpt-4o-mini', 'openai/chatgpt-4o-latest',
     
     // Anthropic Models with vision
-    'claude-3-opus', 'claude-3.7-sonnet', 'claude-3.7-sonnet-thinking', 
-    'claude-3.5-sonnet',
+    'anthropic/claude-3-opus', 'anthropic/claude-3.7-sonnet', 'anthropic/claude-3.7-sonnet:thinking', 
+    'anthropic/claude-3.5-sonnet', 'anthropic/claude-3.5-haiku', 'anthropic/claude-3-haiku',
     
     // Google/Gemini Models with vision
-    'gemini-2.5-pro-preview', 'gemini-1.5-pro', 'gemini-1.5-flash',
+    'google/gemini-2.5-pro-preview-03-25', 'google/gemini-pro-1.5', 'google/gemini-flash-1.5',
+    
+    // xAI Models with vision
+    'x-ai/grok-2-vision-1212',
     
     // Legacy models with vision
     'gpt-4', 'gemini-pro-vision', 'claude-3-5-sonnet-20241022',
     'claude-3-7-sonnet-20250219', 'claude-3-opus-20240229', 'gemini-ultra',
+    'o1', 'o3', 'o4-mini-high',
   ];
   
   return visionModels.includes(modelId);
@@ -334,7 +362,8 @@ function determineMaxTokensForModel(modelId: string): number {
       modelId.includes('claude-3.7') ||
       modelId.includes('gpt-4.1') ||
       modelId.includes('gemini-2.5') ||
-      modelId.includes('gemini-1.5-pro')) {
+      modelId.includes('gemini-pro-1.5') ||
+      modelId.includes('o1-pro')) {
     return 4096; // Larger output for premium models
   }
   
@@ -350,12 +379,12 @@ function determineMaxTokensForModel(modelId: string): number {
   // Models optimized for efficiency
   if (modelId.includes('claude-3-haiku') ||
       modelId.includes('gpt-4o-mini') ||
-      modelId.includes('gemini-1.5-flash') ||
-      modelId.includes('grok')) {
+      modelId.includes('gemini-flash-1.5') ||
+      modelId.includes('grok') ||
+      modelId.includes('o1-mini')) {
     return 1024; // Smaller output for efficiency
   }
   
   // Default for other models
   return 1500; // Safe default for unrecognized models
 }
-

@@ -13,8 +13,10 @@ interface ComputeCreditsProps {
 }
 
 const ComputeCredits: React.FC<ComputeCreditsProps> = ({ credits, tokens, modelId }) => {
-  // Round credits to nearest integer
-  const roundedCredits = Math.round(credits);
+  // Format credits with appropriate precision
+  const formattedCredits = credits < 10 
+    ? credits.toFixed(2) 
+    : Math.round(credits).toLocaleString();
   
   return (
     <TooltipProvider>
@@ -22,14 +24,14 @@ const ComputeCredits: React.FC<ComputeCreditsProps> = ({ credits, tokens, modelI
         <TooltipTrigger asChild>
           <div className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
             <Cpu size={14} className="text-cyan-400" />
-            <span>{roundedCredits.toLocaleString()} CR</span>
+            <span>{formattedCredits} CR</span>
           </div>
         </TooltipTrigger>
         <TooltipContent side="top" className="max-w-xs">
           <div className="space-y-1.5">
             <p className="font-medium flex items-center gap-1.5">
               <Cpu size={14} className="text-cyan-400" />
-              {roundedCredits.toLocaleString()} Compute Credits
+              {formattedCredits} Compute Credits
             </p>
             <div className="text-xs space-y-0.5">
               <p>Model: {modelId}</p>

@@ -26,12 +26,14 @@ export interface Conversation {
   userId?: string;
 }
 
+export type AIModelCapability = 'text' | 'images' | 'code' | 'audio';
+
 export type AIModel = {
   id: string;
   name: string;
   provider: string;
   description: string;
-  capabilities: Array<'text' | 'images' | 'code' | 'audio'>;
+  capabilities: Array<AIModelCapability>;
   avatarColor: string;
   contextWindow?: number;
   responseSpeed: 'very-fast' | 'fast' | 'medium' | 'slow';
