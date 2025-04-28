@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { Message, AIModel, Conversation } from "@/types";
@@ -91,8 +90,8 @@ export const loadMessagesForConversationAction = (set: Function) => async (conve
           description: '',
           capabilities: ['text'],
           avatarColor: '#9b87f5',
-          responseSpeed: 'medium',  // Add required property
-          pricing: 'standard'       // Add required property
+          responseSpeed: 'medium',  // Required property
+          pricing: 'standard'       // Required property
         };
         
         const formattedMessage: Message = {
@@ -146,4 +145,30 @@ export const loadMessagesForConversationAction = (set: Function) => async (conve
       variant: 'destructive',
     });
   }
+};
+
+export const refreshConversationsAction = (set: Function, get: () => ChatStore) => async () => {
+  try {
+    console.log("Refreshing conversations list from database");
+    await loadConversationsFromDBAction(set, get)();
+    
+    const currentId = get().currentConversationId;
+    if (currentId) {
+      await loadMessagesForConversationAction(set)(currentId);
+    }
+    
+    console.log("Conversations refreshed successfully");
+  } catch (error) {
+    console.error("Failed to refresh conversations:", error);
+    toast({
+      title: 'Error',
+      description: 'Failed to refresh conversations',
+      variant: 'destructive',
+    });
+  }
+};
+
+export const clearConversationCache = (set: Function) => () => {
+  console.log("Clearing conversation cache");
+  set({ conversations: [] });
 };

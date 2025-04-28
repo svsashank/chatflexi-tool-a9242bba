@@ -91,8 +91,8 @@ export const loadMessagesForConversationAction = (set: Function) => async (conve
           description: '',
           capabilities: ['text'],
           avatarColor: '#9b87f5',
-          responseSpeed: 'medium',  // Add required property
-          pricing: 'standard'       // Add required property
+          responseSpeed: 'medium',  // Required property
+          pricing: 'standard'       // Required property
         };
         
         const formattedMessage: Message = {
