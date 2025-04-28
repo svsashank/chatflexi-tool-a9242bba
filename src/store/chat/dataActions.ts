@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { Message, AIModel, Conversation } from "@/types";
@@ -88,7 +89,7 @@ export const loadMessagesForConversationAction = (set: Function) => async (conve
           name: message.model_id || 'unknown',
           provider: message.model_provider || 'unknown',
           description: '',
-          capabilities: ['text'],
+          capabilities: ['text'] as Array<'text' | 'images' | 'code'>,
           avatarColor: '#9b87f5',
           responseSpeed: 'medium',  // Required property
           pricing: 'standard'       // Required property

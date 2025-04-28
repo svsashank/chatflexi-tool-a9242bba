@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { Message, AIModel, Conversation } from "@/types";
@@ -89,7 +88,7 @@ export const loadMessagesForConversationAction = (set: Function) => async (conve
           name: message.model_id || 'unknown',
           provider: message.model_provider || 'unknown',
           description: '',
-          capabilities: ['text'],
+          capabilities: ['text'] as Array<'text' | 'images' | 'code'>,
           avatarColor: '#9b87f5',
           responseSpeed: 'medium',  // Required property
           pricing: 'standard'       // Required property
@@ -148,13 +147,11 @@ export const loadMessagesForConversationAction = (set: Function) => async (conve
   }
 };
 
-// Add the missing refreshConversationsAction function
 export const refreshConversationsAction = (set: Function, get: () => ChatStore) => async () => {
   try {
     console.log("Refreshing conversations list from database");
     await loadConversationsFromDBAction(set, get)();
     
-    // If there's a current conversation, reload its messages too
     const currentId = get().currentConversationId;
     if (currentId) {
       await loadMessagesForConversationAction(set)(currentId);
@@ -171,7 +168,6 @@ export const refreshConversationsAction = (set: Function, get: () => ChatStore) 
   }
 };
 
-// Add the missing clearConversationCache function
 export const clearConversationCache = (set: Function) => () => {
   console.log("Clearing conversation cache");
   set({ conversations: [] });
