@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import Index from "./pages/Index";
@@ -18,9 +19,9 @@ const LoadingDisplay = () => (
 );
 
 const AppRoutes = () => {
-  const { user, loading } = useAuth();
+  const { user, isLoading } = useAuth(); // Changed 'loading' to 'isLoading' to match AuthContext
 
-  if (loading) {
+  if (isLoading) { // Updated to match the property name in AuthContext
     return <LoadingDisplay />;
   }
 

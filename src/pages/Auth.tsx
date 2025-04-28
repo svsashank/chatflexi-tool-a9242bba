@@ -12,7 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 const Auth = () => {
   const navigate = useNavigate();
-  const { user, signIn, signInWithGoogle, loading } = useAuth();
+  const { user, signIn, signInWithGoogle, isLoading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
@@ -21,12 +21,12 @@ const Auth = () => {
   const redirectedRef = React.useRef(false);
   
   useEffect(() => {
-    if (user && !redirectedRef.current && !loading) {
+    if (user && !redirectedRef.current && !isLoading) {
       console.log("User is authenticated, redirecting to home page");
       redirectedRef.current = true;
       navigate('/', { replace: true });
     }
-  }, [user, loading, navigate]);
+  }, [user, isLoading, navigate]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,7 +63,13 @@ const Auth = () => {
     setAuthLoading(true);
     
     try {
-      signInWithGoogle();
+      if (signInWithGoogle) {
+        signInWithGoogle();
+      } else {
+        toast.error('Google sign-in is not available');
+        setAuthLoading(false);
+        authAttemptedRef.current = false;
+      }
     } catch (error: any) {
       console.error('Google sign in error:', error);
       toast.error(error.message || 'Failed to sign in with Google');
@@ -113,7 +119,7 @@ const Auth = () => {
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -121,7 +127,7 @@ const Auth = () => {
     );
   }
 
-  if (user && !loading) {
+  if (user && !isLoading) {
     return <Navigate to="/" replace />;
   }
 

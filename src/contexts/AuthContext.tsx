@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { AuthChangeEvent, Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,10 +10,12 @@ interface AuthContextProps {
   isLoading: boolean;
   isInitializing: boolean;
   isTokenRefresh: boolean;
+  loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string) => Promise<{ error: any, data: any }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: any }>;
+  signInWithGoogle?: () => void;
 }
 
 const AuthContext = createContext<AuthContextProps>({
@@ -23,6 +24,7 @@ const AuthContext = createContext<AuthContextProps>({
   isLoading: true,
   isInitializing: true,
   isTokenRefresh: false,
+  loading: true,
   signIn: async () => ({ error: null }),
   signUp: async () => ({ error: null, data: null }),
   signOut: async () => {},
@@ -48,7 +50,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(newSession?.user ?? null);
       setIsTokenRefresh(true);
       
-      // Reset token refresh flag after a short delay
       setTimeout(() => {
         setIsTokenRefresh(false);
       }, 1000);
@@ -73,11 +74,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setIsLoading(false);
   }, [navigate]);
 
-  // Initialize auth state
   useEffect(() => {
     console.log('Setting up auth state listener');
     
-    // Get initial session
     const initializeAuth = async () => {
       try {
         console.log('Initializing auth state');
@@ -102,10 +101,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     
     initializeAuth();
     
-    // Set up auth state listener
     const { data: authListener } = supabase.auth.onAuthStateChange(handleAuthChange);
     
-    // Cleanup
     return () => {
       if (authListener && authListener.subscription) {
         authListener.subscription.unsubscribe();
@@ -113,7 +110,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
   }, [handleAuthChange]);
 
-  // Sign in function
   const signIn = async (email: string, password: string) => {
     setIsLoading(true);
     const result = await supabase.auth.signInWithPassword({ email, password });
@@ -121,7 +117,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return { error: result.error };
   };
 
-  // Sign up function
   const signUp = async (email: string, password: string) => {
     setIsLoading(true);
     const result = await supabase.auth.signUp({ email, password });
@@ -129,7 +124,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return { error: result.error, data: result.data };
   };
 
-  // Sign out function
   const signOut = async () => {
     setIsLoading(true);
     try {
@@ -142,7 +136,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  // Reset password function
   const resetPassword = async (email: string) => {
     setIsLoading(true);
     const result = await supabase.auth.resetPasswordForEmail(email, {
@@ -152,16 +145,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return { error: result.error };
   };
 
+  const signInWithGoogle = () => {
+    console.log("Google sign-in not implemented");
+    toast.error("Google sign-in is not yet implemented");
+  };
+
   const value = {
     user,
     session,
     isLoading,
     isInitializing,
     isTokenRefresh,
+    loading: isLoading,
     signIn,
     signUp,
     signOut,
     resetPassword,
+    signInWithGoogle,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
