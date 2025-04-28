@@ -10,8 +10,8 @@ export const AI_MODELS = [
     capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
     avatarColor: '#10a37f', // OpenAI green
     contextWindow: 128000,
-    responseSpeed: 'medium',
-    pricing: 'premium'
+    responseSpeed: 'medium' as 'medium',
+    pricing: 'premium' as 'premium'
   },
   {
     id: 'o3',
@@ -21,8 +21,8 @@ export const AI_MODELS = [
     capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
     avatarColor: '#10a37f', // OpenAI green
     contextWindow: 128000,
-    responseSpeed: 'fast',
-    pricing: 'premium'
+    responseSpeed: 'fast' as 'fast',
+    pricing: 'premium' as 'premium'
   },
   {
     id: 'o4-mini',
@@ -32,8 +32,8 @@ export const AI_MODELS = [
     capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
     avatarColor: '#10a37f', // OpenAI green
     contextWindow: 128000,
-    responseSpeed: 'fast',
-    pricing: 'standard'
+    responseSpeed: 'fast' as 'fast',
+    pricing: 'standard' as 'standard'
   },
   {
     id: 'gpt-4.1',
@@ -43,8 +43,8 @@ export const AI_MODELS = [
     capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
     avatarColor: '#10a37f', // OpenAI green
     contextWindow: 128000,
-    responseSpeed: 'medium',
-    pricing: 'premium'
+    responseSpeed: 'medium' as 'medium',
+    pricing: 'premium' as 'premium'
   },
   {
     id: 'gpt-4.1-mini',
@@ -54,8 +54,8 @@ export const AI_MODELS = [
     capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
     avatarColor: '#10a37f', // OpenAI green
     contextWindow: 128000,
-    responseSpeed: 'fast',
-    pricing: 'standard'
+    responseSpeed: 'fast' as 'fast',
+    pricing: 'standard' as 'standard'
   },
   {
     id: 'gpt-4.1-nano',
@@ -65,8 +65,8 @@ export const AI_MODELS = [
     capabilities: ['text', 'code'] as Array<'text' | 'code'>,
     avatarColor: '#10a37f', // OpenAI green
     contextWindow: 32000,
-    responseSpeed: 'very-fast',
-    pricing: 'low'
+    responseSpeed: 'very-fast' as 'very-fast',
+    pricing: 'low' as 'low'
   },
   
   // OpenAI Production Models - 4o Series
@@ -78,8 +78,8 @@ export const AI_MODELS = [
     capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
     avatarColor: '#10a37f', // OpenAI green
     contextWindow: 128000,
-    responseSpeed: 'medium',
-    pricing: 'standard',
+    responseSpeed: 'medium' as 'medium',
+    pricing: 'standard' as 'standard',
     version: '2024-11-20'
   },
   {
@@ -90,8 +90,8 @@ export const AI_MODELS = [
     capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
     avatarColor: '#10a37f', // OpenAI green
     contextWindow: 128000,
-    responseSpeed: 'medium',
-    pricing: 'standard'
+    responseSpeed: 'medium' as 'medium',
+    pricing: 'standard' as 'standard'
   },
   {
     id: 'gpt-4o-mini',
@@ -101,8 +101,8 @@ export const AI_MODELS = [
     capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
     avatarColor: '#10a37f', // OpenAI green
     contextWindow: 128000,
-    responseSpeed: 'fast',
-    pricing: 'low'
+    responseSpeed: 'fast' as 'fast',
+    pricing: 'low' as 'low'
   },
   {
     id: 'chatgpt-4o-latest',
@@ -112,8 +112,8 @@ export const AI_MODELS = [
     capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
     avatarColor: '#10a37f', // OpenAI green
     contextWindow: 128000,
-    responseSpeed: 'medium',
-    pricing: 'standard'
+    responseSpeed: 'medium' as 'medium',
+    pricing: 'standard' as 'standard'
   },
   
   // OpenAI O1 Series - Fast Responders
@@ -125,8 +125,8 @@ export const AI_MODELS = [
     capabilities: ['text', 'code'] as Array<'text' | 'code'>,
     avatarColor: '#10a37f', // OpenAI green
     contextWindow: 128000,
-    responseSpeed: 'medium',
-    pricing: 'premium'
+    responseSpeed: 'medium' as 'medium',
+    pricing: 'premium' as 'premium'
   },
   {
     id: 'o1',
@@ -136,8 +136,8 @@ export const AI_MODELS = [
     capabilities: ['text', 'code'] as Array<'text' | 'code'>,
     avatarColor: '#10a37f', // OpenAI green
     contextWindow: 128000,
-    responseSpeed: 'fast',
-    pricing: 'standard'
+    responseSpeed: 'fast' as 'fast',
+    pricing: 'standard' as 'standard'
   },
   {
     id: 'o1-preview',
@@ -147,8 +147,8 @@ export const AI_MODELS = [
     capabilities: ['text', 'code'] as Array<'text' | 'code'>,
     avatarColor: '#10a37f', // OpenAI green
     contextWindow: 128000,
-    responseSpeed: 'medium',
-    pricing: 'standard'
+    responseSpeed: 'medium' as 'medium',
+    pricing: 'standard' as 'standard'
   },
   {
     id: 'o1-mini-2024-09-12',
@@ -158,8 +158,8 @@ export const AI_MODELS = [
     capabilities: ['text', 'code'] as Array<'text' | 'code'>,
     avatarColor: '#10a37f', // OpenAI green
     contextWindow: 32000,
-    responseSpeed: 'very-fast',
-    pricing: 'low',
+    responseSpeed: 'very-fast' as 'very-fast',
+    pricing: 'low' as 'low',
     version: '2024-09-12'
   },
   
@@ -172,8 +172,8 @@ export const AI_MODELS = [
     capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
     avatarColor: '#b03397', // Anthropic darker pink
     contextWindow: 200000,
-    responseSpeed: 'slow',
-    pricing: 'premium'
+    responseSpeed: 'slow' as 'slow',
+    pricing: 'premium' as 'premium'
   },
   {
     id: 'claude-3.7-sonnet',
@@ -183,8 +183,8 @@ export const AI_MODELS = [
     capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
     avatarColor: '#b83995', // Anthropic medium pink
     contextWindow: 200000,
-    responseSpeed: 'medium',
-    pricing: 'standard'
+    responseSpeed: 'medium' as 'medium',
+    pricing: 'standard' as 'standard'
   },
   {
     id: 'claude-3.7-sonnet-thinking',
@@ -194,8 +194,8 @@ export const AI_MODELS = [
     capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
     avatarColor: '#b83995', // Anthropic medium pink
     contextWindow: 200000,
-    responseSpeed: 'slow',
-    pricing: 'premium',
+    responseSpeed: 'slow' as 'slow',
+    pricing: 'premium' as 'premium',
     specialMode: 'thinking'
   },
   {
@@ -206,8 +206,8 @@ export const AI_MODELS = [
     capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
     avatarColor: '#c33693', // Anthropic dark pink
     contextWindow: 200000,
-    responseSpeed: 'medium',
-    pricing: 'standard'
+    responseSpeed: 'medium' as 'medium',
+    pricing: 'standard' as 'standard'
   },
   {
     id: 'claude-3.5-haiku',
@@ -217,8 +217,8 @@ export const AI_MODELS = [
     capabilities: ['text', 'code'] as Array<'text' | 'code'>,
     avatarColor: '#d33b9a', // Anthropic pink
     contextWindow: 200000,
-    responseSpeed: 'fast',
-    pricing: 'low'
+    responseSpeed: 'fast' as 'fast',
+    pricing: 'low' as 'low'
   },
   {
     id: 'claude-3-haiku',
@@ -228,8 +228,8 @@ export const AI_MODELS = [
     capabilities: ['text', 'code'] as Array<'text' | 'code'>,
     avatarColor: '#d33b9a', // Anthropic pink
     contextWindow: 200000,
-    responseSpeed: 'very-fast',
-    pricing: 'low'
+    responseSpeed: 'very-fast' as 'very-fast',
+    pricing: 'low' as 'low'
   },
   
   // Google Gemini Models
@@ -241,8 +241,8 @@ export const AI_MODELS = [
     capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
     avatarColor: '#4285f4', // Google blue
     contextWindow: 1000000, // 1M tokens
-    responseSpeed: 'medium',
-    pricing: 'premium'
+    responseSpeed: 'medium' as 'medium',
+    pricing: 'premium' as 'premium'
   },
   {
     id: 'gemini-1.5-pro',
@@ -252,8 +252,8 @@ export const AI_MODELS = [
     capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
     avatarColor: '#4285f4', // Google blue
     contextWindow: 1000000, // 1M tokens
-    responseSpeed: 'medium',
-    pricing: 'standard'
+    responseSpeed: 'medium' as 'medium',
+    pricing: 'standard' as 'standard'
   },
   {
     id: 'gemini-1.5-flash',
@@ -263,8 +263,8 @@ export const AI_MODELS = [
     capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
     avatarColor: '#4285f4', // Google blue
     contextWindow: 1000000, // 1M tokens
-    responseSpeed: 'fast',
-    pricing: 'low'
+    responseSpeed: 'fast' as 'fast',
+    pricing: 'low' as 'low'
   },
   
   // xAI Models
@@ -276,8 +276,8 @@ export const AI_MODELS = [
     capabilities: ['text', 'code'] as Array<'text' | 'code'>,
     avatarColor: '#1d9bf0', // Twitter blue
     contextWindow: 128000,
-    responseSpeed: 'fast',
-    pricing: 'standard'
+    responseSpeed: 'fast' as 'fast',
+    pricing: 'standard' as 'standard'
   },
   {
     id: 'grok-2',
@@ -287,8 +287,8 @@ export const AI_MODELS = [
     capabilities: ['text', 'code'] as Array<'text' | 'code'>,
     avatarColor: '#1d9bf0', // Twitter blue
     contextWindow: 128000,
-    responseSpeed: 'fast',
-    pricing: 'low'
+    responseSpeed: 'fast' as 'fast',
+    pricing: 'low' as 'low'
   },
   
   // DeepSeek Models
@@ -300,8 +300,8 @@ export const AI_MODELS = [
     capabilities: ['text', 'code'] as Array<'text' | 'code'>,
     avatarColor: '#6366f1', // Indigo color for DeepSeek
     contextWindow: 128000,
-    responseSpeed: 'medium',
-    pricing: 'standard'
+    responseSpeed: 'medium' as 'medium',
+    pricing: 'standard' as 'standard'
   },
   {
     id: 'deepseek-r1',
@@ -311,8 +311,8 @@ export const AI_MODELS = [
     capabilities: ['text', 'code'] as Array<'text' | 'code'>,
     avatarColor: '#6366f1', // Indigo color for DeepSeek
     contextWindow: 128000,
-    responseSpeed: 'medium',
-    pricing: 'standard'
+    responseSpeed: 'medium' as 'medium',
+    pricing: 'standard' as 'standard'
   },
 ];
 
@@ -339,4 +339,3 @@ export const SPEED_TIERS = {
   'medium': { label: 'Standard', description: 'Balanced processing time' },
   'slow': { label: 'Deliberate', description: 'Takes more time for higher quality' }
 };
-

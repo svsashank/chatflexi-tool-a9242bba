@@ -34,8 +34,8 @@ export type AIModel = {
   capabilities: Array<'text' | 'images' | 'code' | 'audio'>;
   avatarColor: string;
   contextWindow?: number;
-  responseSpeed?: 'very-fast' | 'fast' | 'medium' | 'slow';
-  pricing?: 'low' | 'standard' | 'premium';
+  responseSpeed: 'very-fast' | 'fast' | 'medium' | 'slow';
+  pricing: 'low' | 'standard' | 'premium';
   specialMode?: string;
   version?: string;
 }
