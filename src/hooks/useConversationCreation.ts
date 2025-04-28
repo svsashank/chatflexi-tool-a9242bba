@@ -12,6 +12,7 @@ const globalCreationState = {
   lastCreatedAt: 0, // Track timestamp of last creation
   creationsByUser: new Map<string, number>(), // Track creations per user
   inProgressById: new Set<string>(), // Track by component ID
+  activeConversation: null as string | null, // Track the active conversation to prevent duplicates
 };
 
 export const useConversationCreation = () => {
@@ -69,6 +70,12 @@ export const useConversationCreation = () => {
           return;
         }
         
+        // Check if we already have an active conversation - don't create duplicates
+        if (globalCreationState.activeConversation) {
+          console.log(`Active conversation already exists: ${globalCreationState.activeConversation}, using that instead`);
+          return globalCreationState.activeConversation;
+        }
+        
         // Prevent rapid successive creations (rate limiting)
         const now = Date.now();
         if ((now - globalCreationState.lastCreatedAt) < 3000) { // 3 seconds cooldown
@@ -109,6 +116,9 @@ export const useConversationCreation = () => {
           throw new Error('Failed to create conversation');
         }
         
+        // Set as active conversation
+        globalCreationState.activeConversation = newId;
+        
         // Update creation tracking
         globalCreationState.lastCreatedAt = Date.now();
         
@@ -127,6 +137,7 @@ export const useConversationCreation = () => {
         }, 60000);
         
         console.log("Conversation creation completed successfully:", newId);
+        return newId;
       } catch (error: any) {
         // Only show error if not aborted and component is still mounted
         if (error.name !== 'AbortError' && isMountedRef.current) {
@@ -135,6 +146,7 @@ export const useConversationCreation = () => {
         } else {
           console.log('Conversation creation aborted or component unmounted');
         }
+        return null;
       } finally {
         // Reset states if component is still mounted
         if (isMountedRef.current) {
@@ -154,8 +166,14 @@ export const useConversationCreation = () => {
     }, 600, { leading: true, trailing: false })
   ).current;
 
+  // Method to clear the active conversation (call when switching conversations)
+  const clearActiveConversation = () => {
+    globalCreationState.activeConversation = null;
+  };
+
   return {
     isCreating: isCreating || globalCreationState.isCreating,
-    createConversation: debouncedCreate
+    createConversation: debouncedCreate,
+    clearActiveConversation
   };
 };

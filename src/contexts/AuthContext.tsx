@@ -1,155 +1,170 @@
 
-import React, { createContext, useContext } from 'react';
-import { Session, User } from '@supabase/supabase-js';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { AuthChangeEvent, Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/components/ui/use-toast';
-import { useAuthInitialization } from '@/hooks/useAuthInitialization';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
-type AuthContextType = {
+interface AuthContextProps {
   user: User | null;
   session: Session | null;
-  signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, name: string) => Promise<void>;
-  signOut: () => Promise<void>;
-  signInWithGoogle: () => Promise<void>;
-  loading: boolean;
+  isLoading: boolean;
+  isInitializing: boolean;
   isTokenRefresh: boolean;
-};
+  signIn: (email: string, password: string) => Promise<{ error: any }>;
+  signUp: (email: string, password: string) => Promise<{ error: any, data: any }>;
+  signOut: () => Promise<void>;
+  resetPassword: (email: string) => Promise<{ error: any }>;
+}
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextProps>({
+  user: null,
+  session: null,
+  isLoading: true,
+  isInitializing: true,
+  isTokenRefresh: false,
+  signIn: async () => ({ error: null }),
+  signUp: async () => ({ error: null, data: null }),
+  signOut: async () => {},
+  resetPassword: async () => ({ error: null }),
+});
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, session, loading } = useAuthInitialization();
-  const [isTokenRefresh, setIsTokenRefresh] = React.useState(false);
-  const { toast: uiToast } = useToast();
-  // Track sign-in attempts to prevent duplicates
-  const signInAttemptRef = React.useRef(false);
+interface AuthProviderProps {
+  children: React.ReactNode;
+}
 
-  // Track token refresh events
-  React.useEffect(() => {
-    const { data } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'TOKEN_REFRESHED') {
-        console.log('Auth token refreshed - not creating a new conversation');
-        setIsTokenRefresh(true);
-      } else if (event !== 'INITIAL_SESSION') {
-        // Reset token refresh flag for other auth events
-        setIsTokenRefresh(false);
-      }
-    });
-    
-    return () => {
-      data.subscription.unsubscribe();
-    };
-  }, []);
+export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isInitializing, setIsInitializing] = useState(true);
+  const [isTokenRefresh, setIsTokenRefresh] = useState(false);
+  const navigate = useNavigate();
 
-  const signIn = React.useCallback(async (email: string, password: string) => {
-    // Prevent duplicate sign-in attempts
-    if (signInAttemptRef.current) {
-      console.log("Sign in already in progress, ignoring duplicate request");
-      return;
-    }
-
-    signInAttemptRef.current = true;
-    
-    try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw error;
-      // Success handled by auth state listener
-    } catch (error: any) {
-      console.error("Sign in error:", error);
-      toast.error(error.message || "Failed to sign in");
-      throw error;
-    } finally {
-      // Reset after a delay to prevent accidental double-clicks but allow retries
+  const handleAuthChange = useCallback((event: AuthChangeEvent, newSession: Session | null) => {
+    if (event === 'TOKEN_REFRESHED') {
+      console.log('Auth token refreshed - not creating a new conversation');
+      setSession(newSession);
+      setUser(newSession?.user ?? null);
+      setIsTokenRefresh(true);
+      
+      // Reset token refresh flag after a short delay
       setTimeout(() => {
-        signInAttemptRef.current = false;
-      }, 2000);
+        setIsTokenRefresh(false);
+      }, 1000);
+    } else if (event === 'SIGNED_IN') {
+      console.log('Auth state changed: SIGNED_IN');
+      setSession(newSession);
+      setUser(newSession?.user ?? null);
+      setIsTokenRefresh(false);
+    } else if (event === 'SIGNED_OUT') {
+      console.log('Auth state changed: SIGNED_OUT');
+      setSession(null);
+      setUser(null);
+      setIsTokenRefresh(false);
+      navigate('/auth');
+    } else {
+      console.log(`Auth state changed: ${event}`);
+      setSession(newSession);
+      setUser(newSession?.user ?? null);
+      setIsTokenRefresh(false);
     }
-  }, []);
+    
+    setIsLoading(false);
+  }, [navigate]);
 
-  const signUp = React.useCallback(async (email: string, password: string, name: string) => {
-    try {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: { name },
-        },
-      });
-      
-      if (error) throw error;
-      
-      uiToast({
-        title: "Sign up successful",
-        description: "Please check your email to confirm your account",
-      });
-    } catch (error: any) {
-      uiToast({
-        title: "Sign up failed",
-        description: error.message || "An error occurred during sign up",
-        variant: "destructive",
-      });
-      throw error;
-    }
-  }, [uiToast]);
+  // Initialize auth state
+  useEffect(() => {
+    console.log('Setting up auth state listener');
+    
+    // Get initial session
+    const initializeAuth = async () => {
+      try {
+        console.log('Initializing auth state');
+        setIsLoading(true);
+        
+        const { data, error } = await supabase.auth.getSession();
+        if (error) {
+          console.error('Error getting session:', error.message);
+        } else {
+          setSession(data.session);
+          setUser(data.session?.user ?? null);
+        }
+        
+        setIsInitializing(false);
+        setIsLoading(false);
+      } catch (err) {
+        console.error('Unexpected error during auth initialization:', err);
+        setIsInitializing(false);
+        setIsLoading(false);
+      }
+    };
+    
+    initializeAuth();
+    
+    // Set up auth state listener
+    const { data: authListener } = supabase.auth.onAuthStateChange(handleAuthChange);
+    
+    // Cleanup
+    return () => {
+      if (authListener && authListener.subscription) {
+        authListener.subscription.unsubscribe();
+      }
+    };
+  }, [handleAuthChange]);
 
-  const signOut = React.useCallback(async () => {
-    try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-      window.location.href = '/auth';
-    } catch (error: any) {
-      uiToast({
-        title: "Sign out failed",
-        description: error.message || "An error occurred during sign out",
-        variant: "destructive",
-      });
-      throw error;
-    }
-  }, [uiToast]);
-
-  const signInWithGoogle = React.useCallback(async () => {
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-        },
-      });
-      if (error) throw error;
-    } catch (error: any) {
-      uiToast({
-        title: "Google sign in failed",
-        description: error.message || "An error occurred during Google sign in",
-        variant: "destructive",
-      });
-      throw error;
-    }
-  }, [uiToast]);
-
-  const value = {
-    user, 
-    session, 
-    signIn, 
-    signUp, 
-    signOut, 
-    signInWithGoogle, 
-    loading,
-    isTokenRefresh
+  // Sign in function
+  const signIn = async (email: string, password: string) => {
+    setIsLoading(true);
+    const result = await supabase.auth.signInWithPassword({ email, password });
+    setIsLoading(false);
+    return { error: result.error };
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  // Sign up function
+  const signUp = async (email: string, password: string) => {
+    setIsLoading(true);
+    const result = await supabase.auth.signUp({ email, password });
+    setIsLoading(false);
+    return { error: result.error, data: result.data };
+  };
+
+  // Sign out function
+  const signOut = async () => {
+    setIsLoading(true);
+    try {
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.error('Error signing out:', error);
+      toast.error('Error signing out. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Reset password function
+  const resetPassword = async (email: string) => {
+    setIsLoading(true);
+    const result = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/reset-password`,
+    });
+    setIsLoading(false);
+    return { error: result.error };
+  };
+
+  const value = {
+    user,
+    session,
+    isLoading,
+    isInitializing,
+    isTokenRefresh,
+    signIn,
+    signUp,
+    signOut,
+    resetPassword,
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
+export const useAuth = () => useContext(AuthContext);

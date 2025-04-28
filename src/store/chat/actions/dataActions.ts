@@ -1,10 +1,28 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { Message, AIModel, Conversation } from "@/types";
 import { ChatStore } from "./types";
 
+// Track data loading state to prevent duplicate requests
+const loadingState = {
+  conversationsLoading: false,
+  messageLoading: new Map<string, boolean>(),
+  refreshing: false,
+  lastLoadTime: new Map<string, number>(), // Map conversation ID to timestamp
+  loadingCooldown: 1000, // 1 second cooldown for repeated loads
+};
+
 export const loadConversationsFromDBAction = (set: Function, get: () => ChatStore) => async () => {
+  // Skip if already loading
+  if (loadingState.conversationsLoading) {
+    console.log("Conversation loading already in progress, skipping duplicate request");
+    return;
+  }
+  
   try {
+    loadingState.conversationsLoading = true;
+    
     const { data: { session } } = await supabase.auth.getSession();
     const userId = session?.user?.id || localStorage.getItem('userId');
     
@@ -51,15 +69,34 @@ export const loadConversationsFromDBAction = (set: Function, get: () => ChatStor
       description: 'Failed to load conversations',
       variant: 'destructive',
     });
+  } finally {
+    loadingState.conversationsLoading = false;
   }
 };
 
 export const loadMessagesForConversationAction = (set: Function) => async (conversationId: string) => {
+  // Prevent duplicate loading of the same conversation
+  if (loadingState.messageLoading.get(conversationId)) {
+    console.log(`Message loading for conversation ${conversationId} already in progress, skipping duplicate request`);
+    return;
+  }
+  
+  // Check for cooldown period to prevent rapid reload
+  const lastLoad = loadingState.lastLoadTime.get(conversationId);
+  if (lastLoad && (Date.now() - lastLoad < loadingState.loadingCooldown)) {
+    console.log(`Skipping reload for conversation ${conversationId}, cooldown period still active`);
+    return;
+  }
+  
   try {
     if (!conversationId) {
       console.log("No conversation ID provided, skipping message load");
       return;
     }
+    
+    // Mark this conversation as loading
+    loadingState.messageLoading.set(conversationId, true);
+    loadingState.lastLoadTime.set(conversationId, Date.now());
     
     console.log(`Loading messages for conversation ${conversationId}...`);
     
@@ -144,12 +181,22 @@ export const loadMessagesForConversationAction = (set: Function) => async (conve
       description: 'Failed to load messages',
       variant: 'destructive',
     });
+  } finally {
+    loadingState.messageLoading.set(conversationId, false);
   }
 };
 
 export const refreshConversationsAction = (set: Function, get: () => ChatStore) => async () => {
+  // Prevent duplicate refreshes
+  if (loadingState.refreshing) {
+    console.log("Refresh already in progress, skipping duplicate request");
+    return;
+  }
+  
   try {
+    loadingState.refreshing = true;
     console.log("Refreshing conversations list from database");
+    
     await loadConversationsFromDBAction(set, get)();
     
     const currentId = get().currentConversationId;
@@ -165,10 +212,17 @@ export const refreshConversationsAction = (set: Function, get: () => ChatStore) 
       description: 'Failed to refresh conversations',
       variant: 'destructive',
     });
+  } finally {
+    loadingState.refreshing = false;
   }
 };
 
 export const clearConversationCache = (set: Function) => () => {
   console.log("Clearing conversation cache");
   set({ conversations: [] });
+  
+  // Also clear loading state
+  loadingState.conversationsLoading = false;
+  loadingState.messageLoading.clear();
+  loadingState.lastLoadTime.clear();
 };
