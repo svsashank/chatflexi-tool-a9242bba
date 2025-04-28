@@ -1,117 +1,259 @@
 
 // AI Models
 export const AI_MODELS = [
+  // OpenAI O4 Series - Latest and Most Capable
+  {
+    id: 'o4-mini-high',
+    name: 'O4 Mini High',
+    provider: 'openai',
+    description: 'High-end version of O4 Mini with enhanced capabilities',
+    capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
+    avatarColor: '#10a37f', // OpenAI green
+    contextWindow: 128000,
+    responseSpeed: 'medium',
+    pricing: 'premium'
+  },
+  {
+    id: 'o3',
+    name: 'O3',
+    provider: 'openai',
+    description: 'Advanced reasoning model with strong capabilities',
+    capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
+    avatarColor: '#10a37f', // OpenAI green
+    contextWindow: 128000,
+    responseSpeed: 'fast',
+    pricing: 'premium'
+  },
+  {
+    id: 'o4-mini',
+    name: 'O4 Mini',
+    provider: 'openai',
+    description: 'Compact version of O4 with excellent performance',
+    capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
+    avatarColor: '#10a37f', // OpenAI green
+    contextWindow: 128000,
+    responseSpeed: 'fast',
+    pricing: 'standard'
+  },
+  {
+    id: 'gpt-4.1',
+    name: 'GPT-4.1',
+    provider: 'openai',
+    description: 'Advanced model with top-tier capabilities',
+    capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
+    avatarColor: '#10a37f', // OpenAI green
+    contextWindow: 128000,
+    responseSpeed: 'medium',
+    pricing: 'premium'
+  },
+  {
+    id: 'gpt-4.1-mini',
+    name: 'GPT-4.1 Mini',
+    provider: 'openai',
+    description: 'Compact version of GPT-4.1 with excellent performance',
+    capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
+    avatarColor: '#10a37f', // OpenAI green
+    contextWindow: 128000,
+    responseSpeed: 'fast',
+    pricing: 'standard'
+  },
+  {
+    id: 'gpt-4.1-nano',
+    name: 'GPT-4.1 Nano',
+    provider: 'openai',
+    description: 'Smallest version of GPT-4.1, ideal for efficiency',
+    capabilities: ['text', 'code'] as Array<'text' | 'code'>,
+    avatarColor: '#10a37f', // OpenAI green
+    contextWindow: 32000,
+    responseSpeed: 'very-fast',
+    pricing: 'low'
+  },
+  
+  // OpenAI Production Models - 4o Series
+  {
+    id: 'gpt-4o-2024-11-20',
+    name: 'GPT-4o (Nov 2024)',
+    provider: 'openai',
+    description: 'Latest version of GPT-4o with improvements',
+    capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
+    avatarColor: '#10a37f', // OpenAI green
+    contextWindow: 128000,
+    responseSpeed: 'medium',
+    pricing: 'standard',
+    version: '2024-11-20'
+  },
   {
     id: 'gpt-4o',
     name: 'GPT-4o',
     provider: 'openai',
-    description: 'OpenAI\'s most advanced model, with vision capabilities',
+    description: 'Balanced model with vision capabilities',
     capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
     avatarColor: '#10a37f', // OpenAI green
-  },
-  {
-    id: 'deepseek-r1',
-    name: 'DeepSeek-R1',
-    provider: 'krutrim',
-    description: 'Krutrim\'s DeepSeek-R1 model with strong reasoning capabilities',
-    capabilities: ['text', 'code'] as Array<'text' | 'code'>,
-    avatarColor: '#6366f1', // Indigo color for Krutrim
+    contextWindow: 128000,
+    responseSpeed: 'medium',
+    pricing: 'standard'
   },
   {
     id: 'gpt-4o-mini',
     name: 'GPT-4o Mini',
     provider: 'openai',
-    description: 'Smaller, faster, and more cost-effective version of GPT-4o',
+    description: 'Smaller, faster version of GPT-4o',
     capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
     avatarColor: '#10a37f', // OpenAI green
+    contextWindow: 128000,
+    responseSpeed: 'fast',
+    pricing: 'low'
   },
   {
-    id: 'gpt-3.5-turbo',
-    name: 'GPT-3.5 Turbo',
+    id: 'chatgpt-4o-latest',
+    name: 'ChatGPT-4o Latest',
     provider: 'openai',
-    description: 'Fast and efficient text generation model',
+    description: 'Latest ChatGPT model with best performance',
+    capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
+    avatarColor: '#10a37f', // OpenAI green
+    contextWindow: 128000,
+    responseSpeed: 'medium',
+    pricing: 'standard'
+  },
+  
+  // OpenAI O1 Series - Fast Responders
+  {
+    id: 'o1-pro',
+    name: 'O1 Pro',
+    provider: 'openai',
+    description: 'Professional version of O1 with enhanced reasoning',
     capabilities: ['text', 'code'] as Array<'text' | 'code'>,
     avatarColor: '#10a37f', // OpenAI green
-  },
-  {
-    id: 'gpt-4.5-preview',
-    name: 'GPT-4.5 Preview',
-    provider: 'openai',
-    description: 'Preview of OpenAI\'s 4.5 generation model with enhanced capabilities',
-    capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
-    avatarColor: '#10a37f', // OpenAI green
+    contextWindow: 128000,
+    responseSpeed: 'medium',
+    pricing: 'premium'
   },
   {
     id: 'o1',
-    name: 'o1',
+    name: 'O1',
     provider: 'openai',
-    description: 'OpenAI\'s advanced reasoning model with specialized capabilities',
+    description: 'Mid-range model with good reasoning capabilities',
     capabilities: ['text', 'code'] as Array<'text' | 'code'>,
     avatarColor: '#10a37f', // OpenAI green
+    contextWindow: 128000,
+    responseSpeed: 'fast',
+    pricing: 'standard'
   },
   {
-    id: 'o1-mini',
-    name: 'o1 Mini',
+    id: 'o1-preview',
+    name: 'O1 Preview',
     provider: 'openai',
-    description: 'Compact version of o1 with efficient performance',
+    description: 'Preview version of O1 with latest features',
     capabilities: ['text', 'code'] as Array<'text' | 'code'>,
     avatarColor: '#10a37f', // OpenAI green
+    contextWindow: 128000,
+    responseSpeed: 'medium',
+    pricing: 'standard'
   },
   {
-    id: 'o1-pro',
-    name: 'o1 Pro',
+    id: 'o1-mini-2024-09-12',
+    name: 'O1 Mini (Sep 2024)',
     provider: 'openai',
-    description: 'Enhanced version of o1 with premium capabilities',
-    capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
-    avatarColor: '#10a37f', // OpenAI green
-  },
-  {
-    id: 'o3-mini',
-    name: 'o3 Mini',
-    provider: 'openai',
-    description: 'Compact third-generation model optimized for efficiency',
+    description: 'Compact O1 model with excellent speed',
     capabilities: ['text', 'code'] as Array<'text' | 'code'>,
     avatarColor: '#10a37f', // OpenAI green
+    contextWindow: 32000,
+    responseSpeed: 'very-fast',
+    pricing: 'low',
+    version: '2024-09-12'
   },
+  
+  // Anthropic Claude 3 Series
   {
-    id: 'claude-3-haiku-20240307',
-    name: 'Claude 3 Haiku',
+    id: 'claude-3-opus',
+    name: 'Claude 3 Opus',
     provider: 'anthropic',
-    description: 'Fast, compact, and balanced intelligence',
-    capabilities: ['text', 'code'] as Array<'text' | 'code'>,
-    avatarColor: '#d33b9a', // Anthropic pink
-  },
-  {
-    id: 'claude-3-5-sonnet-20241022',
-    name: 'Claude 3.5 Sonnet',
-    provider: 'anthropic',
-    description: 'Balanced intelligence with advanced reasoning',
+    description: 'Most powerful Claude model with superior reasoning',
     capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
-    avatarColor: '#c33693', // Anthropic darker pink
+    avatarColor: '#b03397', // Anthropic darker pink
+    contextWindow: 200000,
+    responseSpeed: 'slow',
+    pricing: 'premium'
   },
   {
-    id: 'claude-3-7-sonnet-20250219',
+    id: 'claude-3.7-sonnet',
     name: 'Claude 3.7 Sonnet',
     provider: 'anthropic',
     description: 'Latest Sonnet model with enhanced capabilities',
     capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
     avatarColor: '#b83995', // Anthropic medium pink
+    contextWindow: 200000,
+    responseSpeed: 'medium',
+    pricing: 'standard'
   },
   {
-    id: 'claude-3-opus-20240229',
-    name: 'Claude 3 Opus',
+    id: 'claude-3.7-sonnet-thinking',
+    name: 'Claude 3.7 Sonnet Thinking',
     provider: 'anthropic',
-    description: 'Anthropic\'s most powerful model for complex tasks',
+    description: 'Enhanced reasoning with visible thinking process',
     capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
-    avatarColor: '#b03397', // Anthropic even darker pink
+    avatarColor: '#b83995', // Anthropic medium pink
+    contextWindow: 200000,
+    responseSpeed: 'slow',
+    pricing: 'premium',
+    specialMode: 'thinking'
+  },
+  {
+    id: 'claude-3.5-sonnet',
+    name: 'Claude 3.5 Sonnet',
+    provider: 'anthropic',
+    description: 'Balanced performance model with advanced reasoning',
+    capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
+    avatarColor: '#c33693', // Anthropic dark pink
+    contextWindow: 200000,
+    responseSpeed: 'medium',
+    pricing: 'standard'
+  },
+  {
+    id: 'claude-3.5-haiku',
+    name: 'Claude 3.5 Haiku',
+    provider: 'anthropic',
+    description: 'Fast and efficient Claude model',
+    capabilities: ['text', 'code'] as Array<'text' | 'code'>,
+    avatarColor: '#d33b9a', // Anthropic pink
+    contextWindow: 200000,
+    responseSpeed: 'fast',
+    pricing: 'low'
+  },
+  {
+    id: 'claude-3-haiku',
+    name: 'Claude 3 Haiku',
+    provider: 'anthropic',
+    description: 'Fastest Claude model, ideal for quick responses',
+    capabilities: ['text', 'code'] as Array<'text' | 'code'>,
+    avatarColor: '#d33b9a', // Anthropic pink
+    contextWindow: 200000,
+    responseSpeed: 'very-fast',
+    pricing: 'low'
+  },
+  
+  // Google Gemini Models
+  {
+    id: 'gemini-2.5-pro-preview',
+    name: 'Gemini 2.5 Pro Preview',
+    provider: 'google',
+    description: 'Google\'s latest model with advanced capabilities',
+    capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
+    avatarColor: '#4285f4', // Google blue
+    contextWindow: 1000000, // 1M tokens
+    responseSpeed: 'medium',
+    pricing: 'premium'
   },
   {
     id: 'gemini-1.5-pro',
     name: 'Gemini 1.5 Pro',
     provider: 'google',
-    description: 'Google\'s multimodal model with extended context window',
+    description: 'Google\'s multimodal model with large context window',
     capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
     avatarColor: '#4285f4', // Google blue
+    contextWindow: 1000000, // 1M tokens
+    responseSpeed: 'medium',
+    pricing: 'standard'
   },
   {
     id: 'gemini-1.5-flash',
@@ -120,96 +262,81 @@ export const AI_MODELS = [
     description: 'Faster and more efficient version of Gemini 1.5',
     capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
     avatarColor: '#4285f4', // Google blue
+    contextWindow: 1000000, // 1M tokens
+    responseSpeed: 'fast',
+    pricing: 'low'
   },
+  
+  // xAI Models
   {
-    id: 'gemini-1.5-flash-8k',
-    name: 'Gemini 1.5 Flash 8K',
-    provider: 'google',
-    description: 'Compact version of Gemini 1.5 Flash optimized for efficiency',
-    capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
-    avatarColor: '#4285f4', // Google blue
-  },
-  {
-    id: 'gemini-1.0-pro',
-    name: 'Gemini 1.0 Pro',
-    provider: 'google',
-    description: 'Fast version of Gemini 1.0 with balanced performance',
-    capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
-    avatarColor: '#4285f4', // Google blue
-  },
-  {
-    id: 'gemini-pro-vision',
-    name: 'Gemini Pro Vision',
-    provider: 'google',
-    description: 'Gemini model specialized for vision tasks',
-    capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
-    avatarColor: '#4285f4', // Google blue
-  },
-  {
-    id: 'gemini-ultra',
-    name: 'Gemini Ultra',
-    provider: 'google',
-    description: 'Google\'s most powerful Gemini model with advanced reasoning capabilities',
-    capabilities: ['text', 'images', 'code'] as Array<'text' | 'images' | 'code'>,
-    avatarColor: '#4285f4', // Google blue
-  },
-  {
-    id: 'grok-2-latest',
-    name: 'Grok-2',
+    id: 'grok-3-beta',
+    name: 'Grok 3 Beta',
     provider: 'xai',
-    description: 'xAI\'s latest conversational model with real-time knowledge',
+    description: 'Latest xAI model with advanced reasoning',
     capabilities: ['text', 'code'] as Array<'text' | 'code'>,
     avatarColor: '#1d9bf0', // Twitter blue
+    contextWindow: 128000,
+    responseSpeed: 'fast',
+    pricing: 'standard'
   },
   {
-    id: 'grok-3',
-    name: 'Grok-3',
+    id: 'grok-2',
+    name: 'Grok 2',
     provider: 'xai',
-    description: 'xAI\'s advanced model with enhanced reasoning capabilities',
+    description: 'xAI\'s production model with good performance',
     capabilities: ['text', 'code'] as Array<'text' | 'code'>,
     avatarColor: '#1d9bf0', // Twitter blue
+    contextWindow: 128000,
+    responseSpeed: 'fast',
+    pricing: 'low'
+  },
+  
+  // DeepSeek Models
+  {
+    id: 'deepseek-v3',
+    name: 'DeepSeek V3',
+    provider: 'deepseek',
+    description: 'Latest DeepSeek model with enhanced capabilities',
+    capabilities: ['text', 'code'] as Array<'text' | 'code'>,
+    avatarColor: '#6366f1', // Indigo color for DeepSeek
+    contextWindow: 128000,
+    responseSpeed: 'medium',
+    pricing: 'standard'
   },
   {
-    id: 'grok-3-mini',
-    name: 'Grok-3 Mini',
-    provider: 'xai',
-    description: 'Efficient and cost-effective version of Grok-3',
+    id: 'deepseek-r1',
+    name: 'DeepSeek R1',
+    provider: 'deepseek',
+    description: 'Reasoning-focused model with excellent problem-solving',
     capabilities: ['text', 'code'] as Array<'text' | 'code'>,
-    avatarColor: '#1d9bf0', // Twitter blue
+    avatarColor: '#6366f1', // Indigo color for DeepSeek
+    contextWindow: 128000,
+    responseSpeed: 'medium',
+    pricing: 'standard'
   },
-  // OpenRouter Models
-  {
-    id: 'mistral-large-latest',
-    name: 'Mistral Large',
-    provider: 'openrouter',
-    description: 'Mistral\'s flagship model for advanced reasoning and generation',
-    capabilities: ['text', 'code'] as Array<'text' | 'code'>,
-    avatarColor: '#5E35B1', // Mistral purple
-  },
-  {
-    id: 'mistral-medium-latest',
-    name: 'Mistral Medium',
-    provider: 'openrouter',
-    description: 'Balanced and efficient Mistral model',
-    capabilities: ['text', 'code'] as Array<'text' | 'code'>,
-    avatarColor: '#5E35B1', // Mistral purple
-  },
-  {
-    id: 'mistral-small-latest',
-    name: 'Mistral Small',
-    provider: 'openrouter',
-    description: 'Fast and cost-effective Mistral model',
-    capabilities: ['text', 'code'] as Array<'text' | 'code'>,
-    avatarColor: '#5E35B1', // Mistral purple
-  },
-  {
-    id: 'llama3-70b-instruct',
-    name: 'Llama 3 70B',
-    provider: 'openrouter',
-    description: 'Meta\'s most capable open model',
-    capabilities: ['text', 'code'] as Array<'text' | 'code'>,
-    avatarColor: '#0668E1', // Meta blue
-  }
 ];
 
 export const DEFAULT_MODEL = AI_MODELS[0];
+
+// Additional configurations for the models
+export const MODEL_GROUPS = {
+  'openai': 'OpenAI',
+  'anthropic': 'Anthropic',
+  'google': 'Google',
+  'xai': 'xAI',
+  'deepseek': 'DeepSeek'
+};
+
+export const PRICING_TIERS = {
+  'low': { label: 'Affordable', description: 'Lowest cost option, great for routine tasks' },
+  'standard': { label: 'Standard', description: 'Balanced cost and performance' },
+  'premium': { label: 'Premium', description: 'Highest quality, best for complex tasks' }
+};
+
+export const SPEED_TIERS = {
+  'very-fast': { label: 'Very Fast', description: 'Optimized for quick responses' },
+  'fast': { label: 'Fast', description: 'Good balance of speed and quality' },
+  'medium': { label: 'Standard', description: 'Balanced processing time' },
+  'slow': { label: 'Deliberate', description: 'Takes more time for higher quality' }
+};
+

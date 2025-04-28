@@ -14,6 +14,7 @@ export type ChatStore = {
   // Model actions
   setSelectedModel: (model: AIModel) => void;
   initializeSelectedModel: () => void;
+  findAlternativeModel: () => void;
   
   // Message state actions
   setProcessingUrls: (message: string | null) => void;

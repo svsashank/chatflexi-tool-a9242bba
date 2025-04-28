@@ -12,8 +12,8 @@ export interface Message {
   computeCredits?: number;
   images?: string[];
   files?: string[];
-  webSearchResults?: any[];  // Explicitly define as any array
-  fileSearchResults?: any[]; // Explicitly define as any array
+  webSearchResults?: any[];
+  fileSearchResults?: any[];
 }
 
 export interface Conversation {
@@ -33,6 +33,11 @@ export type AIModel = {
   description: string;
   capabilities: Array<'text' | 'images' | 'code' | 'audio'>;
   avatarColor: string;
+  contextWindow?: number;
+  responseSpeed?: 'very-fast' | 'fast' | 'medium' | 'slow';
+  pricing?: 'low' | 'standard' | 'premium';
+  specialMode?: string;
+  version?: string;
 }
 
 export interface ChatState {

@@ -7,6 +7,7 @@ import {
   createRegenerateMessageAction,
   selectModelAction,
   initializeModelAction,
+  findAlternativeModelAction,
   generateResponseAction,
 } from './actions';
 import { 
@@ -41,6 +42,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   // Model actions
   setSelectedModel: selectModelAction(set),
   initializeSelectedModel: initializeModelAction(set, get),
+  findAlternativeModel: findAlternativeModelAction(set, get),
   
   // Message state actions
   setProcessingUrls: (message: string | null) => set({ processingUrls: message }),
