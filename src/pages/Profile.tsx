@@ -12,6 +12,7 @@ import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Info } from "lucide-react";
 import RLSErrorAlert from '@/components/RLSErrorAlert';
+import SupportCard from '@/components/SupportCard';
 
 const Profile = () => {
   const { user, signOut } = useAuth();
@@ -345,6 +346,10 @@ const Profile = () => {
             </div>
           </CardContent>
         </Card>
+      </div>
+
+      <div className="mt-6">
+        <SupportCard />
       </div>
     </div>
   );

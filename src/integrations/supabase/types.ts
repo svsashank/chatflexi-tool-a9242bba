@@ -9,6 +9,45 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      api_keys: {
+        Row: {
+          created_at: string
+          expires_at: string | null
+          id: string
+          key_hash: string
+          key_prefix: string
+          last_used_at: string | null
+          name: string
+          revoked_at: string | null
+          usage_count: number | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          key_hash: string
+          key_prefix: string
+          last_used_at?: string | null
+          name: string
+          revoked_at?: string | null
+          usage_count?: number | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          key_hash?: string
+          key_prefix?: string
+          last_used_at?: string | null
+          name?: string
+          revoked_at?: string | null
+          usage_count?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       chats: {
         Row: {
           created_at: string
@@ -493,9 +532,28 @@ export type Database = {
         }
         Returns: boolean
       }
+      generate_api_key: {
+        Args: { p_user_id: string; p_name: string }
+        Returns: {
+          api_key: string
+          key_prefix: string
+        }[]
+      }
+      get_profile_attribute: {
+        Args: { user_id: string; attribute: string }
+        Returns: string
+      }
       get_profile_role: {
         Args: { user_id: string }
         Returns: string
+      }
+      get_user_is_admin: {
+        Args: { user_id: string }
+        Returns: boolean
+      }
+      update_api_key_usage: {
+        Args: { p_key_hash: string }
+        Returns: undefined
       }
       update_user_compute_credits: {
         Args: { p_user_id: string; p_credits: number }
