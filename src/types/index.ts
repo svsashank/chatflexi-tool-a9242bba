@@ -1,4 +1,5 @@
 
+
 export interface Message {
   id: string;
   content: string;
@@ -59,3 +60,4 @@ export interface UserProfile {
   email: string;
   avatarUrl?: string;
 }
+
