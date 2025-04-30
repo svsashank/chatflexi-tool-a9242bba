@@ -1,7 +1,9 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { useChatStore } from '@/store';
 import { toast } from 'sonner';
 import { extractTextFromPDF } from '@/utils/pdfExtractor';
+import { getTypingCostEstimate } from '@/services/tokenEstimationService';
 
 const processingFiles = new Set<string>();
 
@@ -11,6 +13,7 @@ export const useInputLogic = () => {
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
   const [processingFile, setProcessingFile] = useState(false);
   const [showAttachments, setShowAttachments] = useState(false);
+  const [estimatedCost, setEstimatedCost] = useState<number | null>(null);
   
   const attachmentMenuRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -21,7 +24,8 @@ export const useInputLogic = () => {
     isLoading, 
     selectedModel,
     setProcessingUrls, 
-    processingUrls 
+    processingUrls,
+    validateCredits
   } = useChatStore();
 
   useEffect(() => {
@@ -37,7 +41,25 @@ export const useInputLogic = () => {
     };
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Update cost estimate as user types or adds attachments
+  useEffect(() => {
+    if (inputValue || uploadedImages.length > 0 || uploadedFiles.length > 0) {
+      const cost = getTypingCostEstimate(
+        inputValue, 
+        selectedModel, 
+        uploadedImages.length, 
+        uploadedFiles.length
+      );
+      
+      if (cost > 0) {
+        setEstimatedCost(cost);
+      }
+    } else {
+      setEstimatedCost(null);
+    }
+  }, [inputValue, uploadedImages.length, uploadedFiles.length, selectedModel]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if ((inputValue.trim() || uploadedImages.length > 0 || uploadedFiles.length > 0) && !isLoading && !processingFile) {
       let messageContent = inputValue.trim();
@@ -46,14 +68,24 @@ export const useInputLogic = () => {
         messageContent = "Please analyze and summarize the content of these document(s)";
       }
       
-      sendMessage(
+      // Pre-validate credits before sending message
+      const hasSufficientCredits = await validateCredits(
         messageContent, 
         uploadedImages.length > 0 ? uploadedImages : undefined,
         uploadedFiles.length > 0 ? uploadedFiles : undefined
       );
-      setInputValue("");
-      setUploadedImages([]);
-      setUploadedFiles([]);
+      
+      if (hasSufficientCredits) {
+        sendMessage(
+          messageContent, 
+          uploadedImages.length > 0 ? uploadedImages : undefined,
+          uploadedFiles.length > 0 ? uploadedFiles : undefined
+        );
+        setInputValue("");
+        setUploadedImages([]);
+        setUploadedFiles([]);
+        setEstimatedCost(null);
+      }
     }
   };
 
@@ -185,6 +217,7 @@ export const useInputLogic = () => {
     imageInputRef,
     isLoading,
     processingUrls,
+    estimatedCost,
     handleSubmit,
     handleKeyDown,
     handleImageUpload,

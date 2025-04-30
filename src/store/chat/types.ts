@@ -44,4 +44,7 @@ export type ChatStore = {
   // Reasoning Actions (for O-series models)
   setReasoningEffort?: (effort: 'low' | 'medium' | 'high') => void;
   toggleShowReasoning?: (show: boolean) => void;
+  
+  // Credit Actions
+  validateCredits: (content: string, images?: string[], files?: string[]) => Promise<boolean>;
 };
