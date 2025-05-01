@@ -1,3 +1,4 @@
+
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -12,6 +13,8 @@ const globalState = {
   updating: new Set<string>(),
   abortController: null as AbortController | null,
   currentRequest: null as AbortController | null,
+  lastConversationCreated: null as string | null, // Track most recently created conversation
+  lastCreationTime: 0, // When last conversation was created
 };
 
 // New function to generate a meaningful title based on user message
@@ -49,6 +52,21 @@ export const createConversationAction = (set: Function, get: () => ChatStore) =>
     if (globalState.creating && globalState.creationPromise) {
       console.log("Using existing conversation creation promise");
       return await globalState.creationPromise;
+    }
+    
+    // Check if we have recently created a conversation
+    const now = Date.now();
+    if (globalState.lastConversationCreated && 
+        now - globalState.lastCreationTime < 5000) { // 5 second window
+      console.log(`Recently created conversation ${globalState.lastConversationCreated}, reusing it`);
+      return globalState.lastConversationCreated;
+    }
+    
+    // Check if user has existing conversations and one is selected
+    const currentState = get();
+    if (currentState.conversations.length > 0 && currentState.currentConversationId) {
+      console.log(`User already has a selected conversation: ${currentState.currentConversationId}, not creating a new one`);
+      return currentState.currentConversationId;
     }
     
     // Create new abort controller and cancel any existing request
@@ -140,6 +158,10 @@ export const createConversationAction = (set: Function, get: () => ChatStore) =>
         conversations: [newConversation, ...state.conversations],
         currentConversationId: newConversation.id,
       }));
+      
+      // Update our tracking of the most recently created conversation
+      globalState.lastConversationCreated = newConversation.id;
+      globalState.lastCreationTime = Date.now();
       
       console.log("New conversation created and set as current with ID:", newConversation.id);
       return newConversation.id;

@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { AuthChangeEvent, Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -35,6 +36,12 @@ interface AuthProviderProps {
   children: React.ReactNode;
 }
 
+// Track auth events to prevent multiple processing of the same event
+let lastAuthEvent = {
+  type: '',
+  timestamp: 0
+};
+
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -44,6 +51,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const navigate = useNavigate();
 
   const handleAuthChange = useCallback((event: AuthChangeEvent, newSession: Session | null) => {
+    // Prevent duplicate processing of the same auth event within a short time window
+    const now = Date.now();
+    if (event === lastAuthEvent.type && now - lastAuthEvent.timestamp < 2000) {
+      console.log(`Ignoring duplicate auth event: ${event} (within 2s window)`);
+      return;
+    }
+
+    // Update the last event
+    lastAuthEvent = {
+      type: event,
+      timestamp: now
+    };
+
     if (event === 'TOKEN_REFRESHED') {
       console.log('Auth token refreshed - not creating a new conversation');
       setSession(newSession);
@@ -52,7 +72,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       setTimeout(() => {
         setIsTokenRefresh(false);
-      }, 1000);
+      }, 2000); // Extended from 1000ms to 2000ms
     } else if (event === 'SIGNED_IN') {
       console.log('Auth state changed: SIGNED_IN');
       setSession(newSession);

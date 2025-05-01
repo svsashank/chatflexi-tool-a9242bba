@@ -13,15 +13,29 @@ const globalCreationState = {
   creationsByUser: new Map<string, number>(), // Track creations per user
   inProgressById: new Set<string>(), // Track by component ID
   activeConversation: null as string | null, // Track the active conversation to prevent duplicates
+  hasExistingConversations: false, // Track whether user already has conversations
 };
 
 export const useConversationCreation = () => {
   const [isCreating, setIsCreating] = useState(false);
   const createRequestRef = useRef<AbortController | null>(null);
-  const { createConversation } = useChatStore();
+  const { createConversation, conversations } = useChatStore();
   const isMountedRef = useRef(true);
   const { user, isTokenRefresh } = useAuth();
   const componentIdRef = useRef(`cc_${Math.random().toString(36).substring(2, 10)}`);
+  
+  // Update the global state if we have conversations
+  useEffect(() => {
+    if (conversations && conversations.length > 0) {
+      globalCreationState.hasExistingConversations = true;
+      
+      // If we have an existing conversation, store the most recent one as active
+      if (conversations[0]?.id && !globalCreationState.activeConversation) {
+        globalCreationState.activeConversation = conversations[0].id;
+        console.log(`Setting active conversation to existing one: ${conversations[0].id}`);
+      }
+    }
+  }, [conversations]);
   
   useEffect(() => {
     console.log(`Conversation creator mounted: ${componentIdRef.current}`);
@@ -45,7 +59,7 @@ export const useConversationCreation = () => {
       // Skip if this component already has a creation in progress
       if (globalCreationState.inProgressById.has(componentIdRef.current)) {
         console.log(`Creation already in progress for component ${componentIdRef.current}, skipping`);
-        return;
+        return globalCreationState.activeConversation;
       }
       
       try {
@@ -55,19 +69,29 @@ export const useConversationCreation = () => {
         // Skip creation on token refresh events
         if (isTokenRefresh) {
           console.log("Skipping conversation creation during token refresh");
-          return;
+          return globalCreationState.activeConversation;
         }
         
         // Check if user exists
         if (!user) {
           console.log("No authenticated user, skipping conversation creation");
-          return;
+          return null;
+        }
+        
+        // If the user already has conversations, don't create a new one automatically
+        if (globalCreationState.hasExistingConversations && conversations.length > 0) {
+          console.log("User already has conversations, skipping automatic creation");
+          // Return the ID of the first conversation if it exists
+          if (conversations[0]?.id) {
+            globalCreationState.activeConversation = conversations[0].id;
+            return conversations[0].id;
+          }
         }
         
         // Check global creation state first
         if (globalCreationState.isCreating) {
           console.log("Conversation creation already in progress globally");
-          return;
+          return globalCreationState.activeConversation;
         }
         
         // Check if we already have an active conversation - don't create duplicates
@@ -78,17 +102,17 @@ export const useConversationCreation = () => {
         
         // Prevent rapid successive creations (rate limiting)
         const now = Date.now();
-        if ((now - globalCreationState.lastCreatedAt) < 3000) { // 3 seconds cooldown
+        if ((now - globalCreationState.lastCreatedAt) < 5000) { // 5 seconds cooldown (increased from 3)
           console.log("Creation attempted too soon after previous creation, skipping");
-          return;
+          return globalCreationState.activeConversation;
         }
         
-        // Rate limit per user (max 3 conversations per minute)
+        // Rate limit per user (max 2 conversations per minute - reduced from 3)
         const userCreationCount = globalCreationState.creationsByUser.get(user.id) || 0;
-        if (userCreationCount >= 3) {
+        if (userCreationCount >= 2) {
           console.log("User has created too many conversations recently, skipping");
           toast.warning("Please wait before creating more conversations");
-          return;
+          return globalCreationState.activeConversation;
         }
         
         // Set both local and global creation state
@@ -121,6 +145,7 @@ export const useConversationCreation = () => {
         
         // Update creation tracking
         globalCreationState.lastCreatedAt = Date.now();
+        globalCreationState.hasExistingConversations = true;
         
         // Track per-user creation count
         const currentCount = globalCreationState.creationsByUser.get(user.id) || 0;
