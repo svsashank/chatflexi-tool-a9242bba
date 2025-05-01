@@ -59,10 +59,3 @@ export interface UserProfile {
   email: string;
   avatarUrl?: string;
 }
-
-export interface UserCreditStatus {
-  balance: number;
-  isLow: boolean;
-  isDepletedOrOverdraft: boolean;
-  overdraftAmount: number;
-}

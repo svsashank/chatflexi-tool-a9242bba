@@ -3,11 +3,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import debounce from 'lodash/debounce';
-import { UserCreditStatus } from '@/types';
-import { getCreditStatus } from '@/services/creditValidationService';
 
 interface UseComputeCreditsReturn {
-  creditStatus: UserCreditStatus | null;
+  totalCredits: number | null;
   isLoading: boolean;
   error: string | null;
   refreshCredits: () => Promise<void>;
@@ -15,20 +13,20 @@ interface UseComputeCreditsReturn {
 
 // Local cache for credits with expiry
 const creditsCache = {
-  status: null as UserCreditStatus | null,
+  value: null as number | null,
   userId: null as string | null,
   timestamp: 0,
   ttl: 10000, // 10 seconds TTL
 };
 
 export const useComputeCredits = (userId?: string): UseComputeCreditsReturn => {
-  const [creditStatus, setCreditStatus] = useState<UserCreditStatus | null>(null);
+  const [totalCredits, setTotalCredits] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
   // Check if we can use the cached value
   const canUseCachedValue = useCallback(() => {
-    if (!userId || !creditsCache.status || creditsCache.userId !== userId) {
+    if (!userId || !creditsCache.value || creditsCache.userId !== userId) {
       return false;
     }
     
@@ -40,7 +38,7 @@ export const useComputeCredits = (userId?: string): UseComputeCreditsReturn => {
   const debouncedFetchCredits = useCallback(
     debounce(async (uid: string) => {
       if (canUseCachedValue()) {
-        setCreditStatus(creditsCache.status);
+        setTotalCredits(creditsCache.value);
         return;
       }
       
@@ -48,17 +46,29 @@ export const useComputeCredits = (userId?: string): UseComputeCreditsReturn => {
       setError(null);
       
       try {
-        console.log("Fetching credit status for user:", uid);
+        console.log("Fetching credits for user:", uid);
         
-        const status = await getCreditStatus(uid);
-        console.log("Fetched credit status:", status);
+        const { data, error } = await supabase
+          .from('user_compute_credits')
+          .select('total_credits')
+          .eq('user_id', uid)
+          .maybeSingle();
+        
+        if (error) {
+          console.error('Error fetching user compute credits:', error);
+          setError(error.message);
+          return;
+        }
+        
+        const credits = data?.total_credits || 0;
+        console.log("Fetched total credits:", credits);
         
         // Update cache
-        creditsCache.status = status;
+        creditsCache.value = credits;
         creditsCache.userId = uid;
         creditsCache.timestamp = Date.now();
         
-        setCreditStatus(status);
+        setTotalCredits(credits);
       } catch (err: any) {
         console.error('Exception in credit fetch:', err);
         setError(err?.message || 'Unknown error');
@@ -86,7 +96,7 @@ export const useComputeCredits = (userId?: string): UseComputeCreditsReturn => {
     
     // Use cache if available
     if (canUseCachedValue()) {
-      setCreditStatus(creditsCache.status);
+      setTotalCredits(creditsCache.value);
       return;
     }
     
@@ -99,7 +109,7 @@ export const useComputeCredits = (userId?: string): UseComputeCreditsReturn => {
   }, [userId, debouncedFetchCredits, canUseCachedValue]);
 
   return {
-    creditStatus,
+    totalCredits,
     isLoading,
     error,
     refreshCredits

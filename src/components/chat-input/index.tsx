@@ -8,7 +8,6 @@ import { SendButton } from "./send-button";
 import { StatusMessage } from "./status-message";
 import { ProcessingIndicator } from "./processing-indicator";
 import { AutoResizeTextarea } from "./auto-resize-textarea";
-import { Cpu } from "lucide-react";
 
 const ChatInput = () => {
   const {
@@ -22,7 +21,6 @@ const ChatInput = () => {
     attachmentMenuRef,
     isLoading,
     processingUrls,
-    estimatedCost,
     handleSubmit,
     handleKeyDown,
     handleImageUpload,
@@ -39,13 +37,6 @@ const ChatInput = () => {
       <div className="max-w-3xl mx-auto">
         <div className="flex justify-center mb-3">
           <ModelSelector />
-          
-          {estimatedCost !== null && (
-            <div className="absolute right-5 text-xs text-muted-foreground flex items-center gap-1">
-              <Cpu size={12} className="text-cyan-400" />
-              <span>Est: ~{estimatedCost.toFixed(1)} CR</span>
-            </div>
-          )}
         </div>
         
         <form onSubmit={handleSubmit} className="relative flex flex-col gap-3">

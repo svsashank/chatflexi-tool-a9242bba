@@ -1,10 +1,10 @@
+
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { sendMessageToLLM } from '@/services/llmService';
 import { calculateComputeCredits } from '@/utils/computeCredits';
 import { updateContextSummary } from '../utils';
-import { updateCachedBalance } from '@/services/creditValidationService';
 
 export const generateResponseAction = (set: Function, get: Function) => async () => {
   // Prevent duplicate response generation
@@ -91,25 +91,6 @@ export const generateResponseAction = (set: Function, get: Function) => async ()
     // Asynchronously save to database without blocking UI
     const { data: { session } } = await supabase.auth.getSession();
     if (session?.user) {
-      const userId = session.user.id;
-      
-      // Optimistically update the cached balance
-      // This will make the UI responsive without waiting for a server call
-      try {
-        const { data: currentCredit } = await supabase
-          .from('user_compute_credits')
-          .select('credit_balance')
-          .eq('user_id', userId)
-          .maybeSingle();
-        
-        if (currentCredit?.credit_balance) {
-          const newBalance = Math.max(0, currentCredit.credit_balance - computeCredits);
-          updateCachedBalance(userId, newBalance);
-        }
-      } catch (err) {
-        console.error("Error updating cached balance:", err);
-      }
-
       saveMessageToDatabase(
         session.user.id, 
         currentConversationId, 
@@ -129,7 +110,7 @@ export const generateResponseAction = (set: Function, get: Function) => async ()
   }
 };
 
-// Existing saveMessageToDatabase function with modification to deduct credits
+// Existing saveMessageToDatabase function remains the same
 async function saveMessageToDatabase(
   userId: string, 
   conversationId: string, 
@@ -237,81 +218,112 @@ async function saveMessageToDatabase(
       console.error('Error saving message to database:', error);
       toast.error('Failed to save message to database');
     } else {
-      // Update the user's credit balance by deducting the compute credits
-      deductCreditsFromUserBalance(userId, computeCredits);
+      // Update the user's total compute credits using RPC with better error handling
+      updateUserComputeCredits(userId, computeCredits);
     }
   } catch (error) {
     console.error('Error saving message to database:', error);
   }
 }
 
-// New function to deduct credits from user balance
-async function deductCreditsFromUserBalance(userId: string, creditAmount: number) {
+// Extract the compute credits update to a separate function with improved error handling
+async function updateUserComputeCredits(userId: string, computeCredits: number) {
   try {
-    console.log(`Deducting ${creditAmount} credits from user ${userId}`);
+    console.log(`Updating user ${userId} compute credits: +${computeCredits} credits`);
     
-    // First try using the RPC function to deduct credits
+    // First try using the RPC function which handles both insert and update
     const { error: rpcError } = await supabase.rpc(
-      'deduct_user_credits',
+      'update_user_compute_credits',
       { 
         p_user_id: userId,
-        p_credits: creditAmount
+        p_credits: computeCredits
       }
     );
     
     if (rpcError) {
-      console.error('Error deducting credits via RPC:', rpcError);
+      console.error('Error updating user compute credits via RPC:', rpcError);
       
-      // Fallback: Direct update with balance check
-      const { data: currentCredit, error: getError } = await supabase
+      // Fallback: Check if a record exists for the user
+      const { data: existingRecord, error: checkError } = await supabase
         .from('user_compute_credits')
-        .select('id, credit_balance')
+        .select('id, total_credits')
         .eq('user_id', userId)
         .maybeSingle();
         
-      if (getError) {
-        console.error('Error getting current credit balance:', getError);
+      if (checkError) {
+        console.error('Error checking user compute credits record:', checkError);
         return;
       }
       
-      if (!currentCredit) {
-        // Create a new record with the initial credits if none exists
+      if (!existingRecord) {
+        console.log("No existing credit record found, creating one");
         const { error: insertError } = await supabase
           .from('user_compute_credits')
           .insert([
             { 
               user_id: userId,
-              credit_balance: 1000 - creditAmount // Start with initial balance minus this usage
+              total_credits: computeCredits 
             }
           ]);
           
         if (insertError) {
-          console.error('Error creating user credit record:', insertError);
+          // If there's a duplicate key error, another request likely created it,
+          // so now update it through an update operation
+          if (insertError.code === '23505') {
+            console.log("Duplicate key detected, trying update instead");
+            // Get current credits and then update
+            const { data: currentCredits, error: getError } = await supabase
+              .from('user_compute_credits')
+              .select('total_credits')
+              .eq('user_id', userId)
+              .single();
+              
+            if (getError) {
+              console.error('Error getting current credits:', getError);
+            } else {
+              // Calculate new total
+              const newTotal = (currentCredits?.total_credits || 0) + computeCredits;
+              
+              const { error: updateError } = await supabase
+                .from('user_compute_credits')
+                .update({ 
+                  total_credits: newTotal,
+                  updated_at: new Date().toISOString()
+                })
+                .eq('user_id', userId);
+                
+              if (updateError) {
+                console.error('Error updating user compute credits after duplicate key:', updateError);
+              }
+            }
+          } else {
+            console.error('Error creating user compute credits record:', insertError);
+          }
         } else {
-          console.log(`Created new credit record with ${1000 - creditAmount} balance`);
+          console.log(`Created new credit record with ${computeCredits} credits`);
         }
       } else {
-        // Update existing balance - ensure we don't go below 0
-        const newBalance = Math.max(0, (currentCredit.credit_balance || 0) - creditAmount);
+        // Update existing record directly by adding to existing value
+        const newTotal = (existingRecord.total_credits || 0) + computeCredits;
         
         const { error: updateError } = await supabase
           .from('user_compute_credits')
           .update({ 
-            credit_balance: newBalance,
-            updated_at: new Date().toISOString()
+            total_credits: newTotal,
+            updated_at: new Date().toISOString() 
           })
-          .eq('id', currentCredit.id);
+          .eq('user_id', userId);
           
         if (updateError) {
-          console.error('Error updating credit balance:', updateError);
+          console.error('Error updating existing user compute credits record:', updateError);
         } else {
-          console.log(`Updated credit balance to ${newBalance}`);
+          console.log(`Updated user compute credits via direct update: +${computeCredits} credits`);
         }
       }
     } else {
-      console.log(`Successfully deducted ${creditAmount} credits`);
+      console.log(`Updated user compute credits: +${computeCredits} credits`);
     }
   } catch (error) {
-    console.error('Error handling credit deduction:', error);
+    console.error('Error handling compute credits update:', error);
   }
 }

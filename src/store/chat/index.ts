@@ -1,6 +1,6 @@
 
 import { create } from 'zustand';
-import { ChatStore } from './types';
+import { ChatStore } from './actions/types';
 import { 
   addMessageAction, 
   createSendMessageAction,
@@ -28,7 +28,6 @@ import {
   handleErrorAction,
   retryRequestAction
 } from './actions/stateActions';
-import { validateCreditsAction } from './actions/creditActions';
 
 // Import AI_MODELS
 import { AI_MODELS } from '@/constants';
@@ -70,9 +69,6 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   clearConversations: clearConversationsAction(set),
   handleError: handleErrorAction(set),
   retryRequest: retryRequestAction(set, get),
-  
-  // Credit Actions
-  validateCredits: validateCreditsAction(set, get),
 }));
 
 export { generateConversationTitleFromMessage };

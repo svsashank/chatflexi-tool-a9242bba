@@ -20,15 +20,8 @@ export const createSendMessageAction = (
       handleError,
       createConversation,
       addMessage,
-      updateConversationTitle,
-      validateCredits
+      updateConversationTitle
     } = get();
-    
-    // First validate credits before proceeding
-    const hasSufficientCredits = await validateCredits(content, images, files);
-    if (!hasSufficientCredits) {
-      return;
-    }
     
     // If no conversation exists, create one first
     if (!currentConversationId || !conversations.find(c => c.id === currentConversationId)) {

@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 
@@ -13,13 +12,6 @@ import { handleGoogle } from "./handlers/google.ts";
 import { handleXAI } from "./handlers/xai.ts";
 import { handleKrutrim } from "./handlers/krutrim.ts";
 import { handleOpenRouter } from "./handlers/openrouter.ts";
-
-// Create Supabase client for database operations
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.36.0";
-
-const supabaseUrl = Deno.env.get('SUPABASE_URL');
-const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-const supabase = createClient(supabaseUrl || '', supabaseServiceKey || '');
 
 // Enhanced cache for system prompts with TTL
 const systemPromptCache = new Map<string, {
@@ -84,84 +76,6 @@ function getCachedOrGenerateSystemPrompt(messageHistory: any[]) {
 const USE_OPENROUTER = true; // Set to true to route all requests through OpenRouter
 const USE_OPENROUTER_FALLBACK = true; // Set to true to use OpenRouter as fallback for failed requests
 
-// Credit validation function
-async function validateUserCredits(
-  userId: string, 
-  estimatedCost: number
-): Promise<boolean> {
-  try {
-    if (!userId) return true; // Allow anonymous usage
-    
-    // Get current credit balance
-    const { data, error } = await supabase
-      .from('user_compute_credits')
-      .select('credit_balance')
-      .eq('user_id', userId)
-      .maybeSingle();
-      
-    if (error) {
-      console.error('Error checking credit balance:', error);
-      return true; // Allow operation on error (graceful degradation)
-    }
-    
-    // If no record exists, create one with initial credits
-    if (!data) {
-      try {
-        await supabase
-          .from('user_compute_credits')
-          .insert([{
-            user_id: userId,
-            credit_balance: 1000 - estimatedCost // Start with 1000 credits minus this operation
-          }]);
-          
-        console.log(`Created new credit balance record for user ${userId}`);
-        return true;
-      } catch (insertError) {
-        console.error('Error creating credit balance record:', insertError);
-        return true; // Allow operation on error
-      }
-    }
-    
-    const currentBalance = data.credit_balance || 0;
-    const allowedOverdraft = 10; // Small overdraft allowed
-    
-    // Allow operation if balance is sufficient (with overdraft allowance)
-    const isValid = currentBalance >= (estimatedCost - allowedOverdraft);
-    
-    console.log(`Credit validation for user ${userId}: Balance ${currentBalance}, Cost ${estimatedCost}, Valid: ${isValid}`);
-    
-    return isValid;
-  } catch (e) {
-    console.error('Error in credit validation:', e);
-    return true; // Allow operation on unexpected error
-  }
-}
-
-// Calculate estimated cost of operation
-function calculateEstimatedCost(inputLength: number, model: any): number {
-  // Simple estimation based on content length
-  // This is a simplified version - in production we would use the computeCredits.ts logic
-  
-  // Default rate per character
-  const ratePerChar = 0.01;
-  
-  // Model-specific multipliers
-  const modelMultipliers: Record<string, number> = {
-    'gpt-4o': 3,
-    'gpt-4-turbo': 3,
-    'claude-3-opus': 5,
-    'claude-3-5-sonnet': 2,
-    'claude-3-haiku': 1,
-    'gpt-3.5-turbo': 0.5,
-    'grok-2': 2,
-    'gemini-pro': 1
-  };
-  
-  const multiplier = modelMultipliers[model.id] || 1;
-  
-  return inputLength * ratePerChar * multiplier;
-}
-
 // Main server function
 serve(async (req) => {
   const startTime = Date.now();
@@ -173,7 +87,7 @@ serve(async (req) => {
   }
 
   try {
-    const { content, model, messages, images, files, userId } = await req.json();
+    const { content, model, messages, images, files } = await req.json();
     
     // Prepare conversation history in the format the APIs expect
     const messageHistory = messages || [];
@@ -205,32 +119,6 @@ serve(async (req) => {
     }
     
     console.log(`Processing request for provider: ${model.provider}, model: ${model.id}`);
-    
-    // Validate credit balance if userId is provided
-    if (userId) {
-      // Estimate cost based on content length and model
-      const estimatedCost = calculateEstimatedCost(
-        content ? content.length : 0, 
-        model
-      );
-      
-      const hasSufficientCredits = await validateUserCredits(userId, estimatedCost);
-      
-      if (!hasSufficientCredits) {
-        console.log(`Insufficient credits for user ${userId}`);
-        return new Response(
-          JSON.stringify({
-            content: "Insufficient credits. Please upgrade your account to continue using this service.",
-            error: "INSUFFICIENT_CREDITS",
-            tokens: { input: 0, output: 0 }
-          }),
-          {
-            status: 403,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          }
-        );
-      }
-    }
     
     // Extract URLs from the user's message - only if necessary and efficiently
     let webContentFiles: string[] = [];
