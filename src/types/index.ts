@@ -1,5 +1,4 @@
 
-
 export interface Message {
   id: string;
   content: string;
@@ -9,14 +8,14 @@ export interface Message {
   tokens?: {
     input: number;
     output: number;
-    reasoning?: number; // Add reasoning tokens
+    reasoning?: number;
   };
   computeCredits?: number;
   images?: string[];
   files?: string[];
   webSearchResults?: any[];
   fileSearchResults?: any[];
-  reasoningContent?: string; // Add reasoning content
+  reasoningContent?: string;
 }
 
 export interface Conversation {
@@ -43,9 +42,9 @@ export type AIModel = {
   pricing: 'low' | 'standard' | 'premium';
   specialMode?: string;
   version?: string;
-  reasoningEffort?: 'low' | 'medium' | 'high'; // Add reasoning effort
-  showReasoning?: boolean; // Whether to show reasoning
-}
+  reasoningEffort?: 'low' | 'medium' | 'high';
+  showReasoning?: boolean;
+};
 
 export interface ChatState {
   conversations: Conversation[];
@@ -60,4 +59,3 @@ export interface UserProfile {
   email: string;
   avatarUrl?: string;
 }
-

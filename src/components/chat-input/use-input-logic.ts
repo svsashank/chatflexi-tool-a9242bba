@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { useChatStore } from '@/store';
 import { toast } from 'sonner';
@@ -159,6 +160,8 @@ export const useInputLogic = () => {
       setTimeout(() => setProcessingUrls(null), 2000);
       setProcessingFile(false);
       setShowAttachments(false);
+      
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 

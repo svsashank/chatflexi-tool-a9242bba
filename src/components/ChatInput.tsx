@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from "react";
 import { Send, ChevronDown, Image, FileText, Paperclip, X } from "lucide-react";
 import { useChatStore } from "@/store";
@@ -16,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { extractTextFromPDF } from "@/utils/pdfExtractor";
 import { Textarea } from "@/components/ui/textarea";
+import { AIModelCapability } from "@/types";
 
 const ChatInput = () => {
   const [inputValue, setInputValue] = useState("");
@@ -100,7 +100,8 @@ const ChatInput = () => {
     const files = e.target.files;
     if (!files) return;
 
-    if (!selectedModel.capabilities.includes('images')) {
+    // Fix the type issue by checking for 'images' capability
+    if (!(selectedModel.capabilities as AIModelCapability[]).includes('images')) {
       toast.error(`${selectedModel.name} does not support image analysis. Please select a model with vision capabilities.`);
       return;
     }

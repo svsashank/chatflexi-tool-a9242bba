@@ -209,6 +209,14 @@ async function saveMessageToDatabase(
       });
     }
     
+    // Handle files from the last user message - convert to JSON string
+    if (lastUserMessage?.files && lastUserMessage.files.length > 0) {
+      const files = JSON.stringify(lastUserMessage.files);
+      Object.assign(messageInsertData, {
+        files
+      });
+    }
+    
     // Insert the message
     const { error } = await supabase
       .from('conversation_messages')

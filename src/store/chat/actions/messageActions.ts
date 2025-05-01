@@ -53,9 +53,11 @@ async function saveMessageToDatabase(conversationId: string, message: Message) {
         Object.assign(messageData, { images: message.images });
       }
 
-      // Add files if present
+      // Handle files as a special case - convert to JSON string
       if (message.files && message.files.length > 0) {
-        Object.assign(messageData, { files: message.files });
+        // We need to store files as a JSONB column in PostgreSQL
+        const files = JSON.stringify(message.files);
+        Object.assign(messageData, { files });
       }
 
       const { error } = await supabase
