@@ -65,10 +65,10 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({ className }) => {
                   </div>
                   
                   <div className="ml-auto flex gap-1">
-                    {model.capabilities.includes('images' as AIModelCapability) && (
+                    {model.capabilities.includes('images') && (
                       <span className="text-xs px-1.5 py-0.5 bg-primary/10 text-primary rounded">Vision</span>
                     )}
-                    {model.capabilities.includes('reasoning' as AIModelCapability) && (
+                    {model.capabilities.includes('reasoning') && (
                       <span className="text-xs px-1.5 py-0.5 bg-amber-500/10 text-amber-600 rounded">Reasoning</span>
                     )}
                   </div>

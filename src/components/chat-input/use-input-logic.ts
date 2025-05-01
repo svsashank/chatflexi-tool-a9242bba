@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { useChatStore } from '@/store';
 import { toast } from 'sonner';
@@ -69,7 +70,7 @@ export const useInputLogic = () => {
     const files = e.target.files;
     if (!files) return;
 
-    if (!selectedModel.capabilities.includes('images' as AIModelCapability)) {
+    if (!selectedModel.capabilities.includes('images')) {
       toast.error(`${selectedModel.name} does not support image analysis. Please select a model with vision capabilities.`);
       return;
     }

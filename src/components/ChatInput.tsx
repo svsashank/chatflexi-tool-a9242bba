@@ -101,7 +101,7 @@ const ChatInput = () => {
     if (!files) return;
 
     // Fix the type issue by checking for 'images' capability
-    if (!selectedModel.capabilities.includes('images' as AIModelCapability)) {
+    if (!selectedModel.capabilities.includes('images')) {
       toast.error(`${selectedModel.name} does not support image analysis. Please select a model with vision capabilities.`);
       return;
     }
