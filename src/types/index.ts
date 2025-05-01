@@ -35,7 +35,7 @@ export type AIModel = {
   name: string;
   provider: string;
   description: string;
-  capabilities: Array<AIModelCapability>;
+  capabilities: AIModelCapability[];
   avatarColor: string;
   contextWindow?: number;
   responseSpeed: 'very-fast' | 'fast' | 'medium' | 'slow';

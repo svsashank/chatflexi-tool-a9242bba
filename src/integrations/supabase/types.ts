@@ -121,6 +121,7 @@ export type Database = {
           conversation_id: string
           created_at: string
           file_search_results: Json | null
+          files: Json | null
           id: string
           image_url: string | null
           images: string[] | null
@@ -138,6 +139,7 @@ export type Database = {
           conversation_id: string
           created_at?: string
           file_search_results?: Json | null
+          files?: Json | null
           id?: string
           image_url?: string | null
           images?: string[] | null
@@ -155,6 +157,7 @@ export type Database = {
           conversation_id?: string
           created_at?: string
           file_search_results?: Json | null
+          files?: Json | null
           id?: string
           image_url?: string | null
           images?: string[] | null

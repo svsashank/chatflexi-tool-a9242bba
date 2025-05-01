@@ -38,7 +38,7 @@ async function saveMessageToDatabase(conversationId: string, message: Message) {
       console.log("Saving user message to database for conversation:", conversationId);
       
       // Prepare message data for the database
-      const messageData = {
+      const messageData: any = {
         id: message.id,
         conversation_id: conversationId,
         content: message.content,
@@ -50,14 +50,34 @@ async function saveMessageToDatabase(conversationId: string, message: Message) {
 
       // Add images if present
       if (message.images && message.images.length > 0) {
-        Object.assign(messageData, { images: message.images });
+        messageData.images = message.images;
       }
 
-      // Handle files as a special case - convert to JSON string
+      // Handle files as a JSON object for database storage
       if (message.files && message.files.length > 0) {
-        // We need to store files as a JSONB column in PostgreSQL
-        const files = JSON.stringify(message.files);
-        Object.assign(messageData, { files });
+        // Convert files array to a properly formatted JSONB for PostgreSQL
+        messageData.files = JSON.stringify(message.files);
+      }
+
+      // Add token information if present
+      if (message.tokens) {
+        messageData.input_tokens = message.tokens.input;
+        messageData.output_tokens = message.tokens.output;
+      }
+
+      // Add compute credits if present
+      if (message.computeCredits) {
+        messageData.compute_credits = message.computeCredits;
+      }
+
+      // Web search results if present
+      if (message.webSearchResults && message.webSearchResults.length > 0) {
+        messageData.web_search_results = message.webSearchResults;
+      }
+
+      // File search results if present
+      if (message.fileSearchResults && message.fileSearchResults.length > 0) {
+        messageData.file_search_results = message.fileSearchResults;
       }
 
       const { error } = await supabase

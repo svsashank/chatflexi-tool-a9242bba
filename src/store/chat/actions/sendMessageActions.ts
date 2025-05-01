@@ -105,7 +105,7 @@ export const createSendMessageAction = (
       model: selectedModel,
       timestamp,
       images,
-      files: allFiles
+      files: allFiles.length > 0 ? allFiles : undefined
     };
     
     // Add user message using the addMessage action
