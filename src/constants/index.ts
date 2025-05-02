@@ -15,19 +15,6 @@ export const AI_MODELS = [
     showReasoning: true
   },
   {
-    id: 'o3',
-    name: 'O3',
-    provider: 'openai',
-    description: 'Advanced reasoning model with strong capabilities',
-    capabilities: ['text', 'images', 'code', 'reasoning'] as Array<'text' | 'images' | 'code' | 'reasoning'>,
-    avatarColor: '#10a37f', // OpenAI green
-    contextWindow: 128000,
-    responseSpeed: 'fast' as 'fast',
-    pricing: 'premium' as 'premium',
-    reasoningEffort: 'high' as 'high',
-    showReasoning: true
-  },
-  {
     id: 'o4-mini',
     name: 'O4 Mini',
     provider: 'openai',
