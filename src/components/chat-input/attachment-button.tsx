@@ -1,13 +1,12 @@
 
-import React, { useRef } from "react";
-import { Paperclip, Image, FileText } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
-import { useChatStore } from "@/store";
+import React from 'react';
+import { Button } from '@/components/ui/button';
+import { Paperclip, Image, FileText, ImagePlus } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 interface AttachmentButtonProps {
   showAttachments: boolean;
-  setShowAttachments: (show: boolean) => void;
+  setShowAttachments: (value: boolean) => void;
   handleImageUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   isDisabled: boolean;
@@ -20,20 +19,8 @@ export const AttachmentButton = ({
   handleImageUpload,
   handleFileUpload,
   isDisabled,
-  attachmentMenuRef,
+  attachmentMenuRef
 }: AttachmentButtonProps) => {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const documentInputRef = useRef<HTMLInputElement>(null);
-  const { selectedModel } = useChatStore();
-
-  const handleImageButtonClick = () => {
-    if (!selectedModel.capabilities.includes('images')) {
-      toast.error(`${selectedModel.name} does not support image analysis. Please select a model with vision capabilities.`);
-      return;
-    }
-    fileInputRef.current?.click();
-  };
-
   return (
     <div className="relative">
       <Button
@@ -50,49 +37,37 @@ export const AttachmentButton = ({
       {showAttachments && (
         <div 
           ref={attachmentMenuRef}
-          className="absolute bottom-full left-0 mb-2 flex flex-col gap-1 bg-popover rounded-lg border border-border shadow-md p-2 min-w-[120px] z-20"
+          className="absolute bottom-full left-0 mb-2 flex flex-col gap-1 bg-popover rounded-lg border border-border shadow-md p-2 min-w-[140px] z-20"
         >
           <Button
             type="button"
             variant="ghost"
             className="flex items-center justify-start gap-2 h-9 px-2 py-2 rounded-md hover:bg-accent text-sm"
-            onClick={handleImageButtonClick}
+            onClick={() => document.getElementById('image-upload')?.click()}
             disabled={isDisabled}
           >
-            <Image size={16} className="text-primary" /> Images
+            <Image size={16} className="text-primary" /> Upload Images
           </Button>
           
           <Button
             type="button"
             variant="ghost"
             className="flex items-center justify-start gap-2 h-9 px-2 py-2 rounded-md hover:bg-accent text-sm"
-            onClick={() => documentInputRef.current?.click()}
+            onClick={() => document.getElementById('file-upload')?.click()}
             disabled={isDisabled}
           >
-            <FileText size={16} className="text-primary" /> Documents
+            <FileText size={16} className="text-primary" /> Upload Files
           </Button>
+          
+          <Link 
+            to="/image-generation" 
+            className="flex items-center justify-start gap-2 h-9 px-2 py-2 rounded-md hover:bg-accent text-sm text-foreground no-underline"
+            onClick={() => setShowAttachments(false)}
+          >
+            <ImagePlus size={16} className="text-primary" /> Generate Image
+          </Link>
         </div>
       )}
-      
-      <input 
-        type="file" 
-        ref={fileInputRef}
-        onChange={handleImageUpload}
-        accept="image/*"
-        className="hidden"
-        multiple
-        disabled={isDisabled}
-      />
-      
-      <input 
-        type="file" 
-        ref={documentInputRef}
-        onChange={handleFileUpload}
-        accept=".txt,.pdf,.doc,.docx,.csv,.json,.html,.css,.js"
-        className="hidden"
-        multiple
-        disabled={isDisabled}
-      />
     </div>
   );
 };

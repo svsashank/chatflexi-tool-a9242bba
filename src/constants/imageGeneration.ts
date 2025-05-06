@@ -1,66 +1,73 @@
 
-// Available image generation models by provider
+export const DEFAULT_PROMPT = "a futuristic city with flying cars and tall skyscrapers";
+export const DEFAULT_IMAGE_PROVIDER = IMAGE_PROVIDERS[0];
 
 export const IMAGE_PROVIDERS = [
   {
     id: 'openai',
-    name: 'OpenAI DALL-E',
-    description: 'Generate realistic and artistic images with OpenAI\'s DALL-E models',
+    name: 'OpenAI',
+    description: 'Generate images with OpenAI\'s DALL·E models',
+    maxPromptLength: 1000,
+    defaultModel: 'dall-e-3',
     models: [
       {
         id: 'dall-e-3',
-        name: 'DALL-E 3',
-        description: 'Most advanced image generation with accurate details',
-        sizes: ['1024x1024', '1792x1024', '1024x1792'],
+        name: 'DALL·E 3',
+        description: 'Most powerful DALL·E model, high resolution with accurate details',
+        sizes: ['1024x1024', '1024x1792', '1792x1024'],
         qualities: ['standard', 'hd'],
         styles: ['vivid', 'natural']
       },
       {
         id: 'dall-e-2',
-        name: 'DALL-E 2',
-        description: 'Efficient image generation at lower cost',
+        name: 'DALL·E 2',
+        description: 'Faster but less detailed image generation',
         sizes: ['256x256', '512x512', '1024x1024'],
         qualities: ['standard'],
-        styles: ['standard']
+        styles: []
       }
-    ],
-    defaultModel: 'dall-e-3',
-    maxPromptLength: 4000
+    ]
   },
   {
     id: 'anthropic',
-    name: 'Anthropic Claude',
-    description: 'Generate images with Claude\'s multimodal capabilities',
+    name: 'Anthropic',
+    description: 'Generate images with Anthropic\'s Claude 3 vision models',
+    maxPromptLength: 800,
+    defaultModel: 'claude-3-opus',
     models: [
       {
-        id: 'claude-3-opus-20240229',
+        id: 'claude-3-opus',
         name: 'Claude 3 Opus',
-        description: 'Most capable Claude model for image generation'
+        description: 'Highest quality image generation',
+        sizes: ['1024x1024'],
+        qualities: ['standard'],
+        styles: []
       },
       {
-        id: 'claude-3-sonnet-20240229',
+        id: 'claude-3-sonnet',
         name: 'Claude 3 Sonnet',
-        description: 'Balanced model with excellent quality'
+        description: 'Balanced quality and speed',
+        sizes: ['1024x1024'],
+        qualities: ['standard'],
+        styles: []
       }
-    ],
-    defaultModel: 'claude-3-opus-20240229',
-    maxPromptLength: 4000
+    ]
   },
   {
     id: 'gemini',
     name: 'Google Gemini',
     description: 'Generate images with Google\'s Gemini models',
+    maxPromptLength: 1000,
+    defaultModel: 'gemini-pro',
     models: [
       {
-        id: 'gemini-1.5-pro',
-        name: 'Gemini 1.5 Pro',
-        description: 'Most capable Gemini model for multimodal tasks'
+        id: 'gemini-pro',
+        name: 'Gemini Pro',
+        description: 'Google\'s most capable image generation model',
+        sizes: ['1024x1024'],
+        qualities: ['standard'],
+        styles: []
       }
-    ],
-    defaultModel: 'gemini-1.5-pro',
-    maxPromptLength: 4000
+    ]
   }
 ];
-
-export const DEFAULT_IMAGE_PROVIDER = IMAGE_PROVIDERS[0];
-export const DEFAULT_PROMPT = "a futuristic city with flying cars and tall skyscrapers";

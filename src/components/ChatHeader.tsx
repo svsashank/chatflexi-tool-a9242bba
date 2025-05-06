@@ -1,55 +1,130 @@
 
-import React from "react";
-import ConversationHistory from "./ConversationHistory";
+import React, { useState } from "react";
 import { useChatStore } from "@/store";
-import { Hexagon, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import UserMenu from "./UserMenu";
+import { Menu, X, PlusCircle, History, ImageIcon } from "lucide-react";
+import { Link } from "react-router-dom";
+import { useMobileDetect } from "../hooks/use-mobile";
+import ConversationHistory from "./ConversationHistory";
+import { toast } from "sonner";
+import { ScrollArea } from "./ui/scroll-area";
 
 const ChatHeader = () => {
-  const { selectedModel, conversations, currentConversationId, createConversation } = useChatStore();
-  
-  const currentConversation = conversations.find(
-    (conv) => conv.id === currentConversationId
-  );
+  const [showSidebar, setShowSidebar] = useState(false);
+  const { isMobile } = useMobileDetect();
+
+  const {
+    currentConversationId,
+    conversations,
+    createConversation,
+    isLoading,
+  } = useChatStore();
+
+  const currentConversation = currentConversationId
+    ? conversations.find((c) => c.id === currentConversationId)
+    : null;
+
+  const handleNewChat = async () => {
+    try {
+      await createConversation();
+      setShowSidebar(false);
+    } catch (error) {
+      console.error("Error creating new conversation:", error);
+      toast.error("Failed to create new conversation");
+    }
+  };
 
   return (
-    <header className="sticky top-0 z-10 border-b border-border bg-background/90 backdrop-blur-sm">
-      <div className="flex items-center justify-between h-14 px-4 max-w-3xl mx-auto">
-        <div className="flex items-center gap-2">
-          <ConversationHistory />
-          <div className="flex items-center gap-2">
-            <div className="relative hidden sm:block">
-              <Hexagon size={16} className="text-primary" fill="#9b87f5" stroke="#7E69AB" />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="text-[8px] font-bold text-white">K</div>
-              </div>
-            </div>
-            <h1 className="text-lg font-semibold truncate max-w-[150px] sm:max-w-[250px]">
-              {currentConversation?.title || "Krix"}
-            </h1>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={createConversation}
-                  className="h-8 w-8"
-                >
-                  <Plus size={18} />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>New Chat</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-          <UserMenu />
+    <header className="sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur">
+      <div className="flex items-center justify-between px-4 py-2">
+        {/* Mobile Sidebar Toggle */}
+        {isMobile && (
+          <Button
+            onClick={() => setShowSidebar(!showSidebar)}
+            variant="ghost"
+            size="icon"
+            className="mr-2 h-9 w-9 rounded-md lg:hidden"
+          >
+            <Menu size={18} />
+          </Button>
+        )}
+
+        {/* Conversation Title */}
+        <h1 className="text-lg font-semibold truncate">
+          {currentConversation?.title || "New Conversation"}
+        </h1>
+
+        {/* Action Buttons */}
+        <div className="flex items-center space-x-2">
+          {/* Image Generation Button */}
+          <Link
+            to="/image-generation"
+            className="flex items-center justify-center h-9 w-9 rounded-md hover:bg-accent transition-all"
+            title="Generate Images"
+          >
+            <ImageIcon size={18} className="text-muted-foreground" />
+          </Link>
+        
+          {/* New Chat Button */}
+          <Button
+            onClick={handleNewChat}
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9 rounded-md"
+            disabled={isLoading}
+            title="New Chat"
+          >
+            <PlusCircle size={18} className="text-muted-foreground" />
+          </Button>
+
+          {/* History Button (mobile only) */}
+          {isMobile && (
+            <Button
+              onClick={() => setShowSidebar(!showSidebar)}
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 rounded-md lg:hidden"
+              title="Chat History"
+            >
+              <History size={18} className="text-muted-foreground" />
+            </Button>
+          )}
         </div>
       </div>
+
+      {/* Mobile Sidebar */}
+      {isMobile && showSidebar && (
+        <div className="fixed inset-0 z-50 bg-background">
+          <div className="flex h-full flex-col">
+            <div className="flex items-center justify-between p-4 border-b">
+              <h2 className="text-lg font-semibold">Conversations</h2>
+              <Button
+                onClick={() => setShowSidebar(false)}
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 rounded-md"
+              >
+                <X size={18} />
+              </Button>
+            </div>
+            
+            <ScrollArea className="flex-1">
+              <div className="flex flex-col gap-1 p-2">
+                <Button
+                  onClick={handleNewChat}
+                  variant="outline"
+                  className="flex items-center justify-start gap-2 h-10 mb-2"
+                >
+                  <PlusCircle size={16} />
+                  New Chat
+                </Button>
+                
+                <ConversationHistory />
+              </div>
+            </ScrollArea>
+          </div>
+        </div>
+      )}
     </header>
   );
 };

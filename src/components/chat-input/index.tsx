@@ -19,6 +19,8 @@ const ChatInput = () => {
     showAttachments,
     setShowAttachments,
     attachmentMenuRef,
+    imageInputRef,
+    fileInputRef,
     isLoading,
     processingUrls,
     handleSubmit,
@@ -73,6 +75,28 @@ const ChatInput = () => {
               <SendButton isDisabled={isDisabled} />
             </div>
           </div>
+          
+          <input 
+            id="image-upload"
+            type="file" 
+            ref={imageInputRef}
+            onChange={handleImageUpload}
+            accept="image/*"
+            className="hidden"
+            multiple
+            disabled={isLoading || processingFile}
+          />
+          
+          <input 
+            id="file-upload"
+            type="file" 
+            ref={fileInputRef}
+            onChange={handleFileUpload}
+            accept=".txt,.pdf,.doc,.docx,.csv,.json,.html,.css,.js"
+            className="hidden"
+            multiple
+            disabled={isLoading || processingFile}
+          />
         </form>
       </div>
       
