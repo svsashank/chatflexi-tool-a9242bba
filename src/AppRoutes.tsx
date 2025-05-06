@@ -10,6 +10,7 @@ import ResetPassword from "./pages/ResetPassword";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { useAuth } from "./contexts/AuthContext";
 import Upgrade from "./pages/Upgrade";
+import ImageGeneration from "./pages/ImageGeneration";
 
 const LoadingDisplay = () => (
   <div className="flex h-screen items-center justify-center">
@@ -19,9 +20,9 @@ const LoadingDisplay = () => (
 );
 
 const AppRoutes = () => {
-  const { user, isLoading } = useAuth(); // Changed 'loading' to 'isLoading' to match AuthContext
+  const { user, isLoading } = useAuth();
 
-  if (isLoading) { // Updated to match the property name in AuthContext
+  if (isLoading) {
     return <LoadingDisplay />;
   }
 
@@ -34,8 +35,7 @@ const AppRoutes = () => {
       />
       <Route path="/auth/callback" element={<AuthCallback />} />
       
-      {/* Reset password route - accessible regardless of auth state 
-          Important: This must be outside the condition that checks if user exists */}
+      {/* Reset password route - accessible regardless of auth state */}
       <Route path="/auth/reset-password" element={<ResetPassword />} />
       
       {/* Protected routes */}
@@ -54,6 +54,14 @@ const AppRoutes = () => {
       <Route 
         path="/upgrade" 
         element={<Upgrade />} 
+      />
+      
+      {/* Image Generation Page */}
+      <Route 
+        path="/image-generation" 
+        element={
+          user ? <ProtectedRoute><ImageGeneration /></ProtectedRoute> : <Navigate to="/auth" replace />
+        } 
       />
       
       {/* Catch-all route */}

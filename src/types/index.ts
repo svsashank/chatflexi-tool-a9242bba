@@ -1,4 +1,3 @@
-
 export interface Message {
   id: string;
   content: string;
@@ -58,4 +57,31 @@ export interface UserProfile {
   name: string;
   email: string;
   avatarUrl?: string;
+}
+
+// New types for image generation feature
+export interface ImageGenerationRequest {
+  prompt: string;
+  provider: string;
+  model: string;
+  size?: string;
+  quality?: string;
+  style?: string;
+  numberOfImages?: number;
+}
+
+export interface GeneratedImage {
+  id: string;
+  url: string;
+  prompt: string;
+  timestamp: Date;
+  provider: string;
+  model: string;
+}
+
+export interface ImageGenerationState {
+  isGenerating: boolean;
+  generationError: string | null;
+  generatedImages: GeneratedImage[];
+  currentRequest: ImageGenerationRequest | null;
 }
