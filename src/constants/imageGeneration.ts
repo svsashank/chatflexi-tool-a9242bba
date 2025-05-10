@@ -39,6 +39,14 @@ export const IMAGE_PROVIDERS = [
         sizes: ['1024x1024'],
         qualities: ['standard'],
         styles: []
+      },
+      {
+        id: 'black-forest-labs/FLUX.1.1-pro',
+        name: 'FLUX.1.1 Pro',
+        description: 'High-quality premium image generation model by Blackforest Labs',
+        sizes: ['1024x1024', '1152x896', '896x1152', '1216x832', '832x1216'],
+        qualities: ['standard', 'high'],
+        styles: []
       }
     ]
   }

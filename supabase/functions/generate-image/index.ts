@@ -47,8 +47,8 @@ async function generateWithOpenAI(prompt: string, model = "dall-e-3", size = "10
 }
 
 // Handle Flux model image generation via Hugging Face
-async function generateWithFlux(prompt: string, model = "black-forest-labs/FLUX.1-schnell") {
-  console.log(`Generating image with Flux model (${model}): ${prompt}`);
+async function generateWithFlux(prompt: string, model: string, size = "1024x1024", quality = "standard") {
+  console.log(`Generating image with Flux model (${model}): ${prompt} with size ${size} and quality ${quality}`);
   
   if (!HUGGING_FACE_TOKEN) {
     throw new Error('Hugging Face access token is not configured');
@@ -57,15 +57,39 @@ async function generateWithFlux(prompt: string, model = "black-forest-labs/FLUX.
   try {
     const hf = new HfInference(HUGGING_FACE_TOKEN);
     
+    // Parse size to get dimensions
+    const [width, height] = size.split('x').map(dim => parseInt(dim, 10));
+    
+    // Set parameters based on model and quality
+    let parameters: any = {
+      negative_prompt: "low quality, blurry"
+    };
+    
+    // Configure model-specific parameters
+    if (model === 'black-forest-labs/FLUX.1-schnell') {
+      parameters = {
+        ...parameters,
+        guidance_scale: 7.5,
+        num_inference_steps: 50
+      };
+    } else if (model === 'black-forest-labs/FLUX.1.1-pro') {
+      // Higher quality settings for the pro model
+      parameters = {
+        ...parameters,
+        guidance_scale: quality === 'high' ? 8.5 : 7.5,
+        num_inference_steps: quality === 'high' ? 75 : 50,
+        width: width,
+        height: height
+      };
+    }
+    
+    console.log(`Using Flux parameters:`, parameters);
+    
     // Use the textToImage method according to the Blackforest Labs documentation
     const blob = await hf.textToImage({
       inputs: prompt,
       model: model,
-      parameters: {
-        guidance_scale: 7.5,
-        num_inference_steps: 50,
-        negative_prompt: "low quality, blurry"
-      }
+      parameters: parameters
     });
     
     // Convert the blob to a base64 string for data URL
@@ -115,7 +139,7 @@ serve(async (req) => {
         if (!HUGGING_FACE_TOKEN) {
           throw new Error('Hugging Face access token not configured');
         }
-        result = await generateWithFlux(prompt, model);
+        result = await generateWithFlux(prompt, model, size, quality);
         break;
         
       default:
