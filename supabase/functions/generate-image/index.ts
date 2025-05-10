@@ -57,14 +57,19 @@ async function generateWithFlux(prompt: string, model = "black-forest-labs/FLUX.
   try {
     const hf = new HfInference(HUGGING_FACE_TOKEN);
     
-    // Call the model via Hugging Face Inference API
-    const image = await hf.textToImage({
+    // Use the textToImage method according to the Blackforest Labs documentation
+    const blob = await hf.textToImage({
       inputs: prompt,
       model: model,
+      parameters: {
+        guidance_scale: 7.5,
+        num_inference_steps: 50,
+        negative_prompt: "low quality, blurry"
+      }
     });
     
-    // Convert the blob to a base64 string
-    const arrayBuffer = await image.arrayBuffer();
+    // Convert the blob to a base64 string for data URL
+    const arrayBuffer = await blob.arrayBuffer();
     const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
     const dataUrl = `data:image/jpeg;base64,${base64}`;
     
