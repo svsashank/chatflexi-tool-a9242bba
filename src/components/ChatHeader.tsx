@@ -4,14 +4,14 @@ import { useChatStore } from "@/store";
 import { Button } from "@/components/ui/button";
 import { Menu, X, PlusCircle, History, ImageIcon } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useMobileDetect } from "../hooks/use-mobile";
+import { useIsMobile } from "../hooks/use-mobile";
 import ConversationHistory from "./ConversationHistory";
 import { toast } from "sonner";
 import { ScrollArea } from "./ui/scroll-area";
 
 const ChatHeader = () => {
   const [showSidebar, setShowSidebar] = useState(false);
-  const { isMobile } = useMobileDetect();
+  const isMobile = useIsMobile();
 
   const {
     currentConversationId,

@@ -1,7 +1,4 @@
 
-export const DEFAULT_PROMPT = "a futuristic city with flying cars and tall skyscrapers";
-export const DEFAULT_IMAGE_PROVIDER = IMAGE_PROVIDERS[0];
-
 export const IMAGE_PROVIDERS = [
   {
     id: 'openai',
@@ -71,3 +68,6 @@ export const IMAGE_PROVIDERS = [
     ]
   }
 ];
+
+export const DEFAULT_PROMPT = "a futuristic city with flying cars and tall skyscrapers";
+export const DEFAULT_IMAGE_PROVIDER = IMAGE_PROVIDERS[0];
