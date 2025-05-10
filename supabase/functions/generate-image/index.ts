@@ -1,6 +1,7 @@
 
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { HfInference } from 'https://esm.sh/@huggingface/inference@2.3.2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -9,7 +10,7 @@ const corsHeaders = {
 
 // API Keys
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
-const GOOGLE_API_KEY = Deno.env.get('GOOGLE_API_KEY');
+const HUGGING_FACE_TOKEN = Deno.env.get('HUGGING_FACE_ACCESS_TOKEN');
 
 // Handle OpenAI image generation
 async function generateWithOpenAI(prompt: string, model = "dall-e-3", size = "1024x1024", quality = "standard", style = "vivid", n = 1) {
@@ -45,87 +46,35 @@ async function generateWithOpenAI(prompt: string, model = "dall-e-3", size = "10
   }));
 }
 
-// Handle Google image generation with Gemini 2.0 Flash Preview
-async function generateWithGoogle(prompt: string) {
-  console.log(`Generating image with Google Gemini Flash: ${prompt}`);
+// Handle Flux model image generation via Hugging Face
+async function generateWithFlux(prompt: string, model = "black-forest-labs/FLUX.1-schnell") {
+  console.log(`Generating image with Flux model (${model}): ${prompt}`);
   
-  // Updated endpoint for Google's Gemini 2.0 Flash Preview
-  const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-preview:generateContent', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-goog-api-key': GOOGLE_API_KEY,
-    },
-    body: JSON.stringify({
-      contents: [{
-        role: "user",
-        parts: [{
-          text: `Generate an image of: ${prompt}`
-        }]
-      }],
-      generation_config: {
-        temperature: 1.0,
-        topP: 0.95,
-        topK: 64,
-      },
-      safetySettings: [
-        {
-          category: "HARM_CATEGORY_HARASSMENT",
-          threshold: "BLOCK_MEDIUM_AND_ABOVE"
-        },
-        {
-          category: "HARM_CATEGORY_HATE_SPEECH",
-          threshold: "BLOCK_MEDIUM_AND_ABOVE"
-        },
-        {
-          category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-          threshold: "BLOCK_MEDIUM_AND_ABOVE"
-        },
-        {
-          category: "HARM_CATEGORY_DANGEROUS_CONTENT",
-          threshold: "BLOCK_MEDIUM_AND_ABOVE"
-        }
-      ]
-    }),
-  });
-
-  // Enhanced error handling with more detailed logging
+  if (!HUGGING_FACE_TOKEN) {
+    throw new Error('Hugging Face access token is not configured');
+  }
+  
   try {
-    const data = await response.json();
+    const hf = new HfInference(HUGGING_FACE_TOKEN);
     
-    if (!response.ok) {
-      console.error("Google Gemini API error response:", data);
-      console.error("Response status:", response.status);
-      throw new Error(`Google API error: ${data.error?.message || 'Unknown error'}`);
-    }
+    // Call the model via Hugging Face Inference API
+    const image = await hf.textToImage({
+      inputs: prompt,
+      model: model,
+    });
     
-    // Log the entire response structure for debugging
-    console.log("Google Gemini API response structure:", Object.keys(data));
+    // Convert the blob to a base64 string
+    const arrayBuffer = await image.arrayBuffer();
+    const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+    const dataUrl = `data:image/jpeg;base64,${base64}`;
     
-    // Extract the image from the response
-    if (data.candidates && 
-        data.candidates.length > 0 && 
-        data.candidates[0].content && 
-        data.candidates[0].content.parts && 
-        data.candidates[0].content.parts.length > 0) {
-      
-      // Find the image part in the response
-      const imagePart = data.candidates[0].content.parts.find((part: any) => part.inlineData);
-      
-      if (imagePart && imagePart.inlineData && imagePart.inlineData.data) {
-        return [{
-          url: `data:${imagePart.inlineData.mimeType || 'image/png'};base64,${imagePart.inlineData.data}`,
-          revised_prompt: prompt
-        }];
-      }
-    }
-    
-    console.error("Unexpected Google Gemini API response shape:", data);
-    throw new Error('No image data was found in the Google Gemini response');
-    
+    return [{
+      url: dataUrl,
+      revised_prompt: prompt
+    }];
   } catch (error) {
-    console.error("Failed to parse Google Gemini API response:", error);
-    throw error;
+    console.error('Flux model error:', error);
+    throw new Error(`Flux model API error: ${error.message || 'Unknown error'}`);
   }
 }
 
@@ -157,11 +106,11 @@ serve(async (req) => {
         result = await generateWithOpenAI(prompt, model, size, quality, style, n);
         break;
         
-      case 'google':
-        if (!GOOGLE_API_KEY) {
-          throw new Error('Google API key not configured');
+      case 'flux':
+        if (!HUGGING_FACE_TOKEN) {
+          throw new Error('Hugging Face access token not configured');
         }
-        result = await generateWithGoogle(prompt);
+        result = await generateWithFlux(prompt, model);
         break;
         
       default:

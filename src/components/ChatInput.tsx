@@ -1,14 +1,14 @@
 
 import React from "react";
-import { useInputLogic } from "./use-input-logic";
-import { ModelSelector } from "./model-selector";
-import { MediaPreview } from "./media-preview";
-import { AttachmentButton } from "./attachment-button";
-import { SendButton } from "./send-button";
-import { StatusMessage } from "./status-message";
-import { ProcessingIndicator } from "./processing-indicator";
-import { AutoResizeTextarea } from "./auto-resize-textarea";
-import { Button } from "../ui/button";
+import { useInputLogic } from "@/components/chat-input/use-input-logic";
+import { ModelSelector } from "@/components/chat-input/model-selector";
+import { MediaPreview } from "@/components/chat-input/media-preview";
+import { AttachmentButton } from "@/components/chat-input/attachment-button";
+import { SendButton } from "@/components/chat-input/send-button";
+import { StatusMessage } from "@/components/chat-input/status-message";
+import { ProcessingIndicator } from "@/components/chat-input/processing-indicator";
+import { AutoResizeTextarea } from "@/components/chat-input/auto-resize-textarea";
+import { Button } from "@/components/ui/button";
 import { ImageIcon } from "lucide-react";
 import { AIModelCapability } from "@/types";
 

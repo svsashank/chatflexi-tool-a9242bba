@@ -26,16 +26,16 @@ export const IMAGE_PROVIDERS = [
     ]
   },
   {
-    id: 'google',
-    name: 'Google',
-    description: 'Generate images with Google\'s Gemini 2.0 Flash Preview',
+    id: 'flux',
+    name: 'Flux',
+    description: 'Generate images with Blackforest Labs\' Flux models',
     maxPromptLength: 1000,
-    defaultModel: 'gemini-2-flash',
+    defaultModel: 'black-forest-labs/FLUX.1-schnell',
     models: [
       {
-        id: 'gemini-2-flash',
-        name: 'Gemini 2.0 Flash',
-        description: 'Google\'s latest image generation model',
+        id: 'black-forest-labs/FLUX.1-schnell',
+        name: 'FLUX.1 Schnell',
+        description: 'Fast, high-quality image generation model by Blackforest Labs',
         sizes: ['1024x1024'],
         qualities: ['standard'],
         styles: []
