@@ -1,7 +1,6 @@
 
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { HfInference } from 'https://esm.sh/@huggingface/inference@2.3.2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -10,7 +9,7 @@ const corsHeaders = {
 
 // API Keys
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
-const HUGGING_FACE_TOKEN = Deno.env.get('HUGGING_FACE_ACCESS_TOKEN');
+const BFL_API_KEY = Deno.env.get('BFL_API_KEY');
 
 // Handle OpenAI image generation
 async function generateWithOpenAI(prompt: string, model = "dall-e-3", size = "1024x1024", quality = "standard", style = "vivid", n = 1) {
@@ -46,59 +45,120 @@ async function generateWithOpenAI(prompt: string, model = "dall-e-3", size = "10
   }));
 }
 
-// Handle Flux model image generation via Hugging Face
+// Handle Flux model image generation via Blackforest Labs API
 async function generateWithFlux(prompt: string, model: string, size = "1024x1024", quality = "standard") {
   console.log(`Generating image with Flux model (${model}): ${prompt} with size ${size} and quality ${quality}`);
   
-  if (!HUGGING_FACE_TOKEN) {
-    throw new Error('Hugging Face access token is not configured');
+  if (!BFL_API_KEY) {
+    throw new Error('Blackforest Labs API key is not configured');
   }
   
   try {
-    const hf = new HfInference(HUGGING_FACE_TOKEN);
-    
     // Parse size to get dimensions
     const [width, height] = size.split('x').map(dim => parseInt(dim, 10));
     
-    // Set parameters based on model and quality
-    let parameters: any = {
-      negative_prompt: "low quality, blurry"
+    // Determine which API endpoint to use based on the model
+    const apiEndpoint = model === 'flux-1-schnell' 
+      ? 'https://api.us1.bfl.ai/v1/flux-1' 
+      : 'https://api.us1.bfl.ai/v1/flux-pro-1.1';
+    
+    console.log(`Using API endpoint: ${apiEndpoint}`);
+    
+    // Set up the request body based on model and quality
+    const requestBody: any = {
+      prompt,
+      width,
+      height
     };
     
-    // Configure model-specific parameters
-    if (model === 'black-forest-labs/FLUX.1-schnell') {
-      parameters = {
-        ...parameters,
-        guidance_scale: 7.5,
-        num_inference_steps: 50
-      };
-    } else if (model === 'black-forest-labs/FLUX.1.1-pro') {
-      // Higher quality settings for the pro model
-      parameters = {
-        ...parameters,
-        guidance_scale: quality === 'high' ? 8.5 : 7.5,
-        num_inference_steps: quality === 'high' ? 75 : 50,
-        width: width,
-        height: height
-      };
+    // Add quality-specific parameters
+    if (quality === 'high' && model === 'flux-pro-1.1') {
+      requestBody.num_inference_steps = 75;
+      requestBody.guidance_scale = 8.5;
     }
     
-    console.log(`Using Flux parameters:`, parameters);
+    console.log(`Request payload:`, requestBody);
     
-    // Use the textToImage method according to the Blackforest Labs documentation
-    const blob = await hf.textToImage({
-      inputs: prompt,
-      model: model,
-      parameters: parameters
+    // Step 1: Request image generation
+    const response = await fetch(apiEndpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'accept': 'application/json',
+        'x-key': BFL_API_KEY,
+      },
+      body: JSON.stringify(requestBody),
     });
     
-    // Convert the blob to a base64 string for data URL
-    const arrayBuffer = await blob.arrayBuffer();
-    const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
-    const dataUrl = `data:image/jpeg;base64,${base64}`;
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Blackforest Labs API error response:', errorText);
+      throw new Error(`Blackforest Labs API error: ${errorText}`);
+    }
     
+    // Get the request ID from the initial response
+    const responseData = await response.json();
+    const requestId = responseData.id;
+    
+    if (!requestId) {
+      throw new Error('Blackforest Labs API did not return a request ID');
+    }
+    
+    console.log(`Image generation started with request ID: ${requestId}`);
+    
+    // Step 2: Poll for the result
+    let result;
+    let attempts = 0;
+    const maxAttempts = 30; // Maximum number of polling attempts
+    const pollingInterval = 1000; // 1 second between polls
+    
+    while (attempts < maxAttempts) {
+      attempts++;
+      
+      const statusResponse = await fetch(`https://api.us1.bfl.ai/v1/status/${requestId}`, {
+        method: 'GET',
+        headers: {
+          'accept': 'application/json',
+          'x-key': BFL_API_KEY,
+        },
+      });
+      
+      if (!statusResponse.ok) {
+        const errorText = await statusResponse.text();
+        console.error(`Status check error (attempt ${attempts}):`, errorText);
+        
+        if (attempts === maxAttempts) {
+          throw new Error(`Failed to get image status after ${maxAttempts} attempts`);
+        }
+        
+        // Wait before trying again
+        await new Promise(resolve => setTimeout(resolve, pollingInterval));
+        continue;
+      }
+      
+      const statusData = await statusResponse.json();
+      
+      if (statusData.status === 'succeeded') {
+        console.log('Image generation succeeded');
+        result = statusData;
+        break;
+      } else if (statusData.status === 'failed') {
+        throw new Error(`Image generation failed: ${statusData.error || 'Unknown error'}`);
+      } else {
+        console.log(`Image still generating, status: ${statusData.status}, attempt: ${attempts}`);
+        
+        // Wait before polling again
+        await new Promise(resolve => setTimeout(resolve, pollingInterval));
+      }
+    }
+    
+    if (!result) {
+      throw new Error('Image generation timed out');
+    }
+    
+    // Return the image data
     return [{
-      url: dataUrl,
+      url: result.url,
       revised_prompt: prompt
     }];
   } catch (error) {
@@ -136,8 +196,8 @@ serve(async (req) => {
         break;
         
       case 'flux':
-        if (!HUGGING_FACE_TOKEN) {
-          throw new Error('Hugging Face access token not configured');
+        if (!BFL_API_KEY) {
+          throw new Error('Blackforest Labs API key not configured');
         }
         result = await generateWithFlux(prompt, model, size, quality);
         break;
