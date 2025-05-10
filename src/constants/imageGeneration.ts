@@ -27,7 +27,7 @@ export const IMAGE_PROVIDERS = [
   },
   {
     id: 'flux',
-    name: 'Flux',
+    name: 'Blackforest Labs',
     description: 'Generate images with Blackforest Labs\' Flux models',
     maxPromptLength: 1000,
     defaultModel: 'black-forest-labs/FLUX.1-schnell',
