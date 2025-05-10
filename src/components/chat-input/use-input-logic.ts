@@ -76,7 +76,7 @@ export const useInputLogic = () => {
     const files = e.target.files;
     if (!files) return;
 
-    if (!selectedModel.capabilities.includes('images')) {
+    if (!selectedModel.capabilities.includes('images' as AIModelCapability)) {
       toast.error(`${selectedModel.name} does not support image analysis. Please select a model with vision capabilities.`);
       return;
     }
