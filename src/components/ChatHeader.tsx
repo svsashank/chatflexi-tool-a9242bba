@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { useChatStore } from "@/store";
 import { Button } from "@/components/ui/button";
-import { Menu, X, PlusCircle, History, ImageIcon } from "lucide-react";
+import { Menu, X, PlusCircle, History } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useIsMobile } from "../hooks/use-mobile";
 import ConversationHistory from "./ConversationHistory";
@@ -56,15 +56,6 @@ const ChatHeader = () => {
 
         {/* Action Buttons */}
         <div className="flex items-center space-x-2">
-          {/* Image Generation Button */}
-          <Link
-            to="/image-generation"
-            className="flex items-center justify-center h-9 w-9 rounded-md hover:bg-accent transition-all"
-            title="Generate Images"
-          >
-            <ImageIcon size={18} className="text-muted-foreground" />
-          </Link>
-        
           {/* New Chat Button */}
           <Button
             onClick={handleNewChat}

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useChatStore } from '@/store';
 import { toast } from 'sonner';
 import { extractTextFromPDF } from '@/utils/pdfExtractor';
+import { useNavigate } from 'react-router-dom';
 import { AIModelCapability } from '@/types';
 
 const processingFiles = new Set<string>();
@@ -12,7 +13,9 @@ export const useInputLogic = () => {
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
   const [processingFile, setProcessingFile] = useState(false);
   const [showAttachments, setShowAttachments] = useState(false);
+  const [showImageGenerator, setShowImageGenerator] = useState(false);
   
+  const navigate = useNavigate();
   const attachmentMenuRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -63,6 +66,10 @@ export const useInputLogic = () => {
       e.preventDefault();
       handleSubmit(e);
     }
+  };
+
+  const openImageGenerator = () => {
+    navigate('/image-generation');
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -183,6 +190,8 @@ export const useInputLogic = () => {
     processingFile,
     showAttachments,
     setShowAttachments,
+    showImageGenerator,
+    setShowImageGenerator,
     attachmentMenuRef,
     fileInputRef,
     imageInputRef,
@@ -194,6 +203,7 @@ export const useInputLogic = () => {
     handleFileUpload,
     removeImage,
     removeFile,
-    isDisabled
+    isDisabled,
+    openImageGenerator
   };
 };

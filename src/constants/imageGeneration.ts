@@ -26,42 +26,17 @@ export const IMAGE_PROVIDERS = [
     ]
   },
   {
-    id: 'anthropic',
-    name: 'Anthropic',
-    description: 'Generate images with Anthropic\'s Claude 3 vision models',
-    maxPromptLength: 800,
-    defaultModel: 'claude-3-opus',
-    models: [
-      {
-        id: 'claude-3-opus',
-        name: 'Claude 3 Opus',
-        description: 'Highest quality image generation',
-        sizes: ['1024x1024'],
-        qualities: ['standard'],
-        styles: []
-      },
-      {
-        id: 'claude-3-sonnet',
-        name: 'Claude 3 Sonnet',
-        description: 'Balanced quality and speed',
-        sizes: ['1024x1024'],
-        qualities: ['standard'],
-        styles: []
-      }
-    ]
-  },
-  {
-    id: 'gemini',
-    name: 'Google Gemini',
-    description: 'Generate images with Google\'s Gemini models',
+    id: 'google',
+    name: 'Google',
+    description: 'Generate images with Google\'s Imagen 3 models',
     maxPromptLength: 1000,
-    defaultModel: 'gemini-pro',
+    defaultModel: 'imagen-3',
     models: [
       {
-        id: 'gemini-pro',
-        name: 'Gemini Pro',
+        id: 'imagen-3',
+        name: 'Imagen 3',
         description: 'Google\'s most capable image generation model',
-        sizes: ['1024x1024'],
+        sizes: ['1024x1024', '1024x1792', '1792x1024'],
         qualities: ['standard'],
         styles: []
       }

@@ -2,7 +2,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Paperclip, Image, FileText, ImagePlus } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 interface AttachmentButtonProps {
   showAttachments: boolean;
@@ -11,6 +11,7 @@ interface AttachmentButtonProps {
   handleFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   isDisabled: boolean;
   attachmentMenuRef: React.RefObject<HTMLDivElement>;
+  openImageGenerator: () => void;
 }
 
 export const AttachmentButton = ({
@@ -19,7 +20,8 @@ export const AttachmentButton = ({
   handleImageUpload,
   handleFileUpload,
   isDisabled,
-  attachmentMenuRef
+  attachmentMenuRef,
+  openImageGenerator
 }: AttachmentButtonProps) => {
   return (
     <div className="relative">
@@ -59,13 +61,17 @@ export const AttachmentButton = ({
             <FileText size={16} className="text-primary" /> Upload Files
           </Button>
           
-          <Link 
-            to="/image-generation" 
-            className="flex items-center justify-start gap-2 h-9 px-2 py-2 rounded-md hover:bg-accent text-sm text-foreground no-underline"
-            onClick={() => setShowAttachments(false)}
+          <Button
+            type="button"
+            variant="ghost" 
+            className="flex items-center justify-start gap-2 h-9 px-2 py-2 rounded-md hover:bg-accent text-sm"
+            onClick={() => {
+              openImageGenerator();
+              setShowAttachments(false);
+            }}
           >
             <ImagePlus size={16} className="text-primary" /> Generate Image
-          </Link>
+          </Button>
         </div>
       )}
     </div>

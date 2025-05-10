@@ -1,4 +1,3 @@
-
 export interface Message {
   id: string;
   content: string;
@@ -60,7 +59,7 @@ export interface UserProfile {
   avatarUrl?: string;
 }
 
-// New types for image generation feature
+// Image generation types
 export interface ImageGenerationRequest {
   prompt: string;
   provider: string;

@@ -8,6 +8,8 @@ import { SendButton } from "./send-button";
 import { StatusMessage } from "./status-message";
 import { ProcessingIndicator } from "./processing-indicator";
 import { AutoResizeTextarea } from "./auto-resize-textarea";
+import { Button } from "../ui/button";
+import { ImageIcon } from "lucide-react";
 
 const ChatInput = () => {
   const {
@@ -29,7 +31,8 @@ const ChatInput = () => {
     handleFileUpload,
     removeImage,
     removeFile,
-    isDisabled
+    isDisabled,
+    openImageGenerator
   } = useInputLogic();
 
   return (
@@ -60,6 +63,7 @@ const ChatInput = () => {
                 handleFileUpload={handleFileUpload}
                 isDisabled={isLoading || processingFile}
                 attachmentMenuRef={attachmentMenuRef}
+                openImageGenerator={openImageGenerator}
               />
               
               <AutoResizeTextarea
@@ -71,7 +75,17 @@ const ChatInput = () => {
               />
             </div>
             
-            <div className="flex items-center pr-2">
+            <div className="flex items-center pr-2 gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 rounded-full"
+                title="Generate Images"
+                onClick={openImageGenerator}
+              >
+                <ImageIcon size={18} className="text-muted-foreground hover:text-primary transition-colors" />
+              </Button>
               <SendButton isDisabled={isDisabled} />
             </div>
           </div>
