@@ -28,15 +28,15 @@ export const IMAGE_PROVIDERS = [
   {
     id: 'google',
     name: 'Google',
-    description: 'Generate images with Google\'s Imagen 3 models',
+    description: 'Generate images with Google\'s Gemini 2.0 Flash Preview',
     maxPromptLength: 1000,
-    defaultModel: 'imagen-3',
+    defaultModel: 'gemini-2-flash',
     models: [
       {
-        id: 'imagen-3',
-        name: 'Imagen 3',
-        description: 'Google\'s most capable image generation model',
-        sizes: ['1024x1024', '1024x1792', '1792x1024'],
+        id: 'gemini-2-flash',
+        name: 'Gemini 2.0 Flash',
+        description: 'Google\'s latest image generation model',
+        sizes: ['1024x1024'],
         qualities: ['standard'],
         styles: []
       }

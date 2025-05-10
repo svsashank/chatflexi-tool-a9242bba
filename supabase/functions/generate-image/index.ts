@@ -45,24 +45,49 @@ async function generateWithOpenAI(prompt: string, model = "dall-e-3", size = "10
   }));
 }
 
-// Handle Google image generation with Imagen 3
+// Handle Google image generation with Gemini 2.0 Flash Preview
 async function generateWithGoogle(prompt: string) {
-  console.log(`Generating image with Google Imagen: ${prompt}`);
+  console.log(`Generating image with Google Gemini Flash: ${prompt}`);
   
-  // Updated endpoint for Google's Imagen 3
-  const response = await fetch('https://generativelanguage.googleapis.com/v1/models/imagegeneration@002:generateImage', {
+  // Updated endpoint for Google's Gemini 2.0 Flash Preview
+  const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-preview:generateContent', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'x-goog-api-key': GOOGLE_API_KEY,
     },
     body: JSON.stringify({
-      prompt: {
-        text: prompt
+      contents: [{
+        role: "user",
+        parts: [{
+          text: `Generate an image of: ${prompt}`
+        }]
+      }],
+      generation_config: {
+        temperature: 1.0,
+        topP: 0.95,
+        topK: 64,
+        responseMediaType: "IMAGE",
+        stopSequences: []
       },
-      // Imagen 3 parameters
-      sampleCount: 1,
-      sampleImageSize: "1024x1024"
+      safetySettings: [
+        {
+          category: "HARM_CATEGORY_HARASSMENT",
+          threshold: "BLOCK_MEDIUM_AND_ABOVE"
+        },
+        {
+          category: "HARM_CATEGORY_HATE_SPEECH",
+          threshold: "BLOCK_MEDIUM_AND_ABOVE"
+        },
+        {
+          category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+          threshold: "BLOCK_MEDIUM_AND_ABOVE"
+        },
+        {
+          category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+          threshold: "BLOCK_MEDIUM_AND_ABOVE"
+        }
+      ]
     }),
   });
 
@@ -71,25 +96,37 @@ async function generateWithGoogle(prompt: string) {
     const data = await response.json();
     
     if (!response.ok) {
-      console.error("Google Imagen API error response:", data);
+      console.error("Google Gemini API error response:", data);
       console.error("Response status:", response.status);
       throw new Error(`Google API error: ${data.error?.message || 'Unknown error'}`);
     }
     
-    // Extract image from the response - log the shape of the response to debug
-    console.log("Google Imagen API response structure:", Object.keys(data));
+    // Log the entire response structure for debugging
+    console.log("Google Gemini API response structure:", Object.keys(data));
     
-    if (data.images && data.images.length > 0 && data.images[0].base64Data) {
-      return [{
-        url: `data:image/png;base64,${data.images[0].base64Data}`,
-        revised_prompt: prompt
-      }];
-    } else {
-      console.error("Unexpected Google Imagen API response shape:", data);
-      throw new Error('No image data was found in the Google Imagen response');
+    // Extract the image from the response
+    if (data.candidates && 
+        data.candidates.length > 0 && 
+        data.candidates[0].content && 
+        data.candidates[0].content.parts && 
+        data.candidates[0].content.parts.length > 0) {
+      
+      // Find the image part in the response
+      const imagePart = data.candidates[0].content.parts.find((part: any) => part.inlineData);
+      
+      if (imagePart && imagePart.inlineData && imagePart.inlineData.data) {
+        return [{
+          url: `data:${imagePart.inlineData.mimeType || 'image/png'};base64,${imagePart.inlineData.data}`,
+          revised_prompt: prompt
+        }];
+      }
     }
+    
+    console.error("Unexpected Google Gemini API response shape:", data);
+    throw new Error('No image data was found in the Google Gemini response');
+    
   } catch (error) {
-    console.error("Failed to parse Google Imagen API response:", error);
+    console.error("Failed to parse Google Gemini API response:", error);
     throw error;
   }
 }
