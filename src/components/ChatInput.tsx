@@ -100,8 +100,8 @@ const ChatInput = () => {
     const files = e.target.files;
     if (!files) return;
 
-    // Now the type check is properly typed
-    if (!selectedModel.capabilities.includes('images')) {
+    // Fix the TypeScript error by properly casting the AIModelCapability type
+    if (!selectedModel.capabilities.includes('images' as AIModelCapability)) {
       toast.error(`${selectedModel.name} does not support image analysis. Please select a model with vision capabilities.`);
       return;
     }

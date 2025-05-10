@@ -1,4 +1,3 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
@@ -67,8 +66,6 @@ async function generateWithGoogle(prompt: string) {
         temperature: 1.0,
         topP: 0.95,
         topK: 64,
-        responseMediaType: "IMAGE",
-        stopSequences: []
       },
       safetySettings: [
         {
