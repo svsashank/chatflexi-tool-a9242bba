@@ -57,10 +57,16 @@ async function generateWithFlux(prompt: string, model: string, size = "1024x1024
     // Parse size to get dimensions
     const [width, height] = size.split('x').map(dim => parseInt(dim, 10));
     
-    // Determine which API endpoint to use based on the model
-    const apiEndpoint = model === 'flux-1-schnell' 
-      ? 'https://api.us1.bfl.ai/v1/flux-1' 
-      : 'https://api.us1.bfl.ai/v1/flux-pro-1.1';
+    // Determine the model name for the API endpoint
+    let modelName = model;
+    if (model === 'flux-1-schnell') {
+      modelName = 'flux-1';
+    } else if (model === 'flux-pro-1.1') {
+      modelName = 'flux-pro-1.1';
+    }
+    
+    // Use the correct scalar API endpoint
+    const apiEndpoint = `https://api.us1.bfl.ai/scalar/inference/${modelName}`;
     
     console.log(`Using API endpoint: ${apiEndpoint}`);
     
@@ -96,26 +102,28 @@ async function generateWithFlux(prompt: string, model: string, size = "1024x1024
       throw new Error(`Blackforest Labs API error: ${errorText}`);
     }
     
-    // Get the request ID from the initial response
+    // Get the task ID from the initial response
     const responseData = await response.json();
-    const requestId = responseData.id;
+    const taskId = responseData.id;
     
-    if (!requestId) {
-      throw new Error('Blackforest Labs API did not return a request ID');
+    if (!taskId) {
+      throw new Error('Blackforest Labs API did not return a task ID');
     }
     
-    console.log(`Image generation started with request ID: ${requestId}`);
+    console.log(`Image generation started with task ID: ${taskId}`);
     
-    // Step 2: Poll for the result
+    // Step 2: Poll for the result with exponential backoff
     let result;
     let attempts = 0;
     const maxAttempts = 30; // Maximum number of polling attempts
-    const pollingInterval = 1000; // 1 second between polls
+    let pollingInterval = 1000; // Starting with 1 second between polls
+    const maxPollingInterval = 5000; // Maximum polling interval (5 seconds)
     
     while (attempts < maxAttempts) {
       attempts++;
       
-      const statusResponse = await fetch(`https://api.us1.bfl.ai/v1/status/${requestId}`, {
+      // Use the correct scalar tasks endpoint
+      const statusResponse = await fetch(`https://api.us1.bfl.ai/scalar/tasks/${taskId}`, {
         method: 'GET',
         headers: {
           'accept': 'application/json',
@@ -131,12 +139,17 @@ async function generateWithFlux(prompt: string, model: string, size = "1024x1024
           throw new Error(`Failed to get image status after ${maxAttempts} attempts`);
         }
         
+        // Exponential backoff with a maximum interval
+        pollingInterval = Math.min(pollingInterval * 1.5, maxPollingInterval);
+        console.log(`Retrying in ${pollingInterval}ms...`);
+        
         // Wait before trying again
         await new Promise(resolve => setTimeout(resolve, pollingInterval));
         continue;
       }
       
       const statusData = await statusResponse.json();
+      console.log(`Task status (attempt ${attempts}):`, statusData.status);
       
       if (statusData.status === 'succeeded') {
         console.log('Image generation succeeded');
@@ -147,6 +160,10 @@ async function generateWithFlux(prompt: string, model: string, size = "1024x1024
       } else {
         console.log(`Image still generating, status: ${statusData.status}, attempt: ${attempts}`);
         
+        // Gradually increase polling interval with each attempt
+        pollingInterval = Math.min(pollingInterval * 1.2, maxPollingInterval);
+        console.log(`Next check in ${pollingInterval}ms`);
+        
         // Wait before polling again
         await new Promise(resolve => setTimeout(resolve, pollingInterval));
       }
@@ -156,9 +173,14 @@ async function generateWithFlux(prompt: string, model: string, size = "1024x1024
       throw new Error('Image generation timed out');
     }
     
+    // Extract the image URL from the result
+    if (!result.output?.default) {
+      throw new Error('No image URL found in the completed task');
+    }
+    
     // Return the image data
     return [{
-      url: result.url,
+      url: result.output.default,
       revised_prompt: prompt
     }];
   } catch (error) {
