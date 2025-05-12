@@ -18,7 +18,8 @@ import {
   Sparkles, 
   UserRound, 
   ChevronDown,
-  Image
+  Image,
+  History 
 } from "lucide-react";
 import UserComputeCredits from "./UserComputeCredits";
 import { toast } from "sonner";

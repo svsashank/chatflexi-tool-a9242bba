@@ -21,7 +21,12 @@ export const useImageGenerationStore = create<ImageGenerationState & {
     set({ isGenerating: true, generationError: null });
     
     try {
+      console.log("Generating image with request:", request);
       const images = await generateImage(request);
+      
+      if (!images || images.length === 0) {
+        throw new Error("No images were returned");
+      }
       
       set((state) => ({ 
         generatedImages: [...images, ...state.generatedImages],
@@ -29,13 +34,18 @@ export const useImageGenerationStore = create<ImageGenerationState & {
       }));
       
       toast.success(`Successfully generated ${images.length} image(s)`);
+      return;
     } catch (error) {
       console.error('Error generating image:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      
       set({ 
-        generationError: error instanceof Error ? error.message : 'Unknown error occurred',
+        generationError: errorMessage,
         isGenerating: false
       });
-      toast.error(error instanceof Error ? error.message : 'Failed to generate image');
+      
+      toast.error(`Failed to generate image: ${errorMessage}`);
+      throw error; // Re-throw to allow component-level handling
     }
   },
   

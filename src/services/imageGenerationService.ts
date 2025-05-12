@@ -5,6 +5,8 @@ import { v4 as uuidv4 } from "uuid";
 
 export const generateImage = async (request: ImageGenerationRequest): Promise<GeneratedImage[]> => {
   try {
+    console.log("Sending image generation request:", request);
+    
     const { data, error } = await supabase.functions.invoke('generate-image', {
       body: {
         prompt: request.prompt,
@@ -23,9 +25,12 @@ export const generateImage = async (request: ImageGenerationRequest): Promise<Ge
     }
 
     if (!data?.images || data.images.length === 0) {
+      console.error('No images were returned from the API');
       throw new Error('No images were generated');
     }
 
+    console.log('Images generated successfully:', data.images.length);
+    
     // Map the API response to our GeneratedImage format
     return data.images.map((img: any) => ({
       id: uuidv4(),

@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useImageGenerationStore } from "@/store/imageGeneration";
 import { IMAGE_PROVIDERS, DEFAULT_IMAGE_PROVIDER, DEFAULT_PROMPT } from "@/constants/imageGeneration";
@@ -96,7 +97,12 @@ const ImageGeneration = () => {
       numberOfImages: 1
     };
     
-    await generateImageAction(request);
+    try {
+      await generateImageAction(request);
+    } catch (error) {
+      console.error('Error handling image generation:', error);
+      toast.error('Failed to generate image. Please try again.');
+    }
   };
   
   // Copy image URL to clipboard
@@ -141,12 +147,13 @@ const ImageGeneration = () => {
         {/* Form Section */}
         <div className="space-y-6 bg-card rounded-lg p-6 border shadow-sm">
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Provider Selection */}
+            {/* Provider Selection - Here we only have OpenAI now */}
             <div className="space-y-2">
               <Label htmlFor="provider">Provider</Label>
               <Select 
                 value={selectedProvider.id} 
                 onValueChange={handleProviderChange}
+                disabled={IMAGE_PROVIDERS.length <= 1}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select provider" />
@@ -276,7 +283,7 @@ const ImageGeneration = () => {
           </form>
           
           <div className="text-sm text-muted-foreground mt-4">
-            <p>Note: Image generation costs vary by provider and model.</p>
+            <p>Note: Image generation costs vary by model.</p>
             <p className="mt-1">For best results, provide detailed descriptions.</p>
           </div>
         </div>
