@@ -10,7 +10,7 @@ export const createSendMessageAction = (
   set: (state: Partial<ChatStore> | ((state: ChatStore) => Partial<ChatStore>)) => void,
   get: () => ChatStore
 ) => {
-  return async (content: string, images: string[] = [], files: string[] = []) => {
+  return async (content: string, images: File[] = [], files: File[] = []) => {
     const { 
       currentConversationId, 
       conversations, 
@@ -46,6 +46,29 @@ export const createSendMessageAction = (
     const urls = extractUrls(content);
     let enhancedContent = content;
     let webContentFiles: string[] = [];
+
+    // Convert image files to base64 strings or URLs for storing
+    const imageUrls: string[] = [];
+    for (const imageFile of images) {
+      try {
+        // For now, just use the file name as a placeholder
+        // In a real application, you would upload these to storage
+        imageUrls.push(URL.createObjectURL(imageFile));
+      } catch (error) {
+        console.error('Error processing image:', error);
+      }
+    }
+
+    // Process files for content
+    const fileContents: string[] = [];
+    for (const file of files) {
+      try {
+        // In a real app, you would process the file content appropriately
+        fileContents.push(`File: ${file.name} (${file.type})`);
+      } catch (error) {
+        console.error('Error processing file:', error);
+      }
+    }
 
     // If URLs are found, try to fetch their content
     if (urls.length > 0) {
@@ -83,18 +106,18 @@ export const createSendMessageAction = (
       }
     }
     
-    // Combine original files with web content files
-    const allFiles = [...files, ...webContentFiles];
+    // Combine file contents with web content
+    const allFileContents = [...fileContents, ...webContentFiles];
     
     // For debugging: Log what's being sent to the model
     console.log('Sending message to model:', {
       content,
       modelId: selectedModel.id,
       modelProvider: selectedModel.provider,
-      imagesCount: images.length,
-      filesCount: allFiles.length,
+      imagesCount: imageUrls.length,
+      filesCount: allFileContents.length,
       urlsFound: urls.length,
-      filesPreview: allFiles.length > 0 ? allFiles.map(f => f.substring(0, 100) + '...') : []
+      filesPreview: allFileContents.length > 0 ? allFileContents.map(f => f.substring(0, 100) + '...') : []
     });
     
     // Create a properly typed new message
@@ -104,8 +127,8 @@ export const createSendMessageAction = (
       role: 'user',
       model: selectedModel,
       timestamp,
-      images,
-      files: allFiles.length > 0 ? allFiles : undefined
+      images: imageUrls,
+      files: allFileContents.length > 0 ? allFileContents : undefined
     };
     
     // Add user message using the addMessage action

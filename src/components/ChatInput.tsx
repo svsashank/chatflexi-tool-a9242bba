@@ -10,7 +10,6 @@ import { ProcessingIndicator } from "@/components/chat-input/processing-indicato
 import { AutoResizeTextarea } from "@/components/chat-input/auto-resize-textarea";
 import { Button } from "@/components/ui/button";
 import { ImageIcon } from "lucide-react";
-import { AIModelCapability } from "@/types";
 
 const ChatInput = () => {
   const {

@@ -1,8 +1,7 @@
-
 import { useState, useRef, useCallback } from "react";
 import { useChatStore } from "@/store";
 import { v4 as uuidv4 } from "uuid";
-import { extractURLsFromText } from "@/utils/urlUtils";
+import { extractUrls } from "@/utils/urlUtils";
 import { useNavigate } from "react-router-dom";
 
 export const useInputLogic = () => {
@@ -32,13 +31,17 @@ export const useInputLogic = () => {
     
     try {
       // Extract URLs from input if any
-      const urls = extractURLsFromText(inputValue);
+      const urls = extractUrls(inputValue);
       
       if (urls.length > 0) {
         setProcessingUrls(`Processing ${urls.length} URL${urls.length > 1 ? 's' : ''}...`);
       }
       
-      await sendMessage(inputValue, uploadedImages.map(img => img.file), uploadedFiles.map(file => file.file));
+      // Extract files from the uploaded images and files
+      const imageFiles = uploadedImages.map(img => img.file);
+      const documentFiles = uploadedFiles.map(file => file.file);
+      
+      await sendMessage(inputValue, imageFiles, documentFiles);
       
       setInputValue("");
       setUploadedImages([]);
